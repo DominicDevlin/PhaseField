@@ -71,10 +71,10 @@ v = 0;
 phi = phi;
 // EOM
 
-real stalkGrowthRate = 1.
+real stalkGrowthRate = 2.;
+
 macro ElongateMesh(time)
 real increase = time * stalkGrowthRate;
-
 border a0(t=0,1){x=-3+2.5*t; y=0; label=1;}
 border a1(t=0,1){x=-0.5; y=t*(1+increase); label=2;}
 border a2(t=0,1){x=-0.5+t; y=1+increase; label=3;}
@@ -94,17 +94,19 @@ cout << "phase done ";
 // EOM
 
 real phiArea=0.;
+
 macro GetArea()
 phiArea = int2d(Th)(phi^2 * (3 - 2*phi));
 // EOM
 
+real multiplier=0.1;
 
-real eta = 0.01;             // viscosity
-real a = 5;               // Coefficient a
+real eta = 0.005;             // viscosity
+real a = 5*multiplier;               // Coefficient a
+real k = 0.01*multiplier;               // phase width coefficient k
 real lmda = 0.5;               // concentration constraint
 real A0 = 3.143;              // Target value for A
-real k = 0.01;               // phase width coefficient k
-real epseps = 1e-8;
+real epseps = -1e-9;
 real gamma = 0.0;
 real dt = 0.001;
 
@@ -115,7 +117,7 @@ Vhfield phiold;
 
 real DropTh = 0.025;
 // Initialise the drop
-func initPhi = 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-0.8-dyc)^2) - dR) / (sqrt(2) * DropTh)));
+func initPhi = 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-1-dyc)^2) - dR) / (sqrt(2) * DropTh)));
 // func initPhi = 0.5 * (1-tanh((abs(x - dxc) + abs(y - dyc) - dR) / sqrt(2) / DropTh));
 
 
@@ -127,7 +129,8 @@ problem phasefield(phi, v, master=0, solver=sparsesolver) // ,
     + int2d(Th) (1/eta * (gamma* (dx(v) * dx(phi) + dy(v) * dy(phi)) / (dx(phiold)^2 + dy(phiold)^2 + epseps)))
     + int2d(Th) (1/eta * ( v * (12 * lmda *(phiArea-A0)*phi*(1-phiold))))
     - int2d(Th) (  v * (phiold)/dt  )
-    + on(2, 3, 4, phi=0);
+    + on(2, 4, phi=0)
+    + on(3, phi=1);
                
                
 // Initialisation

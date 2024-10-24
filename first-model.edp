@@ -79,6 +79,7 @@ phi = phi;
 
 // Macro for non-linear solutions
 macro solvePhase()
+BooleanisePhi
 phasefield;
 cout << "phase done ";
 // EOM
@@ -88,14 +89,22 @@ macro GetArea()
 phiArea = int2d(Th)(phi^2 * (3 - 2*phi));
 // EOM
 
+macro AbsGradient()
+phiArea = int2d(Th)(phi^2 * (3 - 2*phi));
+// EOM
 
-real eta = 0.01;             // viscosity
+macro BooleanisePhi()
+boolPhi = abs(dx(phi) + dy(phi)) > 1e-5;
+// EOM
+
+
+real eta = 0.005;             // viscosity
 real a = 5;               // Coefficient a
 real lmda = 0.5;               // concentration constraint
 real A0 = 3.143;              // Target value for A
 real k = 0.01;               // phase width coefficient k
-real epseps = 1e-8;
-real gamma = 0.0;//k * 4;
+real epseps = 1e-12;
+real gamma = 0.01;//k * 4;
 real dt = 0.001;
 
 // fespace Vhfield (Th,P2,periodic=[[a5,y],[a7,y]]);//,[1,x],[3,x]]);// periodic=[[2,y],[4,y],[1,x],[3,x]]);
@@ -103,19 +112,21 @@ fespace Vhfield (Th,P2,periodic=[[2,y],[4,y],[1,x],[3,x]]);
 Vhfield phi;
 Vhfield v;
 Vhfield phiold;
+Vhfield boolPhi;
 
 real DropTh = 0.025;
 // Initialise the drop
 // func initPhi = 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-0.8-dyc)^2) - dR) / (sqrt(2) * DropTh)));
 func initPhi = 0.5 * (1-tanh((abs(x - dxc) + abs(y - dyc) - dR) / sqrt(2) / DropTh));
 
-
+real threshold = 1e-4;
 
 problem phasefield(phi, v, master=0, solver=sparsesolver) // , 
     = int2d(Th) (  v * (phi)/dt  )
     + int2d(Th) (1/eta * (v * a * phi - 3*v*a*phi*phiold + 2*v*a*phi*phiold^2))
     + int2d(Th) (1/eta * (k * (dx(v) *dx(phi) + dy(v) * dy(phi))))
-    + int2d(Th) (1/eta * (gamma* (dx(v) * dx(phi) + dy(v) * dy(phi)) / (dx(phiold)^2 + dy(phiold)^2 + epseps)))
+    + int2d(Th) (1/eta * boolPhi * (gamma* (dx(v) * dx(phi) + dy(v) * dy(phi)) / (dx(phiold)^2 + dy(phiold)^2 + epseps)))
+    // + int2d(Th) ( (dx(phiold)^2 + dy(phiold)^2) > threshold ? (1/eta * (gamma* (dx(v) * dx(phi) + dy(v) * dy(phi)) / (dx(phiold)^2 + dy(phiold)^2) )) : 0)
     + int2d(Th) (1/eta * ( v * (12 * lmda *(phiArea-A0)*phi*(1-phiold))))
     - int2d(Th) (  v * (phiold)/dt  );
     //+ on(a1, a2, a3, phi=0);
@@ -171,6 +182,14 @@ while(true)//(maxCFL > 1e-4)
         nAdapt++;
         // plot(Th, wait=true);
         nAdapt = 0;
+        // for (int i =0; i < Th.nt; ++i)
+        // {
+        //     for (int j = 0; j < 3; ++j)
+        //     {
+        //         cout << Th[i][j].x << "\t" << boolPhi << endl;
+        //     }
+        // }
+        plot(boolPhi, wait = true, fill=true, value=true);
     }
     ++counter;
 
@@ -184,6 +203,7 @@ while(true)//(maxCFL > 1e-4)
     // Solve the PF equations
     curt = curt+dt;
     cout << "ct = " << curt << ", ";
+
 
     GetArea
     solvePhase
