@@ -1,0 +1,98 @@
+//load "MUMPS_mpi"
+real radius = 0.05;
+real M=1;
+real centerX = 0.35;
+real centerX2 = 0.5;
+real centerY = 0.5;
+real Inside =.999;
+real Outside = -.999;
+//real Outside = 0;
+real Pe=  62;
+real Ch= 0.01;
+
+func real initialCondition(real x, real y)
+{
+//return randres53()*2-1;
+return randreal1()*1.8-.9;
+    if (sqrt(pow(x - centerX, 2) + pow(y - centerY, 2)) <= radius || 
+       sqrt(pow(x - centerX2, 2) + pow(y - centerY, 2)) <= radius || 
+       sqrt(pow(x - centerX, 2) + pow(y - 0.8, 2)) <= radius || 
+       sqrt(pow(x - centerX2, 2) + pow(y - 0.8, 2)) <= radius)
+    return Inside;
+  else
+    return Outside;
+}
+
+
+int sz=72*6/4;
+mesh Th=square(sz,sz,[.15+x*.5,.4+y*.5]);
+plot(Th,cmm="mesh",wait=1);
+fespace Vh(Th,P1);
+fespace Vh2(Th,P1);
+
+real dt=1e-6;
+int i,k;  
+
+Vh2 u,w,phi,oldv,oldz,psi;
+Vh2 phiw;
+u=initialCondition(x,y);
+plot (u,wait=1,cmm="Cahn-Hilliard",value=true);
+
+
+
+problem CahnHill1(u,w,phi,phiw,solver=sparsesolver) = 
+   // solve CahnHill1(u,w,phi,phiw,solver=CG) = 
+    int2d(Th)( w*phiw)
+    +int2d(Th)(dx(u)*dx(phiw)+dy(u)*dy(phiw))
+    +int2d(Th)(u*phi) 
+    -int2d(Th)(oldv*phi) 
+    +int2d(Th)(-dt/Pe*6.0*u*phi*(dx(oldv)*dx(oldv)+dy(oldv)*dy(oldv)))
+    +int2d(Th)(-dt/Pe/3.0*oldv*oldv*w*phi )
+    +int2d(Th)(dt/Pe*w*phi)
+    +int2d(Th)(-dt/Pe*Ch*Ch*(dx(w)*dx(phi)+dy(w)*dy(phi))); 
+
+
+
+
+
+for (int i=0;i<300;i++)
+{
+    oldv[]=u[];
+
+//    solve CahnHill1(w,phi) = 
+//     int2d(Th)(Ch*Ch*(dx(oldv)*dx(phi)+dy(oldv)*dy(phi)) )+ int2d(Th)((oldv^3-oldv)*phi) -int2d(Th)(w*phi);
+
+//    solve CahnHill2(u,phi)= int2d(Th)(u*phi) + int2d(Th)(dt*1/Pe*(dx(w)*dx(phi)+dy(w)*dy(phi)) ) -int2d(Th)(oldv*phi);
+
+
+   // solve CahnHill1(u,w,phi,phiw) = 
+   //  int2d(Th)(Ch*Ch*(dx(oldv)*dx(phiw)+dy(oldv)*dy(phiw)) )+ int2d(Th)((oldv^3-oldv)*phiw) -int2d(Th)(w*phiw)
+   // + int2d(Th)(u*phi) + int2d(Th)(dt*1/Pe*(dx(w)*dx(phi)+dy(w)*dy(phi)) ) -int2d(Th)(oldv*phi);
+
+
+//    solve CahnHill1(u,w,phi,phiw) = 
+//     int2d(Th)(Ch*Ch*(dx(u)*dx(phiw)+dy(u)*dy(phiw)) )+ int2d(Th)((u*oldv^2-u)*phiw) -int2d(Th)(w*phiw)
+//    + int2d(Th)(u*phi) + int2d(Th)(dt*1/Pe*(dx(w)*dx(phi)+dy(w)*dy(phi)) ) -int2d(Th)(oldv*phi);
+
+//     solve CahnHill1(u,w,phi,phiw,solver=sparsesolver) = 
+//    // solve CahnHill1(u,w,phi,phiw,solver=CG) = 
+//     int2d(Th)( w*phiw)+int2d(Th)(dx(u)*dx(phiw)+dy(u)*dy(phiw))
+//     +int2d(Th)(u*phi) - int2d(Th)(oldv*phi) 
+//     +int2d(Th)(-dt/Pe*6.0*u*phi*(dx(oldv)*dx(oldv)+dy(oldv)*dy(oldv)))
+//     +int2d(Th)(-dt/Pe/3.0*oldv*oldv*w*phi )
+//     +int2d(Th)(dt/Pe*w*phi)
+//     +int2d(Th)(-dt/Pe*Ch*Ch*(dx(w)*dx(phi)+dy(w)*dy(phi))); 
+
+    CahnHill1;
+
+    if ((i %1) ==0)
+    {
+        plot (u,wait=true,fill=true, cmm="Cahn-Hilliard_"+i,value=true);
+        // plot(phi,wait=true,fill=true, cmm="phi_"+i,value=true);
+    }
+    // adaptmesh(Th, u, nbvx=100000, err=0.01);
+    // plot(Th,wait=true);
+        
+
+
+}

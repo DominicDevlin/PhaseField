@@ -1,0 +1,558 @@
+load "ffrandom"
+load "iovtk"
+load "UMFPACK64"
+
+
+/************************************
+        Parameters
+*************************************/
+// Paramters for Multi
+string Fhead = "s3d_16_rho5/v_phi";
+real surftenST = 1.6;
+real curvK = 3.0;
+real gamma0 = curvK * (95.0/100.0);
+real gammaT = curvK * (5.0/100.0);
+
+// Paramters for square mesh
+real Lx = 50.0, Ly = 150.0; // system size
+int  Nx = 60, Ny = 180;  // lattice
+real Sth0 = 15.5, Str = 5;
+int n = 100;
+int boundary = 1;
+real SetHmin = 0.5;
+
+
+// time step
+real maxDt = 2.0, dt = 2.0; /* attach */
+// real maxDt = 0.2, dt = 1.0e-1;
+real lastTime = 900000.0;
+int  interval = 5;
+
+// parameters for phase field
+real epsilon = 1.0*Lx/Nx;  // 2 - 4 *(Lx/Nx)
+real Gamma = 0.2*epsilon;  // Large
+
+// system parameters
+/*real nuIn = 1.0e+2; //*/
+real nuIn = 1.0e+2; //
+real nuExt = 9.0; //
+
+
+// seed for random variable
+srandomdev();
+randinit(random());
+
+// for plot and output
+bool PLOT = true;
+real [int] phicolor = -0.05:0.05:1.05;
+int countf = 1;
+real Figtime = 0.0 + maxDt * 10.0;
+
+real TotalE;
+real beforeE = 1000000;
+real maxV0;
+
+/*************************************************
+   Geometry, functional spaces, and variables
+**************************************************/
+
+
+
+border C01(t=0, 1){x=0; y=(Ly-Sth0)*t+Sth0; label=1;}
+border C02(t=0, 1){x=Lx*t; y=Ly; label=2;}
+border C03(t=0, 1){x=Lx; y=Ly*(1-t); label=3;}
+
+real StCurv = Str / 2.;
+border C04(t=0, 1){x=(Lx-Str)*(1-t)+Str; y=0; label=4;}
+border C05(t=0, 1){x=Str; y=Sth0*t; label=5;}
+border C06(t=0, 1){x=Str*(1-t); y=Sth0; label=6;}
+
+border C01ST(t=0, 1){x=0; y=Sth0*(1-t);  label=7;}
+border C02ST(t=0, 1){x=(Str)*t;  y=0;  label=8;}
+
+mesh Th = buildmesh(C01(-n) + C02(-n) + C03(-n) + C04(-n) + C05(-n) + C06(-n));
+mesh Th2 = buildmesh(C01ST(2) + C02ST(2) + C05(2) + C06(2));
+
+
+fespace Vh(Th,P2);   // scalar
+fespace VhV(Th,[P2,P2]); // vector
+fespace VhV3(Th,[P2,P2,P2]); // symmetric tensor
+fespace VhT(Th,[P2,P2,P2]); // symmetric tensor
+fespace Ph(Th,P1); // for p
+
+Vh phi, cphi, phiold, hphi;
+Vh rho, crho, rhoold, hrho;
+Vh phirho, nu;
+Vh rhomesh;
+Vh qk, cqk, qk0;
+Vh rephi;
+Vh dphiAbs, dphiAbs2, curv, phicurve;
+Vh drhoAbs, drhoAbs2, curvrho;
+VhV [phidr,phidz], [pnx, pny], [rhodx,rhody];
+VhV [vxRelative, vyRelative];
+VhV3 [Txx,Txy,Tyy], [vr,vtheta,vz], [cvr,cvtheta,cvz];
+VhV3 [meanvr,meanvtheta,meanvz];
+VhT [phirr, phirz, phizz], [rhoxx, rhoxy, rhoyy], [tnrr, tnrz, tnzz];
+Ph p, pp;
+Vh gammaAll, gammaAllSt, gammaAllBot;
+Ph chechValue;
+Vh qkdx, qkdy;
+
+Vh rho1boundold;
+Vh rho2boundold;
+
+Ph StalkBound;
+Vh curvfull;
+Vh deltaPhidiff;
+Vh phib;
+Vh divqq;
+
+
+/*************************************************
+   macros
+**************************************************/
+macro dphi [phidr,phidz]     // EOM
+macro drho [rhodx,rhody]     // EOM
+macro vel  [vr,vtheta,vz]     // EOM
+macro hfunc(phi) (phi*phi*(3-2*phi))      // EOM
+macro norm(v) (sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]))  // EOM
+macro SurTen(rho, phi) (gammaT*rho + gamma0) // EOM
+
+macro SurTenSt(rho, phi) ((-0.0*rho)*phi+surftenST*phi + 3.0) // EOM
+// macro SurTenSt(rho, phi) ((-0.3*rho)*phi+0.005*phi + curvK) // EOM
+// macro SurTenBot(rho, phi) (5.0*(1-rho)*phi+1.) // EOM
+// macro SurTenBot(rho, phi) (0.75*phi+1.) // EOM
+macro SurTenBot(rho, phi) (1.*phi+1.) // EOM
+macro viscoC(hphi) (nuIn)  // EOM
+
+real Delta = 1.0e-4,  Delta2 = 1.0e+2;
+macro setCurvature(phi){
+  real stbound0 = 2.;
+  phib = phi*(1.-phi);
+ /* phib = phib * (phib>0.0);*/
+
+  dphi = [dx(phi), dy(phi)];
+  [phirr,phirz,phizz] = [dxx(phi), dxy(phi), dyy(phi)];
+
+  
+  dphiAbs2 = phidr*phidr + phidz*phidz;
+  dphiAbs = sqrt(dphiAbs2);
+  dphiAbs2 = dphiAbs2 + Delta*exp(-Delta2*dphiAbs2);
+  curv =   -(phidr + phirr*x + phizz*x) + ( phidr*phirr*phidr + 2*phidr*phirz*phidz + phidz*phizz*phidz )/dphiAbs2*x;
+
+  curv = curv * (dphiAbs>1.0/Delta2);
+  /*curv = curv * (curv < 2. * x) + 2.0*x * (curv > 2. * x);
+  curv = curv * (curv > -2. * x) - 2.0*x * (curv < -2. * x);*/
+  curv = curv * (curv < 2.) + 2.0 * (curv > 2.);
+  curv = curv * (curv > -2.) - 2.0 * (curv < -2.);
+  /*curv = curv * (dphiAbs>1.0/Delta2);*/
+  [tnrr, tnrz, tnzz] = [phidr*phidr/dphiAbs2, phidr*phidz/dphiAbs2, phidz*phidz/dphiAbs2];
+} // EOM
+macro dg(phi) (8*phi*(1.0-phi)*(phi-0.5)/epsilon) // EOM
+
+
+/************************************
+    functions for time evolution
+*************************************/
+int tc = 0;
+macro Vxx(hphi) (sigma0xx*dx(hphi)  - 0*(x-Lx/2) )//EOM
+
+real alpha = 2.5;
+real v0st = 0.00025;
+// real v0st = 0.000175;
+
+problem VStokes([vr, vtheta, vz, p], [cvr, cvtheta, cvz, pp], solver=UMFPACK)
+	= -int2d(Th)( (2*dx(vr)*dx(cvr)*x + (dx(vtheta)*x-vtheta)*(dx(cvtheta)-cvtheta/x) 
+		+ 2/(x)*vr*cvr + (dy(vr)+dx(vz))*(dy(cvr)+dx(cvz))*x
+		+ dy(vtheta)*dy(cvtheta)*x + 2*dy(vz)*dy(cvz)*x ) * nu
+	)
+	// + int2d(Th)( (2*dx(nu)*dx(vr) + dy(nu)*(dy(vr)+dx(vz)) ) * cvr * x
+	// 	+ (dx(nu)*(dx(vtheta)-vtheta/x) + dy(nu)*dy(vtheta) ) * cvtheta * x
+	// 	+ (dx(nu)*(dy(vr)+dx(vz)) + 2*dy(nu)*dy(vz) ) * cvz * x
+	//  )
+	- int2d(Th)(p*(cvr+(dx(cvr) + dy(cvz))*x ))
+	+ int2d(Th)( (vr+x*( dx(vr)+dy(vz) ) )*pp - 1e-10*p*pp*x )
+    + int2d(Th)(5.*phi*epsilon*Gamma*(
+			dx(rho)*dx(rho)*dx(cvr) + dx(rho)*dy(rho)*dy(cvr) 
+			+ dx(rho)*dy(rho)*dx(cvz) + dy(rho)*dy(rho)*dy(cvz)
+		)* x
+	)
+	// + int2d(Th)(phi*epsilon*Gamma*(
+	// 		dx(phirho)*dx(phirho)*dx(cvr) + dx(phirho)*dy(phirho)*dy(cvr) 
+	// 		+ dx(phirho)*dy(phirho)*dx(cvz) + dy(phirho)*dy(phirho)*dy(cvz)
+	// 	)* x
+	// )
+	+ int2d(Th)( sqrt(epsilon*Gamma*10.)*(
+		((1-tnrr)*dx(gammaAll) - tnrz*dy(gammaAll))*cvr
+		+( -tnrz*dx(gammaAll)+(1-tnzz)*dy(gammaAll) )*cvz 
+		)* dphiAbs * x
+	)
+	+ int1d(Th, 4)( sqrt(epsilon*Gamma)*(dx(gammaAllBot)*cvr ) * x)
+	+ int1d(Th, 5)( sqrt(epsilon*Gamma)*( (dy(gammaAllSt)+0.*phi )*cvz ) * x )
+	// + int1d(Th, 5)( sqrt(epsilon*Gamma)*( (dy(gammaAllSt)+0.1*phi )*cvz ) * x )
+	+ int1d(Th, 6)( sqrt(epsilon*Gamma)*(dx(gammaAllSt)*cvr + dy(gammaAllSt)*cvz) * x )
+	+ int2d(Th)( sqrt(epsilon*Gamma)*curv*gammaAll*(phidr*cvr + phidz*cvz)/dphiAbs2*dphiAbs ) // dphiAbs2 Not = sqrt && *x in curv
+	// + on(1,vr=0) // left
+	+ on(2,vz=0) // top
+	+ on(3,vr=0) // right
+	+ on(4,vz=0) // bottom
+	+ on(5,vr=0) // Stalk right
+	// + on(6,vz=0) // Stalk top
+	+ on(6, vz = (1-1/alpha) *  alpha*v0st  )
+;
+
+real dtau = 0.00001;
+// real dtau = 0.00001;
+int inisw;
+Vh qqr, qqz, cqqr, cqqz;
+
+
+problem Phiupdate( phi,cphi, init=inisw )
+  = int2d(Th)( phi*cphi/dtau*x )
+//   - int2d(Th)( (dx(qqr)*x + qqr + dy(qqz)*x)*cphi)
+	+ int2d(Th)((dx(cphi)*qqr + dy(cphi)*qqz)*x)
+  - int2d(Th)( phiold*cphi/dtau*x)
+//   + int1d(Th, 5)(dx(phi) * cphi)
+  + on(2, phi=0)
+  + on(3, phi=0)
+//   + on(6, phi=1)
+;
+problem PhiupdateV( phi, cphi, init=inisw )
+  = int2d(Th)( phi*cphi/dt*x )
+  + int2d(Th)( (vr*dx(phi) + vz*dy(phi))*cphi*x )
+  - int2d(Th)( phiold*cphi/dt*x)
+  + intalledges(Th)(
+		(1-nTonEdge)*cphi*(0.5*abs(n)-n/2)*jump(phi)*x
+  )
+//   + int1d(Th, 5)(dx(phi) * cphi)
+  + on(2, phi=0)
+  + on(3, phi=0)
+//   + on(6, phi=1)
+;
+
+real a = 2.0;
+real etarho = 0.05;
+
+problem Rhoupdate([rho, qk], [crho, cqk] )
+	// = int2d(Th)( rho*crho/dt)
+	= int2d(Th)( rho*crho/dt*x + phi*(vr*dx(rho) + vz*dy(rho))*crho*x)
+	- int2d(Th)( etarho * rhoold * (1-rhoold) * (
+		((1-tnrr)*dx(qk) - tnrz*dy(qk))*dx(crho)*x
+		+( -tnrz*dx(qk)+(1-tnzz)*dy(qk) )*dy(crho)*x 
+		)
+	)
+	- int2d(Th)(rhoold*crho/dt * x )
+	+ int2d(Th)( qk * cqk * x )
+	+ int2d(Th)( 5.*(1-a) * rho * cqk * x )
+	+ int2d(Th)(5.*(-3*rhoold*rhoold + 2*rhoold*rhoold*rhoold + a*rhoold) * cqk * x)
+	+ int2d(Th)( 5.*epsilon*Gamma*( dx(rho)*dx(cqk) + dy(rho)*dy(cqk) ) * x )
+	+ int2d(Th)( ( 5.*epsilon*Gamma + rephi*(1-phi) ) *( dx(rho)*dx(cqk) + dy(rho)*dy(cqk) ) * x )
+	- int2d(Th)( 0.01*sqrt(5.*epsilon*Gamma) * rephi * dphiAbs2 * gammaT * cqk * x )
+	+ int1d(Th, 5)( 0.01*sqrt(5.*epsilon*Gamma) * rephi * (-0.5*phi) * cqk * x)
+	+ int1d(Th, 4)( 0.01*sqrt(5.*epsilon*Gamma) * rephi * (-1.) * cqk * x)
+	+ intalledges(Th)(
+		(1-nTonEdge)*crho*(0.5*abs(n)-n/2)*jump(rho)*x
+	)
+	+ on(1, rho=1)
+	+ on(4, rho=0) // bottom
+	+ on(6, rho=1)
+;
+
+
+macro Meshupdate(stt){
+	Sth0 = Sth0 + (v0st * dt * stt * alpha/2.);
+	
+	border C01(t=0, 1){x=0; y=(Ly-Sth0)*t+Sth0; label=1;}
+	border C05(t=0, 1){x=Str; y=(Sth0)*t; label=5;}
+	border C06(t=0, 1){x=Str*(1-t); y=Sth0; label=6;}
+
+	border C01ST(t=0, 1){x=0; y=Sth0*(1-t); label=7;}
+	
+	int nn = 100;
+	Th = buildmesh(C01(-nn) + C02(-nn) + C03(-nn) + C04(-nn) + C05(-nn) + C06(-nn));
+	Th = adaptmesh(Th, rhomesh*phi, err=5.0e-3,verbosity=1,nbvx=30000,hmin=SetHmin);
+
+	Th2 =  buildmesh(C01ST(2) + C02ST(2) + C05(2) + C06(2));
+	StalkBound = 1;
+	
+
+} // EOM
+
+
+macro InitialRelaxastionPhi(INITRELAXTIME){
+   inisw=0;
+  [vr,vtheta,vz] = [0,0,0];
+  phiold = phi;
+  rhoold = rho;
+  qk0 = -(rho-3*rho^2+2*rho^3) + epsilon*Gamma*(phidr/(x + (x==0.0)*Delta)+dx(rhodx)+dy(rhody)) + epsilon*Gamma*(dx(rho)*dx(phi)+dy(rho)*dy(phi));
+  divqq = qqr/(x*(x>0)+0.000001*(x==0)) + dx(qqr) + dy(qqz);
+  
+  /*adaptmesh(Th, phi*rho*(1-rho), nbvx=1000, verbosity=1);
+  */
+  for( int inumstep=0; inumstep<INITRELAXTIME; inumstep++ ){
+    cerr << "## Initial relaxation for phi  " << inumstep << endl;
+    setCurvature(phi);
+	gammaAll = SurTen(rho,phi);
+	gammaAll = gammaAll*(gammaAll>0.0);
+	gammaAllSt = SurTenSt(rho,phi);
+	gammaAllSt = gammaAllSt * (gammaAllSt>0.0);
+	gammaAllBot = SurTenBot(rho,phi);
+
+	qqr=dx(phiold)/sqrt(dphiAbs2) * epsilon*(epsilon*dphiAbs - sqrt(2.)*phib);
+	qqz=dy(phiold)/sqrt(dphiAbs2) * epsilon*(epsilon*dphiAbs - sqrt(2.)*phib);
+	divqq = qqr/(x*(x>0)+0.000001*(x==0)) + dx(qqr) + dy(qqz);
+	cerr << endl << "divqq min = " <<  divqq[].min  <<  "  divqq max = " <<  divqq[].max  << endl;
+	cerr << "qqr min = " <<  qqr[].min  <<  "  qqr max = " <<  qqr[].max  << endl;
+	cerr << "qqz min = " <<  qqz[].min  <<  "  qqz max = " <<  qqz[].max  << endl;
+    
+    
+	Phiupdate;
+	hphi = hfunc(phi);
+	nu = viscoC(hphi);
+
+	/*phirho = hphi * rho * (1-rho);
+	rephi = 1 / (hphi) * (phi>0.1) + 1/0.1*(phi<0.1) ;*/
+	/*phirho = phi * rho * (1-rho);*/
+	phirho = phi * rho * (1-rho);
+	rephi = 1 / (phi) * (phi>0.001) + 1/0.001*(phi<0.001) ;
+	/*rephi = rephi * (phi>0.001);*/
+	setCurvature(phi);
+	Rhoupdate;
+	rho = rho*(rho>0.0)*(rho<1) + (1-(rho<1));
+	/*gammaAll = rephi * dphiAbs * curvK * (1.0/10.0);*/
+	/*plot(rephi, value=true, wait=true, fill=1);*/
+    phiold = phi;
+	rhoold = rho;
+	cerr << endl << "Phi sum = " <<   int2d(Th)(phi) << " , right sum = " << int2d(Th)(dg(phi)*x + epsilon*curv) << endl;
+    /* plot( hphi, vel, fill=1, value=true, cmm="t = "+inumstep, viso = phicolor, dim=2 ); */
+	inisw++;
+  };
+} // EOM
+
+/*************************************
+            TimeEvolution part
+*************************************/
+hphi = hfunc(phi);
+nu = viscoC(hphi);
+macro TimeEvolution(tstep,simtime){
+	setCurvature(phi);
+	gammaAll = SurTen(rho,phi);
+	gammaAll = gammaAll*(gammaAll>0.0);
+	gammaAllSt = SurTenSt(rho,phi);
+	gammaAllBot = SurTenBot(rho,phi);
+
+
+	cerr << endl << "right sum = " << int2d(Th)(dg(phi)*x + epsilon*curv) << endl;
+
+	phirho = phi * rho;
+	VStokes;
+	Vh vnorm =  norm(vel);
+	Vh qabs = abs(qk);
+	real vmax = vnorm[].max;
+	real qmax = qabs[].max;
+	if(tstep==0) maxV0 = vmax;
+	dt = 5*(Lx/Nx)/(vmax+qmax+1.0e-8);		if( dt>maxDt )dt = maxDt;
+	dt = 1.;
+
+	cerr << endl << "************ V_mean = " <<   int2d(Th)(vnorm*x) / int2d(Th)(phi*x) << " ************"  <<  endl;
+	for(int iii=0; isNaN(vmax); iii++){
+			phirho = phi * rhomesh;
+			chechValue = dx(rho)*dx(phi) + dy(rho)*dy(phi);
+			qkdx = etarho * rho*(1-rho) ;
+			qkdy = etarho * rho*(1-rho) ;	
+			savevtk(Fhead + "er.vtk",  Th, [x, y, 0], [vr,vz,0], phi, rho, qk, curv, phirho, rephi, chechValue, dphiAbs, dx(rhodx)+dy(rhody), dx(rhodx), dy(rhody), [rhodx, rhody, 0], gammaAll, [tnrr, tnrz, tnzz], vr*dx(rho)+vz*dy(rho), -dx(qkdx)-dy(qkdy), [ sqrt(epsilon*Gamma)*curv*gammaAll*(phidr)/dphiAbs2*dphiAbs,  sqrt(epsilon*Gamma)*curv*gammaAll*(phidz)/dphiAbs2*dphiAbs, 0], vr/x+( dx(vr)+dy(vz)) , nu, [dx(nu), dy(nu)],p,gammaAllSt, divqq, phib, qqr, qqz, 
+			dataname="xy v phi rho q_k curv phirho rephi nablaphirho dphiAbs lp_rho dxdxrho dydyrho nabla_rho gammaAll Tn Left Right, curv_F divV nu, nabla_nu P gammaAllSt divqq, phib, qqr, qqz");
+		
+			Th = adaptmesh(Th, (rho - (1-rho))*phi, err=5.0e-3,verbosity=1,nbvx=30000,hmin=SetHmin);
+			VStokes;
+			vel = [vr,vtheta,vz];
+			vnorm =  norm(vel);
+			qabs = abs(qk);
+			vmax = vnorm[].max;
+			qmax = qabs[].max;
+			cerr << endl << "************ V_max = " << vmax << " ************"  <<  endl;
+			plot(phi);
+	}
+
+	/*vr = vr * (!isNaN(vr));
+	vtheta = vtheta * (!isNaN(vtheta));*/
+
+	for(int ii=0; ii<50; ii++){
+		inisw = ii;
+		Vh qqpart = abs( (epsilon*dphiAbs - sqrt(2.)*phib) );
+		qqr=dx(phiold)/sqrt(dphiAbs2) * epsilon*(epsilon*dphiAbs - sqrt(2.)*phib) * (phi<0.99) * (phi > 0.0);
+		qqz=dy(phiold)/sqrt(dphiAbs2) * epsilon*(epsilon*dphiAbs - sqrt(2.)*phib) * (phi<0.99) * (phi > 0.0);
+		Phiupdate;
+
+		
+		
+		/*if(qqr[].min < -0.015 || qqr[].max > 0.015 || qqz[].min < -0.015 || qqz[].max > 0.015){*/
+		if(ii<-1){
+			savevtk(Fhead + "_phi_er.vtk",  Th, [x, y, 0], [vr,vz,0], phi, phi-phiold, rho, qk, curv, phirho, dphiAbs, vr/x+( dx(vr)+dy(vz)), p, phidr, phidz, phirr, phirz, phizz, qqr/(x*(x>0)+0.000001*(x==0)) + dx(qqr) + dy(qqz), phib, qqr, qqz,
+			dataname="xy v phi phidiff rho q_k curv phirho dphiAbs divV P phidr phidz phirr phirz phizz divqq phib qqr qqz");
+			Th = adaptmesh(Th, (rho - (1-rho))*phiold, err=5.0e-3,verbosity=1,nbvx=30000,hmin=SetHmin);
+			ii=-1;
+		}
+		else{
+			phiold = phi;
+			setCurvature(phi);
+		}
+	}
+	phi = phi * (phi>0.0);
+	phi = phi * (phi<1.0) + (phi>=1.0)*1.0;
+	/*phi = (y==Sth0 && x <= Str) + phi * (y!=Sth0 || x > Str);*/
+	
+	PhiupdateV;
+	phi = phi * (phi>0.0);
+	phi = phi * (phi<1.0) + (phi>=1.0)*1.0;
+	/* phi = (abs(x-Str)<0.001 && abs(y-Sth0)<0.01) + phi*  (abs(x-Str)>0.001 || abs(y-Sth0)>0.01); */
+	/*phi = (y==Sth0 && x <= Str) + phi * (y!=Sth0 || x > Str);*/
+	deltaPhidiff = dxx(phi) + dyy(phi) - dxx(phiold) - dyy(phiold);
+
+	hphi = hfunc(phi);
+	nu = viscoC(hphi);
+	/*phirho = hphi * rho * (1-rho);
+	rephi = 1 / (hphi) * (phi>0.1) + 1/0.1*(phi<0.1) ;*/
+	phirho = phi * rho * (1-rho);
+	rephi = 1 / (phi+0.00001) * (phi>0.001) + 1/0.001*(phi<0.001) ;
+	/*rephi = rephi * (phi>0.01);*/
+	/*phi = phi*(phi>0.0);*/
+	
+	/*rephi = (phi>1) + (phi<1)*rephi;*/
+	
+	setCurvature(phi);
+	Rhoupdate;
+	
+	rho = rho*(rho>0.0)*(rho<1) + (1-(rho<1));
+	phiold = phi;
+	rhoold = rho;
+
+	tstep++;
+	simtime += dt;
+}
+// EOM
+/*************************************
+            Main part
+*************************************/
+
+/* initialize */
+phi = (1.0 + tanh((20 - sqrt(x^2+y^2))/epsilon/sqrt(2)))/2;
+rho = phi * (1.0+tanh((y-12)/epsilon/sqrt(2)))/2 + (1-phi) * 0.5;
+StalkBound = 1;
+
+
+[Txx,Txy,Tyy] = [0, 0, 0] ;
+
+rhomesh = phi*(rho - (1-rho));
+
+Th = adaptmesh(Th, rhomesh, err=5.0e-3, verbosity=1,hmin=SetHmin);
+[meanvr,meanvtheta,meanvz] = [0, 0, 0];
+
+setCurvature(phi);
+savevtk(Fhead + "0_0.vtk",  Th, [x, y, 0], [vr,vz,0], phi, rho, qk, curv, phirho, rephi, chechValue, dphiAbs, dx(rhodx)+dy(rhody), dx(rhodx), dy(rhody), [rhodx, rhody, 0], gammaAll, [rho*(1-rho)*tnrr, rho*(1-rho)*tnzz, 0], vr*dx(rho)+vz*dy(rho), -dx(qkdx)-dy(qkdy), [ sqrt(epsilon*Gamma)*curv*gammaAll*(phidr)/dphiAbs2*dphiAbs,  sqrt(epsilon*Gamma)*curv*gammaAll*(phidz)/dphiAbs2*dphiAbs, 0], vr/x+( dx(vr)+dy(vz)) , p, rho1boundold, rho2boundold, [meanvr*phi,meanvz*phi,0], (rho+1)*phi, phidr, phidz, phirr, phirz, phizz, 
+dataname="xy v phi rho q_k curv phirho rephi nablaphirho dphiAbs lp_rho dxdxrho dydyrho nabla_rho gammaAll Tn Left Right curv_F divV P rho1bounddiff rho2bounddiff v_phi rhoview phidr phidz phirr phirz phizz");
+savevtk(Fhead + "_st" + "0_0.vtk",  Th2, StalkBound, dataname="Stalk");
+// Th = adaptmesh(Th, rhomesh*(x-Lx/2)*(x-Lx/2)+(y-Ly/2)*(y-Ly/2),err=1.0e-2,verbosity=1);
+
+InitialRelaxastionPhi(200);
+
+///// time step control /////
+int  tstep = 0; // counter, simulation time steps
+real simtime = 0.0;  // time
+
+rho1boundold = (rho>0.5)*(rho<0.99)*(phi>0.2)*(phi<0.99);
+rho2boundold = (rho<0.99)*(rho>0.01)*(phi>0.2)*(phi<0.99)-(rho>0.5)*(rho<0.99)*(phi>0.2)*(phi<0.99);
+
+
+string fs = Fhead+"0"+".vtk";
+// Th = adaptmesh(Th, rhomesh*10 + (1-phi)*qk, err=1.0e-2,verbosity=1 );
+/* sim loop */
+Th = adaptmesh(Th, rhomesh*phi, err=5.0e-3,verbosity=1,nbvx=20000,hmin=SetHmin);
+for(tc=1; simtime<=lastTime; tc++)
+{
+	cerr << endl << "time = " << simtime << " (" << tstep << ")" <<endl;
+	cerr << endl << "Phi sum = " <<   int2d(Th)(phi) << " (" << tstep << ")" <<endl;
+	cerr << endl << "Right sum = " << int2d(Th)(Gamma*(dg(phi) + epsilon*curv)) << endl;
+	cerr << endl << "d_t = " <<  dt  << endl;
+	// rhomesh = phi * (rho - (1-rho));
+	rhomesh = (rho - (1-rho));
+	
+	
+	//Th = adaptmesh(Th, hphi+phidx / sqrt(dphiAbs)+phidy / sqrt(dphiAbs) ,err=1.0e-3,verbosity=1 );
+	
+	int dstep = 50;
+	if(PLOT){
+		phirho = phi * rhomesh;
+		divqq = qqr/(x*(x>0)+0.000001*(x==0)) + dx(qqr) + dy(qqz);
+		Vh plotdata = epsilon*dphiAbs - sqrt(2.)*phib;
+		plot(plotdata, value=true, wait=false, fill=1, cmm="[step="+tstep+"]");
+		chechValue = dx(rho)*dx(phi) + dy(rho)*dy(phi);
+		qkdx = etarho * rho*(1-rho) ;
+		qkdy = etarho * rho*(1-rho) ;
+		rho1boundold =  (rho>0.5)*(rho<0.99)*(phi>0.2)*(phi<0.99) - rho1boundold;
+		rho2boundold =  ( (rho<0.99)*(rho>0.01)*(phi>0.2)*(phi<0.99)-(rho>0.5)*(rho<0.99)*(phi>0.2)*(phi<0.99) ) - rho2boundold;
+		
+		// if(tc%10==1)savevtk(Fhead + tstep + ".vtk",  Th, [x, y, 0], [vr, vtheta, vz], phi, rho, qk, curv, phirho, rephi, chechValue, dphiAbs, dx(rhodx)+dy(rhody), dx(rhodx), dy(rhody), [rhodx, rhody, 0], gammaAll, [rho*(1-rho)*tnrr, rho*(1-rho)*tnzz, 0], vr*dx(rho)+vz*dy(rho), -dx(qkdx)-dy(qkdy), dataname="xy v phi rho q_k curv phirho rephi nablaphirho dphiAbs lp_rho dxdxrho dydyrho nabla_rho gammaAll Tn Left Right");
+		
+		if(tc%dstep==1){
+			[meanvr,meanvtheta,meanvz] = [meanvr/dstep,meanvtheta/dstep,meanvz/dstep];
+			savevtk(Fhead + tstep + ".vtk",  Th, [x, y, 0], [vr,vz,0], phi, rho, qk, curv, phirho, rephi, chechValue, dphiAbs, dx(rhodx)+dy(rhody), dx(rhodx), dy(rhody), [rhodx, rhody, 0], gammaAll, [rho*(1-rho)*tnrr, rho*(1-rho)*tnzz, 0], vr*dx(rho)+vz*dy(rho), -dx(qkdx)-dy(qkdy), [ sqrt(epsilon*Gamma)*curv*gammaAll*(phidr)/dphiAbs2*dphiAbs,  sqrt(epsilon*Gamma)*curv*gammaAll*(phidz)/dphiAbs2*dphiAbs, 0], vr/x+( dx(vr)+dy(vz)) , p, rho1boundold, rho2boundold, [meanvr*phi,meanvz*phi,0], (rho+1)*phi, phidr, phidz, phirr, phirz, phizz, deltaPhidiff, gammaAllSt, divqq, qqr, qqz, phib, phib-epsilon/sqrt(2.)*dphiAbs,  
+			dataname="xy v phi rho q_k curv phirho rephi nablaphirho dphiAbs lp_rho dxdxrho dydyrho nabla_rho gammaAll Tn Left Right curv_F divV P rho1bounddiff rho2bounddiff v_phi rhoview phidr phidz phirr phirz phizz deltaPhidiff gammaAllSt divqq qqr qqz phib RightPhitau");
+			savevtk(Fhead + "_st" + tstep + ".vtk",  Th2, StalkBound, dataname="Stalk");
+			/*savemesh(Th, Fhead + "slime3d3_" +tstep+ ".msh");
+				{
+					ofstream f(Fhead +"slime3d_phi3_" +tstep+ ".dat");
+					f << phi[];
+				}
+				{
+					ofstream f2(Fhead +"slime3d_rho3_" +tstep+ ".dat");
+					f2 << rho[];
+			}*/
+			[meanvr,meanvtheta,meanvz] = [0, 0, 0];
+		}
+
+
+		rho1boundold = (rho>0.5)*(rho<0.99)*(phi>0.2)*(phi<0.99);
+		rho2boundold = (rho<0.99)*(rho>0.01)*(phi>0.2)*(phi<0.99)-(rho>0.5)*(rho<0.99)*(phi>0.2)*(phi<0.99);
+	}
+	/*if(tc%100==1){*/
+
+    for(int numstep=0; numstep<interval; numstep++){
+        TimeEvolution(tstep,simtime);
+		[meanvr,meanvtheta,meanvz] = [meanvr+vr,meanvtheta+vtheta,meanvz+vz];
+		TotalE = int2d(Th)(phi*(rho*rho*(1.0-rho)*(1.0-rho))/2
+						+phi*epsilon*Gamma*(dx(rho)*dx(rho)+dy(rho)*dy(rho))/2
+						+(1-phi)*(0.0001*(0.5-rho)*(0.5-rho)/2)
+						+ gammaAll*dphiAbs
+						);
+		
+		// cerr << endl << "v_sum = " << int2d(Th)(hphi*sqrt(vx*vx+vy*vy))/int2d(Th)(hphi) <<endl;
+		cerr << endl << "delta E = " << TotalE - beforeE <<endl;
+		cerr << endl << "div V = " << int2d(Th)(vr+x*( dx(vr)+dy(vz))) << endl;
+		cerr << endl << "rho_sum = " << int2d(Th)(phi*rho*x) << endl;
+	
+		beforeE = TotalE;
+
+		chechValue = dx(rho)*dx(phi) + dy(rho)*dy(phi);
+		phirho = phi * rhomesh;
+		qkdx = etarho * rho*(1-rho) ;
+		qkdy = etarho * rho*(1-rho) ;	
+		
+    }
+
+	if(tc%dstep==1){
+			savemesh(Th, Fhead + "slime3d" +tstep+ ".msh");
+				{
+					ofstream f(Fhead +"slime3d_phi_" +tstep+ ".dat");
+					f << phi[];
+				}
+				{
+					ofstream f2(Fhead +"slime3d_rho_" +tstep+ ".dat");
+					f2 << rho[];
+				}
+	}
+
+	rhomesh = (rho - (1-rho));
+	Meshupdate(interval);
+}
+ 
