@@ -27,16 +27,8 @@ int  dref  = 10; // Number of time-steps between mesh adaption
 
 
 
-border a0(t=0,1){x=-3+2.5*t; y=0; label=1;}
-border a1(t=0,1){x=-0.5; y=t; label=2;}
-border a2(t=0,1){x=-0.5+t; y=1; label=3;}
-border a3(t=0,1){x=0.5; y=1-t; label=4;}
-border a4(t=0,1){x=0.5+2.5*t; y=0; label=5;}
-border a5(t=0,1){x=3; y=6*t; label=6;}
-border a6(t=0,1){x=3-6*t; y=6; label=7;}
-border a7(t=0,1){x=-3; y=6-6*t; label=8;}
+mesh Th = square((xmax-xmin)*n,(ymax-ymin)*n,[xmin+(xmax-xmin)*x,ymin+(ymax-ymin)*y]);
 
-mesh Th = buildmesh(a0(10) + a1(10) + a2(10) + a3(10) + a4(10) + a5(10) + a6(10) + a7(10) );
 
 // plot(NewH, wait=true);
 
@@ -45,114 +37,151 @@ mesh Th = buildmesh(a0(10) + a1(10) + a2(10) + a3(10) + a4(10) + a5(10) + a6(10)
 
 // Mesh adaptation and destruction of the old mesh
 macro getAdaptMesh()
-Th = adaptmesh(Th,phi,hmin=1.0/(n*refI),hmax=1.0/n,iso=true,ratio=mGrw,err=0.01,nbvx=1e5,periodic=[[a5,y],[a7,y]]);
+Th = adaptmesh(Th,rhomesh,hmin=1.0/(n*refI),hmax=1.0/n,iso=true,ratio=mGrw,err=0.01,nbvx=1e5,periodic=[[2,y],[4,y],[1,x],[3,x]]);
 v = 0;
 phi = phi;
 // EOM
 
-real stalkGrowthRate = 2.;
-
-macro ElongateMesh(time)
-real increase = time * stalkGrowthRate;
-border a0(t=0,1){x=-3+2.5*t; y=0; label=1;}
-border a1(t=0,1){x=-0.5; y=t*(1+increase); label=2;}
-border a2(t=0,1){x=-0.5+t; y=1+increase; label=3;}
-border a3(t=0,1){x=0.5; y=(1+increase)-t*(1+increase); label=4;}
-border a4(t=0,1){x=0.5+2.5*t; y=0; label=5;}
-border a5(t=0,1){x=3; y=6*t; label=6;}
-border a6(t=0,1){x=3-6*t; y=6; label=7;}
-border a7(t=0,1){x=-3; y=6-6*t; label=8;}
-Th = buildmesh(a0(10) + a1(10) + a2(10) + a3(10) + a4(10) + a5(10) + a6(10) + a7(10) );
+macro RhoPhi()
+rhomesh = rho + phi;
 // EOM
-
+// phi*(rho - (1-rho));
 
 // Macro for non-linear solutions
 macro solvePhase()
+visc = (1 - phi * rho) * eta1 + rho * eta2;
+dirac = exp(-(1-phi)^2/0.01);
 phasefield;
-cout << "phase done ";
+RhoField;
+A0P = A0P + rhochanged;
+cout << "rho differentiated: " << rhochanged << endl;
+cout << "tension: " << tension << endl;
 // EOM
 
 real phiArea=0.;
+real rhoArea=0;
 
 macro GetArea()
 phiArea = int2d(Th)(phi^2 * (3 - 2*phi));
+rhoArea = int2d(Th)(rho^2 * (3 - 2*phi));
 // EOM
 
-real multiplier=1;
+real multiplier=0.1;
 
 real eta1 = 0.005;             // viscosity type1
 real eta2 = 0.005;             // viscocity type2
-real a = 5*multiplier;               // Coefficient a
-real k = 0.01*multiplier;               // phase width coefficient k
-real lmda = 0.5;               // concentration constraint
+real a = 5.*multiplier;               // Coefficient a
+real k = 0.005*multiplier;               // phase width coefficient k
+real lmda = 5;               // concentration constraint
 real A0 = 3.143;              // Target value for A
 real epseps = -1e-9;
 real gamma = 0.0;
-real dt = 0.001;
+real dt = 0.0005;
 
 // adhesion to surface (negative means adhesion)
 real gammas=10;
 
-fespace Vhfield (Th,P2,periodic=[[a5,y],[a7,y]]);//,[1,x],[3,x]]);// periodic=[[2,y],[4,y],[1,x],[3,x]]);
+fespace Vhfield (Th,P2,periodic=[[2,y],[4,y],[1,x],[3,x]]);//,[1,x],[3,x]]);// periodic=[[2,y],[4,y],[1,x],[3,x]]);
 Vhfield phi;
 Vhfield v;
 Vhfield phiold;
 
-Vhfield rho=0;
+Vhfield rho;
 Vhfield rhoold;
 Vhfield w;
+Vhfield rhomesh;
+
+Vhfield visc;
+Vhfield dirac;
 
 
 real DropTh = 0.025;
 // Initialise the drop
-func initPhi = 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-0.8-dyc)^2) - dR) / (sqrt(2) * DropTh)));
+func initPhi = 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-2-dyc)^2) - dR) / (sqrt(2) * DropTh)));
 // func initPhi = 0.5 * (1-tanh((abs(x - dxc) + abs(y - dyc) - dR) / sqrt(2) / DropTh));
 
-func visc = (1 - phi * rho) * eta1 + rho * eta2;
+// func visc = (1 - phi * rho) * eta1 + rho * eta2;
+// func dirac = exp(-(1-phi)^2/0.1);
+
+real rhotension= 0.01;
 
 
 problem phasefield(phi, v, master=0, solver=sparsesolver) // , 
     = int2d(Th) (  v * (phi)/dt  )
     + int2d(Th) (1/visc * (v * a * phi - 3*v*a*phi*phiold + 2*v*a*phi*phiold^2))
     + int2d(Th) (1/visc * (k * (dx(v) *dx(phi) + dy(v) * dy(phi))))
-    + int2d(Th) (1/visc * (gamma* (dx(v) * dx(phi) + dy(v) * dy(phi)) / (dx(phiold)^2 + dy(phiold)^2 + epseps)))
+    // + int2d(Th) (1/visc * (gamma* (dx(v) * dx(phi) + dy(v) * dy(phi)) / (dx(phiold)^2 + dy(phiold)^2 + epseps)))
     + int2d(Th) (1/visc * ( v * (12 * lmda *(phiArea-A0)*phi*(1-phiold))))
     - int2d(Th) (  v * (phiold)/dt  )
-    + int1d(Th,2,3,4)(1/visc*(gammas*phi*v))
-    + on(1,5,7,phi=0);
+    + int2d(Th) (1/visc * (rhotension * dirac * v * (1-2*rhoold)))
+    + on(1,2,3,4,phi=0);
     // + on(2, 3, 4, phi=0);
     // + on(3, phi=1);
 
+real aP = a;               // Coefficient a
+real kP = k;               // phase width coefficient k
+real A0P = 3.143;              // Target value for A
+real diffrate = 0;
+
+real drrho = dR;
+
+
+// func initRho = 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-2-dyc)^2) - drrho) / (sqrt(2) * DropTh)));
+
+func initRho = (y <= dyc+2) * 0.5 * (1 - tanh((sqrt((x - dxc)^2 + (y -2- dyc)^2) - drrho) / (sqrt(2) * DropTh)));
+
+func rhochanged = int2d(Th) (dt * diffrate * dirac * (1-2*rhoold));
+
+func tension = int2d(Th) ((rhotension * dirac * (1-2*rhoold)));
 
 
 problem RhoField(rho, w, master=0, solver=sparsesolver)
-    = int2d(Th) (w * (rho*phi)/dt )
-    + int2d(Th) ()
-               
+    = int2d(Th) (w * (rho)/dt )
+    + int2d(Th) (1/visc * (w * aP * rho - 3*w*aP*rho*rhoold + 2*w*aP*rho * rhoold^2))
+    + int2d(Th) (1/visc * (kP * (dx(w) *dx(rho) + dy(w) * dy(rho))))
+    + int2d(Th) (1/visc * ( w * (12 * lmda *(rhoArea-A0P)*rho*(1-rhoold))))
+    + int2d(Th) (1/visc * (rhotension * dirac * w * (1-2*rhoold)))
+    - int2d(Th) (dt * diffrate * dirac * w * (1-2*rhoold))
+    - int2d(Th) ( w * (rhoold)/dt  )
+    + on(1,2,3,4,rho=0);
+
+
+
+
 // Initialisation
 phi = initPhi;
+rho = initRho;
+RhoPhi
 // Initial mesh adaptation
 getAdaptMesh
 // Reinitialise the function, since it has a known value, adapt mesh again
 phi = initPhi;
+rho = initRho;
+RhoPhi
 getAdaptMesh
 // Reinitialise the function, since it has a known value, adapt mesh again
 phi = initPhi;
+rho = initRho;
+RhoPhi
 getAdaptMesh
 // Final initialisation of the function
 phi = initPhi;
+rho = initRho;
+RhoPhi
 cout << "CURRENT AREA: " << phiArea << endl;
 phiold=phi;
+rhoold=rho;
 
 GetArea
 A0 = phiArea;
-cout << "A0 is: " << A0 << endl;
-
+A0P = rhoArea;
+cout << "phi area is: " << A0 << endl;
+cout << "rho area is: " << A0P << endl;
 // Plot initial mesh and pf distribution
 //plot(t,fill=1,value=1);
 plot(Th, wait=true);
 //plot(u,fill=1,value=1);
-plot(phi,fill=1,value=1);
+// plot(phi,fill=1,value=1);
 // plot(fi,fill=1,value=1);
 
 
@@ -169,7 +198,6 @@ while(true)//(maxCFL > 1e-4)
     // If needed, carry out mesh adaptation, solve again, adapt again
     if( nAdapt == dref)
     {
-        ElongateMesh(curt)
         cout << "    Mesh adpt 1, ";
         getAdaptMesh
         cout << endl;
@@ -187,17 +215,25 @@ while(true)//(maxCFL > 1e-4)
 
     GetArea
     solvePhase
-    cout << phiArea << endl;
-    plot(phi,fill=1,value=1);    
+    cout << "phi area: " << phiArea << "  with constraint: " << A0 << endl;
+    cout << "rho area: " << rhoArea << "  with constraint: " << A0P << endl;
+    // plot(phi,fill=1,value=1);    
 
 
 
     // Prepare for the next time step
     phiold = phi;
+    rhoold = rho;
     dxOld = dxNew;
     nAdapt++;
     // plot(fi,fill=1,value=1);
-    plot(phi,fill=1,value=1, wait=false);
+    RhoPhi
+    
+    plot(rhomesh,fill=1,value=1, wait=false);
+
+    // Vhfield check = phi * (1 - rho);
+    // plot(check,fill=1,value=1, wait=false);
+    // plot(rho,fill=1,value=1, wait=true);
 
     // plot(Th, wait=true);
     // plot(u,fill=1,value=1);
