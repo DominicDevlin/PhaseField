@@ -104,13 +104,20 @@ real multiplier=1;
 
 real eta1 = 0.005;             // viscosity type1
 real eta2 = 0.005;             // viscocity type2
-real a = 5.*multiplier;               // Coefficient a
-real k = 0.001*multiplier;               // phase width coefficient k
+real a = 2.5*multiplier;               // Coefficient a
+real k = 0.0005*multiplier;               // phase width coefficient k
 real lmda = 5;               // concentration constraint
 real A0 = 3.143;              // Target value for A
 real epseps = -1e-9;
 real gamma = 0.0;
 real dt = 0.0005;
+
+real aP = 5;               // Coefficient a
+real kP = 0.005;               // phase width coefficient k
+real A0P = 3.143;              // Target value for A
+real diffrate = 0;
+real drrho = dR;
+
 
 // adhesion to surface (negative means adhesion)
 real gammas=10;
@@ -130,12 +137,6 @@ Vhfield dirac;
 
 Vhfield RhoPhitoPlot;
 
-// Vhfield gradmag;
-// real maxmag;
-// Vhfield dropoff;
-// Vhfield minphirho;
-// Vhfield testing;
-
 real DropTh = 0.025;
 // Initialise the drop
 func initPhi = 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-1.5-dyc)^2) - dR) / (sqrt(2) * DropTh)))
@@ -147,7 +148,6 @@ func initRho = 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-0.5-dyc)^2) - dR) / (sqrt(2)
 // func initPhi = 0.5 * (1-tanh((abs(x - dxc) + abs(y - dyc) - dR) / sqrt(2) / DropTh));
 
 // func visc = (1 - phi * rho) * eta1 + rho * eta2;
-// func dirac = exp(-(1-phi)^2/0.1);
 
 real rhotension= 0.01;
 
@@ -164,12 +164,6 @@ problem phasefield(phi, v, master=0, solver=sparsesolver) // ,
     // + on(2, 3, 4, phi=0);
     // + on(3, phi=1);
 
-real aP = a*2;               // Coefficient a
-real kP = k*10;               // phase width coefficient k
-real A0P = 3.143;              // Target value for A
-real diffrate = 0;
-
-real drrho = dR;
 
 
 // func initRho = 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-2-dyc)^2) - drrho) / (sqrt(2) * DropTh)));
