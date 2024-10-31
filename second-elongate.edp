@@ -21,7 +21,7 @@ real xct= dxc; // -;- x coordinate -;-
 
 // Mesh resolution
 int  n     = 4; // Number of segments per unit length
-real refI  = 6.0; // Refinement factor for the interface
+real refI  = 10.0; // Refinement factor for the interface
 real mGrw  = 1.2;  // Growth rate of the mesh elements
 int  dref  = 10; // Number of time-steps between mesh adaption
 
@@ -66,6 +66,7 @@ phi = phi;
 // EOM
 
 macro RhoPhi()
+RhoPhitoPlot = phi * (rho * 2 - 1);
 rhomesh = RhoPhitoPlot;
 // EOM
 // phi*(rho - (1-rho));
@@ -75,22 +76,24 @@ macro solvePhase()
 visc = (1 - phi * rho) * eta1 + rho * eta2;
 dirac = exp(-(1-phi)^2/0.01);
 
+
+phasefield;
+RhoField;
+A0P = A0P + rhochanged;
+
+// EOM
+
+real phiArea=0.;
+real rhoArea=0;
+
+// cout << "rho differentiated: " << rhochanged << endl;
+// cout << "tension: " << tension << endl;
 // gradmag = sqrt( dx(phi)^2 + dy(phi)^2);
 // maxmag = gradmag[].max;
 // dropoff = exp(-50 * (1-((maxmag - gradmag)/ maxmag)) ) * phi;
 // minphirho = phi - rho;
 // testing = rhotension * dropoff *(abs(dx(rho)) + abs(dy(rho)));
 
-
-phasefield;
-RhoField;
-A0P = A0P + rhochanged;
-cout << "rho differentiated: " << rhochanged << endl;
-cout << "tension: " << tension << endl;
-// EOM
-
-real phiArea=0.;
-real rhoArea=0;
 
 macro GetArea()
 phiArea = int2d(Th)(phi^2 * (3 - 2*phi));
@@ -125,8 +128,7 @@ Vhfield rhomesh;
 Vhfield visc;
 Vhfield dirac;
 
-Vhfield PhitoPlot;
-Vhfield RhotoPlot;
+Vhfield RhoPhitoPlot;
 
 // Vhfield gradmag;
 // real maxmag;
@@ -136,7 +138,7 @@ Vhfield RhotoPlot;
 
 real DropTh = 0.025;
 // Initialise the drop
-func initPhi = 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-1.8-dyc)^2) - dR) / (sqrt(2) * DropTh)))
+func initPhi = 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-1.5-dyc)^2) - dR) / (sqrt(2) * DropTh)))
  + 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-0.5-dyc)^2) - dR) / (sqrt(2) * DropTh)));
 
 
@@ -162,8 +164,8 @@ problem phasefield(phi, v, master=0, solver=sparsesolver) // ,
     // + on(2, 3, 4, phi=0);
     // + on(3, phi=1);
 
-real aP = a;               // Coefficient a
-real kP = k;               // phase width coefficient k
+real aP = a*2;               // Coefficient a
+real kP = k*10;               // phase width coefficient k
 real A0P = 3.143;              // Target value for A
 real diffrate = 0;
 
@@ -174,8 +176,7 @@ real drrho = dR;
 
 
 func rhochanged = int2d(Th) (dt * diffrate * dirac * (1-2*rhoold));
-
-func tension = int2d(Th) (rhotension * dropoff * (dx(w) *dx(rho) + dy(w) * dy(rho)));
+// func tension = int2d(Th) (rhotension * dropoff * (dx(w) *dx(rho) + dy(w) * dy(rho)));
 
 
 problem RhoField(rho, w, master=0, solver=sparsesolver)
@@ -241,7 +242,8 @@ while(true)//(maxCFL > 1e-4)
     // If needed, carry out mesh adaptation, solve again, adapt again
     if( nAdapt == dref)
     {
-        ElongateMesh(curt)
+        // if (counter < 150)
+        //     ElongateMesh(curt)
         cout << "    Mesh adpt 1, ";
         getAdaptMesh
         cout << endl;
@@ -249,8 +251,6 @@ while(true)//(maxCFL > 1e-4)
         // plot(Th, wait=true);
         nAdapt = 0;
         // plot(testing, wait=true, fill=1,value=1);
-        real val = gradmag[].max;
-        cout << val << endl;
     }
     ++counter;
 
@@ -276,11 +276,10 @@ while(true)//(maxCFL > 1e-4)
     // plot(fi,fill=1,value=1);
     
 
-    RhoPhitoPlot = (phi * 2 - 1 ) * (rho * 2 - 1);
 
     RhoPhi
     
-    plot(rhomesh,fill=1,value=1, wait=false);
+    plot(RhoPhitoPlot,fill=1,value=1, wait=false);
 
     
 
