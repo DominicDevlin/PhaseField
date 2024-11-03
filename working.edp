@@ -77,11 +77,15 @@ visc = (1 - phi * rho) * eta1 + rho * eta2;
 
 phicopy = phi;
 
-Vhfield pretmp = sqrt(dx(phi)^2 + dy(phi)^2) * phi;
+Vhfield pretmp = sqrt(dx(phi)^2 + dy(phi)^2);
 tmp = (pretmp * phi > 0.04);
 tmp2 = (pretmp < 0.04);
+tmp3=pretmp;
 
-phasefield;
+if (counter < 10)
+    phasefield;
+else 
+    phasefieldtwo;
 RhoField;
 A0 = A0 + 0.001*rhochanged;
 
@@ -109,15 +113,16 @@ real multiplier=1;
 real epsilon=0.0005;
 real gammaphi=0.000;
 
-real eta1 = 0.008;             // viscosity type1
-real eta2 = 0.008;             // viscocity type2
+real eta1 = 0.002;             // viscosity type1
+real eta2 = 0.002;             // viscocity type2
 real a = 0.5;               // Coefficient a
 real k = 0.001;               // phase width coefficient k
 real lmda = 5;               // concentration constraint
 real A0 = 3.143;              // Target value for A
-real epseps = -1e-9;
+real epseps = 1e-9;
+real delta = 1e-6;
 real gamma = 0.0;
-real dt = 0.0005;
+real dt = 0.0001;
 
 real aP = 5;               // Coefficient a
 real kP = 0.005;               // phase width coefficient k
@@ -145,6 +150,7 @@ Vhfield dirac;
 
 Vhfield tmp;
 Vhfield tmp2;
+Vhfield tmp3;
 
 Vhfield RhoPhitoPlot;
 
@@ -169,7 +175,7 @@ problem phasefield(phi, v, master=0, solver=sparsesolver) // ,
     // + int2d(Th) (1/visc * (k * (dx(v) *dx(phi) + dy(v) * dy(phi))))
     + int2d(Th) (1/visc * (v * phi - 3*v*phi*phiold + 2*v*phi*phiold^2))
     + int2d(Th) (1/visc * (epsilon * (dx(v) *dx(phi) + dy(v) * dy(phi))))
-    - int2d(Th) (tmp * (1/visc * ((epsilon-gammaphi) * v * (dx(phi) * dx(phiold) + dy(phi) *dx(phiold)) / (dx(phiold)^2 + dy(phiold)^2 + epseps))))
+    // + int2d(Th) (tmp * (1/visc * ((epsilon-gammaphi) * (dx(phi) * dx(v) + dy(phi) *dy(v)) / (dx(phiold)^2 + dy(phiold)^2 + epseps))))
     // + int2d(Th) (1/visc * (gamma* (dx(v) * dx(phi) + dy(v) * dy(phi)) / (dx(phiold)^2 + dy(phiold)^2 + epseps)))
     + int2d(Th) (1/visc * ( v * (12 * lmda *(phiArea-A0)*phi*(1-phiold))))
     - int2d(Th) (  v * (phiold)/dt  )
@@ -178,6 +184,19 @@ problem phasefield(phi, v, master=0, solver=sparsesolver) // ,
     // + on(2, 3, 4, phi=0);
     // + on(3, phi=1);
 
+
+problem phasefieldtwo(phi, v, master=0, solver=sparsesolver) // , 
+    = int2d(Th) (  v * (phi)/dt  )
+    //+ int2d(Th) (1/visc * (v * a * phi - 3*v*a*phi*phiold + 2*v*a*phi*phiold^2))
+    // + int2d(Th) (1/visc * (k * (dx(v) *dx(phi) + dy(v) * dy(phi))))
+    + int2d(Th) (1/visc * (v * phi - 3*v*phi*phiold + 2*v*phi*phiold^2))
+    + int2d(Th) (1/visc * (epsilon * (dx(v) *dx(phi) + dy(v) * dy(phi))))
+    + int2d(Th) (tmp3 * (1/visc * ((epsilon-gammaphi) * (dx(phi) * dx(v) + dy(phi) * dy(v)) / sqrt(dx(phiold)^2 + dy(phiold)^2 + epseps))))
+    // + int2d(Th) (1/visc * (gamma* (dx(v) * dx(phi) + dy(v) * dy(phi)) / (dx(phiold)^2 + dy(phiold)^2 + epseps)))
+    + int2d(Th) (1/visc * ( v * (12 * lmda *(phiArea-A0)*phi*(1-phiold))))
+    - int2d(Th) (  v * (phiold)/dt  )
+    + int1d(Th,2,3,4)(1/visc*(gammas*phi*v))
+    + on(1,5,7,phi=0);
 
 
 // func initRho = 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-2-dyc)^2) - drrho) / (sqrt(2) * DropTh)));
@@ -287,7 +306,7 @@ while(true)//(maxCFL > 1e-4)
     // Vhfield second = tmp *  (dx(phi) + dy(phi)) / sqrt(dx(phi)^2 + dy(phi)^2 + epseps);
     // Vhfield checker =  tmp * (1/visc * (epsilon * ( dx(phi)*dx(phi) + dy(phi)*dy(phi)) / (dx(phiold)^2 + dy(phiold)^2 + epseps)));
     // if (counter % 10 == 0)
-    //     plot(tmp2, wait=true, fill=1,value=1);
+    //     plot(tmp, wait=true, fill=1,value=1);
 
     RhoPhi
     
