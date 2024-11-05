@@ -21,7 +21,7 @@ real xct= dxc; // -;- x coordinate -;-
 
 // Mesh resolution
 int  n     = 4; // Number of segments per unit length
-real refI  = 10.0; // Refinement factor for the interface
+real refI  = 4.0; // Refinement factor for the interface
 real mGrw  = 1.2;  // Growth rate of the mesh elements
 int  dref  = 10; // Number of time-steps between mesh adaption
 
@@ -60,7 +60,7 @@ Th = buildmesh(a0(10) + a1(10) + a2(10) + a3(10) + a4(10) + a5(10) + a6(10) + a7
 
 // Mesh adaptation and destruction of the old mesh
 macro getAdaptMesh()
-Th = adaptmesh(Th,rhomesh,hmin=1.0/(n*refI),hmax=1.0/n,iso=true,ratio=mGrw,err=0.01,nbvx=1e5,periodic=[[a5,y],[a7,y]]);
+Th = adaptmesh(Th,rhomesh,hmin=1.0/(n*refI),hmax=1.0/n,iso=true,ratio=mGrw,err=0.01,nbvx=4e4,periodic=[[a5,y],[a7,y]]);
 v = 0;
 phi = phi;
 // EOM
@@ -87,7 +87,8 @@ else
 
 
 RhoField;
-A0 = A0 + 0.01*rhochanged;
+A0 = A0 + rhochanged;
+A0P = A0P - rhochanged;
 
 // EOM
 
@@ -100,7 +101,6 @@ real rhoArea=0;
 // maxmag = gradmag[].max;
 // dropoff = exp(-50 * (1-((maxmag - gradmag)/ maxmag)) ) * phi;
 // minphirho = phi - rho;
-// testing = rhotension * dropoff *(abs(dx(rho)) + abs(dy(rho)));
 
 
 macro GetArea()
@@ -122,10 +122,10 @@ real A0 = 3.143;              // Target value for A
 real epseps = 1e-9;
 real dt = 0.00005;
 
-real aP = 10;               // Coefficient a
-real kP = 0.01;               // phase width coefficient k
+real aP = 40;               // Coefficient a
+real kP = 0.1;               // phase width coefficient k
 real A0P = 3.143;              // Target value for A
-real diffrate = 500;//2.5;
+real diffrate = 0;//2.5;
 real drrho = dR;
 
 
@@ -146,6 +146,9 @@ Vhfield absdelphi;
 Vhfield phiinterface;
 Vhfield phibulk;
 
+Vhfield rhointerface;
+Vhfield rhointerfacetwo;
+
 Vhfield RhoPhitoPlot;
 
 real DropTh = 0.025;
@@ -158,8 +161,6 @@ func initRho = 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-1.5-dyc)^2) - dR) / (sqrt(2)
 
 // func initPhi = 0.5 * (1-tanh((abs(x - dxc) + abs(y - dyc) - dR) / sqrt(2) / DropTh));
 
-
-real rhotension= 0.01;
 
 
 problem relaxphasefield(phi, v, master=0, solver=sparsesolver) // , 
@@ -189,17 +190,18 @@ problem phasefield(phi, v, master=0, solver=sparsesolver) // ,
 
 // func initRho = 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-2-dyc)^2) - drrho) / (sqrt(2) * DropTh)));
 
-func rhochanged = int2d(Th) (dt * phibulk * diffrate * (dx(rho)^2 + dy(rho)^2));
+func rhochanged = int2d(Th) (dt * rhointerface * diffrate );
 // func rhochanged = int2d(Th) (dt * phibulk * diffrate * sqrt(dx(rhoold)^2 + dy(rhoold)^2));
 
+real gammaSL=0.05;
 
 problem RhoField(rho, w, master=0, solver=sparsesolver)
     = int2d(Th) (w * (rho)/dt )
     + int2d(Th) (1/eta * phi * (w * aP * rho - 3*w*aP*rho*rhoold + 2*w*aP*rho * rhoold^2))
     + int2d(Th) (1/eta * phi * (kP * (dx(w) *dx(rho) + dy(w) * dy(rho))))
     + int2d(Th) (1/eta * ( w * (12 * lmda *(rhoArea-A0P)*rho*(1-rhoold))))
-    // + int2d(Th) (1/eta * (rhotension * dropoff * (dx(w) *dx(rho) + dy(w) * dy(rho))))
-    - int2d(Th) (dt * phibulk * diffrate * (dx(rho) * dx(w) + dy(rho) * dy(w)))
+    - int2d(Th) (rhointerface * (1/eta * (gammaSL * (dx(rho) * dx(w) + dy(rho) * dy(w)) / sqrt(dx(rhoold)^2 + dy(rhoold)^2 + epseps))))
+    - int2d(Th) (rhointerface * diffrate * w )
     - int2d(Th) ( w * (rhoold)/dt  )
     + int1d(Th,2,3,4)(1/eta*(gammas*rho*w))
     + on(1,5,7,rho=0);
@@ -307,22 +309,29 @@ while(true)//(maxCFL > 1e-4)
     nAdapt++;
 
 
-    if (counter % 10 == 0)
+    if (counter % 8 == 0)
     {
         dummyphi = phi;
         dummyphiold = dummyphi;
         // dummyv = v;
-        for (int d = 0; d < 10; ++d)
+        for (int d = 0; d < 12; ++d)
         {
             DummyPhaseField;
         }
 
         absdelphi = sqrt(dx(dummyphi)^2 + dy(dummyphi)^2);
-        phibulk = (absdelphi < 0.1) * dummyphi;
+        phibulk = (absdelphi < 0.3) * dummyphi;
         phiinterface = (absdelphi * dummyphi > 0.04);
+        
         
 
         // plot(phibulk, wait=true, fill=1,value=1);
+    }
+    rhointerface = phibulk * (sqrt(dx(rho)^2 + dy(rho)^2) > 2.0);
+
+    if (counter % 20 == 0)
+    {
+        plot(rhointerface, wait=true, fill=1,value=1);
     }
 
     RhoPhi
