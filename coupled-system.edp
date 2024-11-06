@@ -79,7 +79,9 @@ int  dref  = 10; // Number of time-steps between mesh adaption
 
 // Initialise the drop
 // func initC = -tanh((sqrt((x-dxc)^2+(y-dyc)^2)-dR)/sqrt(2)/Cn);
-func initC = -tanh((abs(x - dxc) + abs(y - dyc) - dR) / sqrt(2) / Cn);
+// func initC = -tanh((abs(x - dxc) + abs(y - dyc) - dR) / sqrt(2) / Cn);
+func initC = -tanh((max(abs(x - dxc), abs(y - dyc)) - dR) / Cn);
+
 
 
 // Define the mesh (1 - bottom, 2 - right, 3 - top, 4 - left), plot
