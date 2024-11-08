@@ -370,7 +370,7 @@ while(true)//(maxCFL > 1e-4)
     //     // plot(rhointerface, wait=true, fill=1,value=1);
     // }
 
-    RhoPhitoPlot = (RhoPhitoPlot < -0.66)*-1 + (RhoPhitoPlot > 0.66);
+    // Vhfield boolRhoPhitoPlot = (RhoPhitoPlot < -0.66)*-1 + (RhoPhitoPlot > 0.66);
 
     plot(RhoPhitoPlot,fill=1,value=1, wait=false);
 
