@@ -14,7 +14,7 @@ real ymax =  6;
 
 // Mesh resolution
 int  n     = 4; // Number of segments per unit length
-real refI  = 4.0; // Refinement factor for the interface
+real refI  = 5.0; // Refinement factor for the interface
 real mGrw  = 1.2;  // Growth rate of the mesh elements
 int  dref  = 10; // Number of time-steps between mesh adaption
 
@@ -113,7 +113,7 @@ macro solvePhase()
 
     RhoField;
     A0 = A0 + RhoDifferentiate;
-    A0P = A0P - RhoDifferentiate;
+    A0P = A0P;
 }
 // EOM
 
@@ -133,12 +133,12 @@ real rhoArea=0;
 
 macro GetArea()
     phiArea = int2d(Th)(phi^2 * (3 - 2*phi));
-    rhoArea = int2d(Th)(phi * rho^2 * (3 - 2*phi));
+    rhoArea = int2d(Th)(phi * rho^2 * (3 - 2*rho));
 // EOM
 
 real multiplier=1;
 
-real epsilon=0.0001;
+real epsilon=0.001;
 real gammaphi=0.;
 
 real eta = 0.002;             // viscosity type1
@@ -153,7 +153,7 @@ real dt = 0.00005;
 real aP = 10;               // Coefficient a
 real kP = 0.02;               // phase width coefficient k
 real A0P = 3.143;              // Target value for A
-real diffrate = 20;//2.5;
+real diffrate = 10;//2.5;
 real addrate=0;
 // adhesion to surface (negative means adhesion)
 real gammas=10;
@@ -197,13 +197,18 @@ problem phasefield(phi, v, master=0, solver=sparsesolver) // ,
     = int2d(Th) (  v * (phi)/dt  )
     + int2d(Th) (1/eta * (v * 0.5 * phi - v* 1.5 * phi *phiold + v*phi*phiold^2))
     + int2d(Th) (1/eta * (epsilon * (dx(v) *dx(phi) + dy(v) * dy(phi))))
-    // + int2d(Th) (phiinterface * (1/eta * ((epsilon - gammaphi) * (dx(precurvature * v) + dy(precurvature * v))  * (dx(phi) + dy(phi)) / sqrt(dx(phiold)^2 + dy(phiold)^2 + epseps))))
     + int2d(Th) ( phiinterface * (1/eta * ((epsilon - gammaphi) * v * curvature)))
     + int2d(Th) (1/eta * ( v * (12 * lmda *(phiArea-A0)*phi*(1-phiold))))
-    // - int2d(Th) (rhooutside * addrate * v)
+    - int2d(Th) (rhooutside * addrate * v)
     - int2d(Th) (  v * (phiold)/dt  )
+    + int2d(Th) (1/eta * phi * (v * aP * rho - 3*v*aP*rho*rho + 2*v*aP*rho * rho^2))
+    + int2d(Th) (1/eta * phi * (kP * (dx(v) *dx(rho) + dy(v) * dy(rho))))
+    + int2d(Th) (1/eta * ( v * (12 * lmda *(rhoArea-A0P)*rho*(1-rhoold))))
     + int1d(Th,2,3,4)(1/eta*(gammas*phi*v))
     + on(1,5,7,phi=0);
+
+
+
 
 
 // func initRho = 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-2-dyc)^2) - drrho) / (sqrt(2) * DropTh)));
@@ -215,17 +220,17 @@ func NoParamRhoAdd = int2d(Th) (dt * rhooutside);
 
 // func rhochanged = int2d(Th) (dt * phibulk * diffrate * sqrt(dx(rhoold)^2 + dy(rhoold)^2));
 
-real gammaSL=-0.0;
+real gammaSL=0.0;
 
 problem RhoField(rho, w, master=0, solver=sparsesolver)
     = int2d(Th) (w * (rho)/dt )
     + int2d(Th) (1/eta * phi * (w * aP * rho - 3*w*aP*rho*rhoold + 2*w*aP*rho * rhoold^2))
     + int2d(Th) (1/eta * phi * (kP * (dx(w) *dx(rho) + dy(w) * dy(rho))))
     + int2d(Th) (1/eta * ( w * (12 * lmda *(rhoArea-A0P)*rho*(1-rhoold))))
-    + int2d(Th) (1/eta * rhointerface * (gammaSL * (dx(w) *dx(rho) + dy(w) * dy(rho))))
+    // + int2d(Th) (1/eta * rhointerface * (gammaSL * (dx(w) *dx(rho) + dy(w) * dy(rho))))
     // + int2d(Th) (rhointerface * (1/eta * (gammaSL * (dx(rho) * dx(w) + dy(rho) * dy(w)) / sqrt(dx(rhoold)^2 + dy(rhoold)^2 + epseps))))
     + int2d(Th) (rhointerface * diffrate * w )
-    // - int2d(Th) (rhooutside * addrate * w)
+    - int2d(Th) (rhooutside * addrate * w)
     - int2d(Th) ( w * (rhoold)/dt  )
     + int1d(Th,2,3,4)(1/eta*(gammas*rho*w))
     + on(1,5,7,rho=0);
@@ -235,16 +240,19 @@ problem RhoField(rho, w, master=0, solver=sparsesolver)
 Vhfield dummyphi;
 Vhfield dummyphiold;
 Vhfield dummyv;
-real dtau = 0.001;
+real dtau = 0.00001;
 
 problem DummyPhaseField(dummyphi, dummyv, master=0, solver=sparsesolver) // , 
     = int2d(Th) (  dummyv * (dummyphi)/dtau  )
     //+ int2d(Th) (1/eta * (v * a * phi - 3*v*a*phi*phiold + 2*v*a*phi*phiold^2))
     // + int2d(Th) (1/eta * (k * (dx(v) *dx(phi) + dy(v) * dy(phi))))
-    + int2d(Th) (1/eta * (dummyv * dummyphi - 3*dummyv*dummyphi*phiold + 2*dummyv*dummyphi*phiold^2))
+    + int2d(Th) (1/eta * (dummyv * 0.5 * dummyphi - 1.5*dummyv*dummyphi*phiold + dummyv*dummyphi*phiold^2))
     + int2d(Th) (1/eta * (epsilon * (dx(dummyv) *dx(dummyphi) + dy(dummyv) * dy(dummyphi))))
     + int2d(Th) (1/eta * ( dummyv * (12 * lmda *(phiArea-A0)*dummyphi*(1-phiold))))
     - int2d(Th) (  dummyv * (dummyphiold)/dtau  )
+    // + int2d(Th) (1/eta * dummyphi * (dummyv * aP * rho - 3*dummyv*aP*rho*rho + 2*dummyv*aP*rho * rho^2))
+    // + int2d(Th) (1/eta * dummyphi * (kP * (dx(dummyv) *dx(rho) + dy(dummyv) * dy(rho))))
+    // + int2d(Th) (1/eta * ( dummyv * (12 * lmda *(rhoArea-A0P)*rho*(1-rhoold))))
     + int1d(Th,2,3,4)(1/eta*(gammas*dummyphi*dummyv))
     + on(1,5,7,dummyphi=0);
 
@@ -342,14 +350,18 @@ while(true)//(maxCFL > 1e-4)
         dummyphi = phi;
         dummyphiold = dummyphi;
         // dummyv = v;
-        for (int d = 0; d < 15; ++d)
+        for (int d = 0; d < 20; ++d)
         {
             DummyPhaseField;
+            dummyphiold = dummyphi;            
+            
         }
 
         absdelphi = sqrt(dx(dummyphi)^2 + dy(dummyphi)^2);
         phibulk = (absdelphi < 0.3) * dummyphi;
-        phiinterface = (absdelphi * dummyphi > 0.04);
+        phiinterface = (absdelphi * dummyphi > 0.5);
+        // plot(dummyphi,fill=1,value=1, wait=true);
+        // plot(phiinterface,fill=1,value=1, wait=true);
     
     }
     // if (counter % 20 == 0)
@@ -358,11 +370,13 @@ while(true)//(maxCFL > 1e-4)
     //     // plot(rhointerface, wait=true, fill=1,value=1);
     // }
 
+    RhoPhitoPlot = (RhoPhitoPlot < -0.66)*-1 + (RhoPhitoPlot > 0.66);
 
+    plot(RhoPhitoPlot,fill=1,value=1, wait=false);
 
     RhoPhi
     
-    plot(RhoPhitoPlot,fill=1,value=1, wait=false);
+    
     
     // if (counter % 20 == 10)
     //     plot(rhointerface,fill=1,value=1, wait=false);
