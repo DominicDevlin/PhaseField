@@ -145,7 +145,7 @@ real eta = 0.002;             // viscosity type1
 // real eta2 = 0.001;             // viscocity type2
 real a = 0.5;               // Coefficient a
 real k = 0.001;               // phase width coefficient k
-real lmda = 5;               // concentration constraint
+real lmda = 10;               // concentration constraint
 real A0 = 3.143;              // Target value for A
 real epseps = 1e-9;
 real dt = 0.00005;
@@ -153,7 +153,7 @@ real dt = 0.00005;
 real aP = 10;               // Coefficient a
 real kP = 0.02;               // phase width coefficient k
 real A0P = 3.143;              // Target value for A
-real diffrate = 10;//2.5;
+real diffrate = 5;//2.5;
 real addrate=0;
 // adhesion to surface (negative means adhesion)
 real gammas=10;
@@ -350,7 +350,7 @@ while(true)//(maxCFL > 1e-4)
         dummyphi = phi;
         dummyphiold = dummyphi;
         // dummyv = v;
-        for (int d = 0; d < 20; ++d)
+        for (int d = 0; d < 3; ++d)
         {
             DummyPhaseField;
             dummyphiold = dummyphi;            
@@ -359,7 +359,7 @@ while(true)//(maxCFL > 1e-4)
 
         absdelphi = sqrt(dx(dummyphi)^2 + dy(dummyphi)^2);
         phibulk = (absdelphi < 0.3) * dummyphi;
-        phiinterface = (absdelphi * dummyphi > 0.5);
+        phiinterface = (absdelphi > 2);
         // plot(dummyphi,fill=1,value=1, wait=true);
         // plot(phiinterface,fill=1,value=1, wait=true);
     
@@ -367,16 +367,13 @@ while(true)//(maxCFL > 1e-4)
     // if (counter % 20 == 0)
     // {
     //     // plot(rhooutside, wait=true, fill=1,value=1);
-    //     // plot(rhointerface, wait=true, fill=1,value=1);
+    //     plot(phiinterface, wait=true, fill=1,value=1);
     // }
 
-    // Vhfield boolRhoPhitoPlot = (RhoPhitoPlot < -0.66)*-1 + (RhoPhitoPlot > 0.66);
-
-    plot(RhoPhitoPlot,fill=1,value=1, wait=false);
+    Vhfield boolRhoPhitoPlot = (RhoPhitoPlot < -0.2)*RhoPhitoPlot + (RhoPhitoPlot > 0.2)*RhoPhitoPlot;
 
     RhoPhi
-    
-    
+    plot(boolRhoPhitoPlot,fill=1,value=1, wait=false);
     
     // if (counter % 20 == 10)
     //     plot(rhointerface,fill=1,value=1, wait=false);
