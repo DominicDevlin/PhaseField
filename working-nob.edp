@@ -4,6 +4,9 @@ load "UMFPACK64";
 load "isoline";
 load "Element_P3";
 
+
+bool addstem=false;
+
 verbosity=0;
 real PrintStep=20;
 bool doPrint=true;
@@ -21,8 +24,8 @@ real ymin =  0;
 real ymax =  4;
 
 // Mesh resolution
-int  n     = 4; // Number of segments per unit length
-real refI  = 5.0; // Refinement factor for the interface
+int  n     = 2; // Number of segments per unit length
+real refI  = 12.0; // Refinement factor for the interface
 real mGrw  = 1.2;  // Growth rate of the mesh elements
 int  dref  = 10; // Number of time-steps between mesh adaption
 
@@ -99,7 +102,8 @@ macro solvePhase()
         RhoField;
     }
     A0 = A0 + RhoDifferentiate;
-    A0P = A0P;
+    if (!addstem)
+        A0P = A0P - RhoDifferentiate;
 }
 // EOM
 
@@ -108,6 +112,8 @@ macro BalanceDifferentiation()
     real diffamount = RhoDifferentiate;
     real addamount = NoParamRhoAdd;
     addrate = diffamount / addamount;
+    if (!addstem)
+        addrate=0.;
 }
 //EOM
 
@@ -138,7 +144,7 @@ real dt = 0.00005;
 real aP = 10;               // Coefficient a (increased need to be at 1 or 0, increase causes decreases interface length)
 real kP = 0.02;               // smoothness of interface transition, decrease causes decrease in interface length
 real A0P = 3.143;              // Target value for A
-real diffrate = 5;//2.5;
+real diffrate = 50;//2.5;
 real addrate=0;
 // adhesion to surface (negative means adhesion)
 real gammas=10;
