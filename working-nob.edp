@@ -5,7 +5,7 @@ load "isoline";
 load "Element_P3";
 
 
-bool addstem=false;
+bool addstem=true;
 
 verbosity=0;
 real PrintStep=20;
@@ -79,7 +79,7 @@ macro solvePhase()
 {
 
     rhophifield = rho*phi;
-    rhooutside = (phi < 0.8) * (sqrt(dx(rhophifield)^2 + dy(rhophifield)^2));
+    rhooutside = (phi < 0.3) * (sqrt(dx(rhophifield)^2 + dy(rhophifield)^2));
     rhointerface = (phi > 0.8) * (sqrt(dx(rho)^2 + dy(rho)^2));
     BalanceDifferentiation;
 
@@ -99,11 +99,15 @@ macro solvePhase()
     else 
     {
         phasefield;
+        real beforegral = int2d(Th)(phi * rho^2 * (3 - 2*rho));
         RhoField;
+        real postgral = int2d(Th)(phi * rho^2 * (3 - 2*rho));
+        if (beforegral > postgral)
+            rhophidiff = beforegral - postgral;
     }
     A0 = A0 + RhoDifferentiate;
     if (!addstem)
-        A0P = A0P - RhoDifferentiate;
+        A0P = A0P - rhophidiff;
 }
 // EOM
 
@@ -141,11 +145,14 @@ real A0 = 3.143;              // Target value for A
 real epseps = 1e-9;           // small prefactor for 1/sqrt
 real dt = 0.00005;
 
-real aP = 10;               // Coefficient a (increased need to be at 1 or 0, increase causes decreases interface length)
-real kP = 0.02;               // smoothness of interface transition, decrease causes decrease in interface length
+real aP = 20;               // Coefficient a (increased need to be at 1 or 0, increase causes decreases interface length)
+real kP = 0.04;               // smoothness of interface transition, decrease causes decrease in interface length
 real A0P = 3.143;              // Target value for A
-real diffrate = 50;//2.5;
+real diffrate = 1;//2.5;
 real addrate=0;
+
+real rhophidiff=0;
+
 // adhesion to surface (negative means adhesion)
 real gammas=10;
 // adhesion between two cell types
@@ -199,7 +206,7 @@ problem phasefield(phi, v, master=0, solver=sparsesolver) // ,
     - int2d(Th) (  v * (phiold)/dt  )
     + int2d(Th) (1/eta * phi * (v * aP * rho - 3*v*aP*rho*rho + 2*v*aP*rho * rho^2))
     + int2d(Th) (1/eta * phi * (kP * (dx(v) *dx(rho) + dy(v) * dy(rho))))
-    + int2d(Th) (1/eta * ( v * (12 * lmda *(rhoArea-A0P)*rho*(1-rhoold))));
+    + int2d(Th) (1/eta * ( v * phi * (12 * lmda *(rhoArea-A0P)*rho*(1-rhoold))));
     // + int1d(Th,2,3,4)(1/eta*(gammas*phi*v))
     // + on(1,5,7,phi=0);
 
@@ -222,7 +229,7 @@ problem RelaxRhoField(rho, w, master=0, solver=sparsesolver)
     = int2d(Th) (w * (rho)/dt )
     + int2d(Th) (1/eta * phi * (w * aP * rho - 3*w*aP*rho*rhoold + 2*w*aP*rho * rhoold^2))
     + int2d(Th) (1/eta * phi * (kP * (dx(w) *dx(rho) + dy(w) * dy(rho))))
-    + int2d(Th) (1/eta * ( w * (12 * lmda *(rhoArea-A0P)*rho*(1-rhoold))))
+    + int2d(Th) (1/eta * phi * ( w * (12 * lmda *(rhoArea-A0P)*rho*(1-rhoold))))
     // + int2d(Th) (rhointerface * (1/eta * (gammaSL * (dx(rho) * dx(w) + dy(rho) * dy(w)) / sqrt(dx(rhoold)^2 + dy(rhoold)^2 + epseps))))
     - int2d(Th) ( w * (rhoold)/dt  );
     // + int1d(Th,2,3,4)(1/eta*(gammas*rho*w))
@@ -232,7 +239,7 @@ problem RhoField(rho, w, master=0, solver=sparsesolver)
     = int2d(Th) (w * (rho)/dt )
     + int2d(Th) (1/eta * phi * (w * aP * rho - 3*w*aP*rho*rhoold + 2*w*aP*rho * rhoold^2))
     + int2d(Th) (1/eta * phi * (kP * (dx(w) *dx(rho) + dy(w) * dy(rho))))
-    + int2d(Th) (1/eta * ( w * (12 * lmda *(rhoArea-A0P)*rho*(1-rhoold))))
+    + int2d(Th) (1/eta * phi * ( w * (12 * lmda *(rhoArea-A0P)*rho*(1-rhoold))))
     // + int2d(Th) (rhointerface * (1/eta * (gammaSL * (dx(rho) * dx(w) + dy(rho) * dy(w)) / sqrt(dx(rhoold)^2 + dy(rhoold)^2 + epseps))))
     + int2d(Th) (rhointerface * diffrate * w )
     - int2d(Th) (rhooutside * addrate * w)
@@ -287,8 +294,9 @@ cout << "CURRENT AREA: " << phiArea << endl;
 phiold=phi;
 rhoold=rho;
 
+real overlapcheck = int2d(Th)((phi>1.001) * phi);
 GetArea
-A0 = phiArea-0.1;
+A0 = phiArea-overlapcheck;
 A0P = rhoArea;
 cout << "phi area is: " << A0 << endl;
 cout << "rho area is: " << A0P << endl;
