@@ -5,15 +5,27 @@ load "isoline";
 load "Element_P3";
 
 
-bool addstem=true;
+bool addstem=false;
+real endrelaxation=20;
+int screenStep = 10;
 
 verbosity=0;
 real PrintStep=20;
 bool doPrint=true;
 string foldern = "PSfiles/";
-string command = "mkdir PSfiles";
+string folderint1 = "interface1/";
+string folderint2 = "interface2/";
+string command1 = "mkdir PSfiles";
+string command2 = "mkdir interface1";
+string command3 = "mkdir interface2";
+
 if (doPrint)
-    system(command);
+{
+    system(command1);
+    system(command2);
+    system(command3);
+}
+   
 
 // -------------------------------------------------------------------------------------------------------------------------------------
 // Mesh and grid
@@ -58,6 +70,10 @@ Vhfield precurvatureX;
 Vhfield precurvatureY;
 Vhfield divprecurvature;
 
+Vhfield ConservationField;
+Vhfield massfield;
+// ConservationField = (rhooutside > 0.5)*(-999) + 1000;
+
 // -------------------------------------------------------------------------------------------------------------------------------------
 // Compilation of macros
 
@@ -74,21 +90,22 @@ rhomesh = RhoPhitoPlot;
 // EOM
 // phi*(rho - (1-rho));
 
+    // precurvatureX = dx(phi) / sqrt(dx(phi)^2 + dy(phi)^2 + epseps);
+    // precurvatureY = dy(phi) / sqrt(dx(phi)^2 + dy(phi)^2 + epseps);
+    // divprecurvature = dx(precurvatureX) + dy(precurvatureY);
+    // curvature = sqrt(dx(phi)^2 + dy(phi)^2) * divprecurvature;
+
 // Macro for non-linear solutions
 macro solvePhase()
 {
 
     rhophifield = rho*phi;
-    rhooutside = (phi < 0.3) * (sqrt(dx(rhophifield)^2 + dy(rhophifield)^2));
+    rhooutside = (phi < 0.5) * (sqrt(dx(rho)^2 + dy(rho)^2));
+    rhooutside = (rhooutside > 2);
     rhointerface = (phi > 0.8) * (sqrt(dx(rho)^2 + dy(rho)^2));
     BalanceDifferentiation;
 
-    precurvatureX = dx(phi) / sqrt(dx(phi)^2 + dy(phi)^2 + epseps);
-    precurvatureY = dy(phi) / sqrt(dx(phi)^2 + dy(phi)^2 + epseps);
-    divprecurvature = dx(precurvatureX) + dy(precurvatureY);
-    curvature = sqrt(dx(phi)^2 + dy(phi)^2) * divprecurvature;
-
-    if (counter < 20)
+    if (counter < endrelaxation)
     {
         absdelphi = sqrt(dx(dummyphi)^2 + dy(dummyphi)^2);
         phibulk = (absdelphi < 0.1) * dummyphi;
@@ -98,16 +115,22 @@ macro solvePhase()
     }
     else 
     {
-        phasefield;
-        real beforegral = int2d(Th)(phi * rho^2 * (3 - 2*rho));
+        
+        real beforegral = int2d(Th)(phi * (rho > 0.01));
         RhoField;
-        real postgral = int2d(Th)(phi * rho^2 * (3 - 2*rho));
+        real postgral = int2d(Th)(phi * (rho > 0.01));
         if (beforegral > postgral)
             rhophidiff = beforegral - postgral;
+        
+        phasefield;
     }
     A0 = A0 + RhoDifferentiate;
     if (!addstem)
-        A0P = A0P - rhophidiff;
+    {
+        A0 = A0 - RhoDifferentiate + rhophidiff;
+        A0P = A0P - RhoDifferentiate;
+    }
+        
 }
 // EOM
 
@@ -146,7 +169,7 @@ real epseps = 1e-9;           // small prefactor for 1/sqrt
 real dt = 0.00005;
 
 real aP = 20;               // Coefficient a (increased need to be at 1 or 0, increase causes decreases interface length)
-real kP = 0.04;               // smoothness of interface transition, decrease causes decrease in interface length
+real kP = 0.01;               // smoothness of interface transition, decrease causes decrease in interface length
 real A0P = 3.143;              // Target value for A
 real diffrate = 1;//2.5;
 real addrate=0;
@@ -200,8 +223,10 @@ problem phasefield(phi, v, master=0, solver=sparsesolver) // ,
     = int2d(Th) (  v * (phi)/dt  )
     + int2d(Th) (1/eta * (v * 0.5 * phi - v* 1.5 * phi *phiold + v*phi*phiold^2))
     + int2d(Th) (1/eta * (epsilon * (dx(v) *dx(phi) + dy(v) * dy(phi))))
-    + int2d(Th) ( phiinterface * (1/eta * ((epsilon - gammaphi) * v * curvature)))
+    // + int2d(Th) ( phiinterface * (1/eta * ((epsilon - gammaphi) * v * curvature)))
+    + int2d(Th) ( phiinterface * (1/eta * ((epsilon - gammaphi) * (dx(phi) * dx(v) + dy(phi) * dy(v)) / sqrt(dx(phiold)^2 + dy(phiold)^2 + epseps))))
     + int2d(Th) (1/eta * ( v * (12 * lmda *(phiArea-A0)*phi*(1-phiold))))
+    // + int2d(Th) (1/eta * ( v * 2 * ConservationField * (phiold-massfield)))
     - int2d(Th) (rhooutside * addrate * v)
     - int2d(Th) (  v * (phiold)/dt  )
     + int2d(Th) (1/eta * phi * (v * aP * rho - 3*v*aP*rho*rho + 2*v*aP*rho * rho^2))
@@ -212,16 +237,11 @@ problem phasefield(phi, v, master=0, solver=sparsesolver) // ,
 
 
 
-
-
 // func initRho = 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-2-dyc)^2) - drrho) / (sqrt(2) * DropTh)));
 
 func RhoDifferentiate = int2d(Th) (dt * rhointerface * diffrate );
 func NoParamRhoAdd = int2d(Th) (dt * rhooutside);
 
-
-
-// func rhochanged = int2d(Th) (dt * phibulk * diffrate * sqrt(dx(rhoold)^2 + dy(rhoold)^2));
 
 
 
@@ -332,6 +352,7 @@ while(true)//(maxCFL > 1e-4)
     //     plot(Th, wait=true);
     // Solve the PF equations
     curt = curt+dt;
+
     
 
     GetArea
@@ -344,9 +365,15 @@ while(true)//(maxCFL > 1e-4)
         cout << "Value of addition param: " << addrate << endl;
     }
 
+    // if (counter == endrelaxation)
+    //     massfield = phi;
+    // if (counter > endrelaxation)
+    //     massfield = massfield + (rho > 0.02) * (phi - phiold);    
+
     // Prepare for the next time step
-    phiold = phi;
+    rho = (phi < 0.2) * (rho > phi) * phi + (phi > 0.2) * rho + (phi < 0.2) * (rho < phi) * rho;
     rhoold = rho;
+    phiold = phi;
     dxOld = dxNew;
     nAdapt++;
 
@@ -379,12 +406,21 @@ while(true)//(maxCFL > 1e-4)
     Vhfield boolRhoPhitoPlot = (RhoPhitoPlot < -0.2)*RhoPhitoPlot + (RhoPhitoPlot > 0.2)*RhoPhitoPlot;
 
     RhoPhi
-    plot(boolRhoPhitoPlot,fill=1,value=1, wait=false);
+    if (counter % screenStep == 0)
+        plot(RhoPhitoPlot,fill=1,value=1, wait=false);
 
     if (counter % PrintStep == 0 && doPrint)
     {
         string outputn = foldern + "image-" + curt + ".eps";
         plot(boolRhoPhitoPlot, ps=outputn, fill=1, wait=false);
+
+    }
+    if (counter % 200 == 0 && doPrint)
+    {
+        string outputn2 = folderint1 + "image-" + curt + ".eps";
+        string outputn3 = folderint2 + "image-" + curt + ".eps";
+        plot(rhointerface, ps=outputn2, fill=1, wait=false);
+        plot(rhooutside, ps=outputn3, fill=1, wait=false);
     }
     
     // if (counter % 20 == 10)

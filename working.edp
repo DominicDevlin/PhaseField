@@ -217,15 +217,10 @@ problem phasefield(phi, v, master=0, solver=sparsesolver) // ,
     + on(1,5,7,phi=0);
 
 
-
-
-
 // func initRho = 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-2-dyc)^2) - drrho) / (sqrt(2) * DropTh)));
 
 func RhoDifferentiate = int2d(Th) (dt * rhointerface * diffrate );
 func NoParamRhoAdd = int2d(Th) (dt * rhooutside);
-
-
 
 // func rhochanged = int2d(Th) (dt * phibulk * diffrate * sqrt(dx(rhoold)^2 + dy(rhoold)^2));
 
