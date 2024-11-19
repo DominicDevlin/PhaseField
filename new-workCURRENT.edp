@@ -119,12 +119,8 @@ macro solvePhase()
     rhooutside = (phi < 0.5) * (sqrt(dx(rho)^2 + dy(rho)^2));
     rhooutside = (rhooutside > 2);
     rhointerface = (phi > 0.8) * (sqrt(dx(rho)^2 + dy(rho)^2));
-    rhointerfacetwo = (sqrt(dx(rho)^2 + dy(rho)^2) > 5) * (sqrt(dx(phi)^2 + dy(phi)^2) < 5);
 
     BalanceDifferentiation;
-
-
-
 
     if (counter < endrelaxation)
     {
@@ -180,7 +176,7 @@ real rhoArea=0;
 
 
 macro GetArea()
-    rhoArea = int2d(Th)(rho^2 * (3 - 2*rho));
+    rhoArea = int2d(Th)(phi * rho^2 * (3 - 2*rho));
     phiArea = int2d(Th)(phi^2 * (3 - 2*phi));
 // EOM
 
@@ -200,7 +196,7 @@ real dt = 0.00005;
 real aP = 20;               // Coefficient a (increased need to be at 1 or 0, increase causes decreases interface length)
 real kP = 0.01;               // smoothness of interface transition, decrease causes decrease in interface length
 real A0P = 3.143;              // Target value for A
-real diffrate = 10;//2.5;
+real diffrate = 0;//2.5;
 real addrate=0;
 
 real rhophidiff=0;
@@ -254,14 +250,13 @@ problem phasefield(phi, v, master=0, solver=sparsesolver) // ,
     + int2d(Th) (1/eta *  (epsilon * (dx(v) *dx(phi) + dy(v) * dy(phi))))
     // + int2d(Th) ( phiinterface * (1/eta * ((epsilon - gammaphi) * v * curvature)))
     + int2d(Th) ( (1/eta * phiinterface * ((epsilon) * v * curvature)))
-    + int2d(Th) (1/eta *  ( v * (12 * lmda *(phiArea-A0)*phi*(1-phiold))))
+    + int2d(Th) (1/eta * ( v * (12 * lmda *(phiArea-A0)*phi*(1-phiold))))
     // + int2d(Th) (1/eta * ( v * 2 * ConservationField * (phiold-massfield)))
     - int2d(Th) (rhooutside * addrate * v)
     - int2d(Th) (  v * (phiold)/dt  )
-    + int2d(Th) (1/eta * phi * (v * aP * rho - 3*v*aP*rho*rho + 2*v*aP*rho * rho^2))
-    + int2d(Th) (1/eta * phi * (kP * (dx(rho) * dx(v) + dy(rho) * dy(v))))
-    // - int2d(Th) (1/eta * phi * rhointerfacetwo * (kP * (dx(rho) * dx(v) + dy(rho) * dy(v))))
-    + int2d(Th) (1/eta * ( v * (12 * lmda *(rhoArea-A0P)*rho*(1-rhoold))));
+    + int2d(Th) (1/eta * phi * rhointerfacetwo * (v * aP * rho - 3*v*aP*rho*rho + 2*v*aP*rho * rho^2))
+    + int2d(Th) (1/eta * phi * rhointerfacetwo * (kP * (dx(rho) * dx(v) + dy(rho) * dy(v))))
+    + int2d(Th) (1/eta * rhointerfacetwo * ( v * (12 * lmda *(rhoArea-A0P)*rho*(1-rhoold))));
     // + int1d(Th,2,3,4)(1/eta*(gammas*phi*v))
     // + on(1,5,7,phi=0);
 
@@ -429,8 +424,10 @@ while(true)//(maxCFL > 1e-4)
         absdelphi = sqrt(dx(dummyphi)^2 + dy(dummyphi)^2);
         phibulk = (absdelphi < 0.3) * dummyphi;
         phiinterface = (absdelphi > 2);
+        rhointerfacetwo = (sqrt(dx(rho)^2 + dy(rho)^2) > 0.1) * dummyphi > 0.8;
+        rhointerfacetwo = 1 - rhointerfacetwo;
         // plot(dummyphi,fill=1,value=1, wait=true);
-        // plot(phiinterface,fill=1,value=1, wait=true);
+        // plot(rhointerfacetwo,fill=1,value=1, wait=true);
     
     }
     // if (counter % 20 == 0)
@@ -446,7 +443,7 @@ while(true)//(maxCFL > 1e-4)
     // nablaphi = (sqrt(dx(phi)^2 + dy(phi)^2));
     if (counter % screenStep == 0)
     {
-        plot(rhointerfacetwo,fill=1,value=1, wait=false);
+        plot(RhoPhitoPlot,fill=1,value=1, wait=false);
         // plot(RhoPhitoPlot,fill=1,value=1, wait=false);
     }
         
