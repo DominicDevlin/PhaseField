@@ -10,20 +10,31 @@ real endrelaxation=20;
 int screenStep = 10;
 
 verbosity=0;
-real PrintStep=20;
+real PrintStep=50;
 bool doPrint=true;
-string foldern = "PSfiles/";
+bool printinterface=false;
+string foldern = "phirho-image/";
 string folderint1 = "interface1/";
 string folderint2 = "interface2/";
-string command1 = "mkdir PSfiles";
+string folderphi = "phi-images/";
+string folderrho = "rho-images/";
+string command1 = "mkdir phirho-image";
 string command2 = "mkdir interface1";
 string command3 = "mkdir interface2";
+string command4 = "mkdir phi-images";
+string command5 = "mkdir rho-images";
+
 
 if (doPrint)
 {
+    if (printinterface)
+    {
+        system(command2);
+        system(command3);
+    }
     system(command1);
-    system(command2);
-    system(command3);
+    system(command4);
+    system(command5);
 }
    
 
@@ -37,7 +48,7 @@ real ymax =  4;
 
 // Mesh resolution
 int  n     = 2; // Number of segments per unit length
-real refI  = 12.0; // Refinement factor for the interface
+real refI  = 14.0; // Refinement factor for the interface
 real mGrw  = 1.2;  // Growth rate of the mesh elements
 int  dref  = 10; // Number of time-steps between mesh adaption
 
@@ -135,7 +146,7 @@ macro solvePhase()
     if (!addstem)
     {
         A0 = A0 - RhoDifferentiate + rhophidiff;
-        A0P = A0P - RhoDifferentiate;
+        A0P = A0P;
     }
         
 }
@@ -165,7 +176,7 @@ macro GetArea()
 // EOM
 
 
-real epsilon=0.001;     // smoothness
+real epsilon=0.0004;     // smoothness
 real gammaphi=0.;     // surface tension of phi
 
 real eta = 0.002;             // viscosity type1
@@ -243,7 +254,7 @@ problem phasefield(phi, v, master=0, solver=sparsesolver) // ,
     - int2d(Th) (  v * (phiold)/dt  )
     + int2d(Th) (1/eta * phi * (v * aP * rho - 3*v*aP*rho*rho + 2*v*aP*rho * rho^2))
     + int2d(Th) (1/eta * phi * (kP * (dx(v) *dx(rho) + dy(v) * dy(rho))))
-    + int2d(Th) (1/eta * ( v * (zeta * max(rhominusphi,0))))
+    // + int2d(Th) (1/eta * ( v * (zeta * max(rhominusphi,0))))
     + int2d(Th) (1/eta * ( v * phi * (12 * lmda *(rhoArea-A0P)*rho*(1-rhoold))));
     // + int1d(Th,2,3,4)(1/eta*(gammas*phi*v))
     // + on(1,5,7,phi=0);
@@ -273,7 +284,7 @@ problem RhoField(rho, w, master=0, solver=sparsesolver)
     + int2d(Th) (1/eta * phi * (w * aP * rho - 3*w*aP*rho*rhoold + 2*w*aP*rho * rhoold^2))
     + int2d(Th) (1/eta * phi * (kP * (dx(w) *dx(rho) + dy(w) * dy(rho))))
     + int2d(Th) (1/eta * phi * ( w * (12 * lmda *(rhoArea-A0P)*rho*(1-rhoold))))
-    + int2d(Th) (1/eta * ( w * (zeta * max(rhominusphi,0))))
+    // + int2d(Th) (1/eta * ( w * (zeta * max(rhominusphi,0))))
     // + int2d(Th) (rhointerface * (1/eta * (gammaSL * (dx(rho) * dx(w) + dy(rho) * dy(w)) / sqrt(dx(rhoold)^2 + dy(rhoold)^2 + epseps))))
     + int2d(Th) (rhointerface * diffrate * w )
     - int2d(Th) (rhooutside * addrate * w)
@@ -385,11 +396,13 @@ while(true)//(maxCFL > 1e-4)
     //     massfield = massfield + (rho > 0.02) * (phi - phiold);    
 
     // Prepare for the next time step
-    rho = (phi < 0.2) * (rho > phi) * phi + (phi > 0.2) * rho + (phi < 0.2) * (rho < phi) * rho;
+    
     rhoold = rho;
     phiold = phi;
     dxOld = dxNew;
     nAdapt++;
+    // if (counter > endrelaxation)
+    rho = (rho > phi) * phi + (rho < phi) * rho;// (phi < 0.2) * (rho > phi) * phi + (phi > 0.2) * rho + (phi < 0.2) * (rho < phi) * rho;
 
 
     if (counter % 5 == 0)
@@ -421,18 +434,24 @@ while(true)//(maxCFL > 1e-4)
 
     RhoPhi
     if (counter % screenStep == 0)
+    {
         plot(RhoPhitoPlot,fill=1,value=1, wait=false);
+    }
+        
+        
 
     if (counter % PrintStep == 0 && doPrint)
     {
         string outputn = foldern + "image-" + curt + ".eps";
         plot(boolRhoPhitoPlot, ps=outputn, fill=1, wait=false);
+        outputn = folderphi + "image-" + curt + ".eps";
+        plot(phi, ps=outputn, fill=1, wait=false, value=true);
+        outputn = folderrho + "image-" + curt + ".eps";
+        plot(rho, ps=outputn, fill=1, wait=false, value=true);
 
     }
-
-    plot(RhoPhitoPlot, value=1, fill=1, wait=false);
     
-    if (counter % 200 == 0 && doPrint)
+    if (counter % 200 == 0 && printinterface)
     {
         string outputn2 = folderint1 + "image-" + curt + ".eps";
         string outputn3 = folderint2 + "image-" + curt + ".eps";
