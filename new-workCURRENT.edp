@@ -7,18 +7,18 @@ load "Element_P3";
 
 bool addstem=false;
 real endrelaxation=10;
-int screenStep = 1;
+int screenStep = 10;
 
 verbosity=0;
-real PrintStep=50;
+real PrintStep=100;
 bool doPrint=true;
 bool printinterface=true;
-string foldern = "phirho-image/";
+string foldern = "phirho-images/";
 string folderint1 = "interface1/";
 string folderint2 = "interface2/";
 string folderphi = "phi-images/";
 string folderrho = "rho-images/";
-string command1 = "mkdir phirho-image";
+string command1 = "mkdir phirho-images";
 string command2 = "mkdir interface1";
 string command3 = "mkdir interface2";
 string command4 = "mkdir phi-images";
@@ -61,6 +61,7 @@ fespace Vhfield (Th,P2,periodic=[[2,y],[4,y],[1,x],[3,x]]);
 Vhfield phi;
 Vhfield v;
 Vhfield phiold;
+Vhfield u;
 
 Vhfield rho;
 Vhfield rhoold;
@@ -71,24 +72,21 @@ Vhfield absdelphi;
 Vhfield phiinterface;
 Vhfield phibulk;
 Vhfield rhointerface;
-Vhfield rhointerfacetwo;
 Vhfield rhooutside;
 
-Vhfield RhoPhitoPlot;
-Vhfield rhophifield;
+Vhfield RhoPhi;
+Vhfield BoolRhoPhi;
 Vhfield curvature;
 
 Vhfield precurvatureX;
 Vhfield precurvatureY;
 Vhfield divprecurvature;
 
-Vhfield ConservationField;
-Vhfield massfield;
+Vhfield beforegral;
+Vhfield postgral;
 
-Vhfield rhotphi;
 Vhfield maxrho;
 Vhfield rhominusphi;
-// ConservationField = (rhooutside > 0.5)*(-999) + 1000;
 
 // -------------------------------------------------------------------------------------------------------------------------------------
 // Compilation of macros
@@ -100,9 +98,9 @@ v = 0;
 phi = phi;
 // EOM
 
-macro RhoPhi()
-RhoPhitoPlot = phi * (rho * 2 - 1);
-rhomesh = RhoPhitoPlot;
+macro MakeRhoPhiMesh()
+RhoPhi = phi * (rho * 2 - 1);
+rhomesh = RhoPhi;
 // EOM
 // phi*(rho - (1-rho));
 
@@ -111,15 +109,14 @@ rhomesh = RhoPhitoPlot;
     // divprecurvature = dx(precurvatureX) + dy(precurvatureY);
     // curvature = sqrt(dx(phi)^2 + dy(phi)^2) * divprecurvature;
 
+real phimoved=0;
 // Macro for non-linear solutions
 macro solvePhase()
 {
 
-    rhophifield = rho*phi;
     rhooutside = (phi < 0.5) * (sqrt(dx(rho)^2 + dy(rho)^2));
     rhooutside = (rhooutside > 2);
-    rhointerface = (phi > 0.8) * (sqrt(dx(rho)^2 + dy(rho)^2));
-
+    rhointerface = (phi > 0.75) * (sqrt(dx(rho)^2 + dy(rho)^2)) * (rho < 0.55) * (phi);
     BalanceDifferentiation;
 
     if (counter < endrelaxation)
@@ -137,20 +134,20 @@ macro solvePhase()
         precurvatureY = dy(phi) / sqrt(dx(phi)^2 + dy(phi)^2 + epseps);
         divprecurvature = dx(precurvatureX) + dy(precurvatureY);
         curvature = sqrt(dx(phi)^2 + dy(phi)^2) * divprecurvature;
-        rhotphi = rho * phi;
-        real beforegral = rhophiarea;
+
+
+        beforegral = (rho^2 * (3 - 2*rho)) * ((phi^2 * (3 - 2*rho)) - 1);
         RhoField;
-        real postgral = rhophiarea;
-        rhophidiff = beforegral - postgral;
-        maxrho = fmax(phi-rho,0);
-        rhominusphi = fmax(1+rho-phi,0);
-        rhominusphi = fmin(rhominusphi,1);
+        postgral = (rho^2 * (3 - 2*rho)) * ((phi^2 * (3 - 2*rho)) - 1);
         phasefield;
+        phimoved = int2d(Th)(fmax(beforegral-postgral,0));
+        phiold = phi;
+        
     }
     A0 = A0 + RhoDifferentiate;
     if (!addstem)
     {
-        A0 = A0 - RhoDifferentiate + rhophidiff;
+        A0 = A0 - RhoDifferentiate + phimoved;
         A0P = A0P;
     }
         
@@ -167,21 +164,23 @@ macro BalanceDifferentiation()
 }
 //EOM
 
-func rhophiarea = int2d(Th)(phi * rho^2 * (3 - 2*rho)) - int2d(Th)(rho^2 * (3 - 2*rho));
+// func getrhophiarea = int2d(Th)(phi * rho^2 * (3 - 2*rho)) - int2d(Th)(rho^2 * (3 - 2*rho));
 
 
 
 real phiArea=0.;
-real rhoArea=0;
+real rhoArea=0.;
+real rhophiArea=0.;
 
 
 macro GetArea()
-    rhoArea = int2d(Th)(phi * rho^2 * (3 - 2*rho));
+    rhoArea = int2d(Th)(rho^2 * (3 - 2*rho));
+    rhophiArea = int2d(Th)((rho*phi)^2 * (3 - 2*(rho*phi)));
     phiArea = int2d(Th)(phi^2 * (3 - 2*phi));
 // EOM
 
 
-real epsilon=0.001;     // smoothness
+real epsilon=0.0006;     // smoothness
 real gammaphi=0.;     // surface tension of phi
 
 real eta = 0.002;             // viscosity type1
@@ -193,13 +192,14 @@ real A0 = 3.143;              // Target value for A
 real epseps = 1e-9;           // small prefactor for 1/sqrt
 real dt = 0.00005;
 
-real aP = 20;               // Coefficient a (increased need to be at 1 or 0, increase causes decreases interface length)
-real kP = 0.01;               // smoothness of interface transition, decrease causes decrease in interface length
+real aP = 6;               // Coefficient a (increased need to be at 1 or 0, increase causes decreases interface length)
+real kP = 0.003;               // smoothness of interface transition, decrease causes decrease in interface length
 real A0P = 3.143;              // Target value for A
-real diffrate = 0;//2.5;
+real A0R = 0.;
+real diffrate = 6;//2.5;
 real addrate=0;
 
-real rhophidiff=0;
+
 
 // adhesion to surface (negative means adhesion)
 real gammas=10;
@@ -254,11 +254,17 @@ problem phasefield(phi, v, master=0, solver=sparsesolver) // ,
     // + int2d(Th) (1/eta * ( v * 2 * ConservationField * (phiold-massfield)))
     - int2d(Th) (rhooutside * addrate * v)
     - int2d(Th) (  v * (phiold)/dt  )
-    + int2d(Th) (1/eta * phi * rhointerfacetwo * (v * aP * rho - 3*v*aP*rho*rho + 2*v*aP*rho * rho^2))
-    + int2d(Th) (1/eta * phi * rhointerfacetwo * (kP * (dx(rho) * dx(v) + dy(rho) * dy(v))))
-    + int2d(Th) (1/eta * rhointerfacetwo * ( v * (12 * lmda *(rhoArea-A0P)*rho*(1-rhoold))));
+    + int2d(Th) (1/eta * phi * (v * aP * rho - 3*v*aP*rho*rho + 2*v*aP*rho * rho^2))
+    + int2d(Th) (1/eta * phi * (kP * (dx(rho) * dx(v) + dy(rho) * dy(v))))
+    + int2d(Th) (1/eta * ( v * (12 * lmda *(rhoArea-A0P)*rho*(1-rho))))
+    + int2d(Th) (1/eta * ( v * (12 * lmda *(rhophiArea-A0R)*rho*phi*phiold*(1-rhoold*phiold))));
     // + int1d(Th,2,3,4)(1/eta*(gammas*phi*v))
     // + on(1,5,7,phi=0);
+
+
+// problem rhophifield(phi, u, master=0, solver=sparsesolver) // , 
+//     = int2d(Th) (  u * (phi)/dt  )
+//     - int2d(Th) (  u * (phiold)/dt  )
 
 
 
@@ -275,6 +281,7 @@ problem RelaxRhoField(rho, w, master=0, solver=sparsesolver)
     + int2d(Th) (1/eta * phi * (w * aP * rho - 3*w*aP*rho*rhoold + 2*w*aP*rho * rhoold^2))
     + int2d(Th) (1/eta * phi * (kP * (dx(w) *dx(rho) + dy(w) * dy(rho))))
     + int2d(Th) (1/eta * ( w * (12 * lmda *(rhoArea-A0P)*rho*(1-rhoold))))
+    + int2d(Th) (1/eta * ( w * (12 * lmda *(rhophiArea-A0R)*rho*phi*phiold*(1-rhoold*phiold))))
     // + int2d(Th) (rhointerface * (1/eta * (gammaSL * (dx(rho) * dx(w) + dy(rho) * dy(w)) / sqrt(dx(rhoold)^2 + dy(rhoold)^2 + epseps))))
     - int2d(Th) ( w * (rhoold)/dt  );
     // + int1d(Th,2,3,4)(1/eta*(gammas*rho*w))
@@ -284,7 +291,8 @@ problem RhoField(rho, w, master=0, solver=sparsesolver)
     = int2d(Th) (w * (rho)/dt )
     + int2d(Th) (1/eta * phi * rho * (w * aP - 3*w*aP*rhoold + 2*w*aP*rhoold^2))
     + int2d(Th) (1/eta * phi * (kP * (dx(w) *dx(rho) + dy(w) * dy(rho))))
-    + int2d(Th) (1/eta * phi * ( w * (12 * lmda *(rhoArea-A0P)*rho*(1-rhoold))))
+    + int2d(Th) (1/eta * ( w * (12 * lmda *(rhoArea-A0P)*rho*(1-rhoold))))
+    + int2d(Th) (1/eta * ( w * (12 * lmda *(rhophiArea-A0R)*rho*phi*phiold*(1-rhoold*phiold))))
     // + int2d(Th) (rhointerface * (1/eta * (gammaSL * (dx(rho) * dx(w) + dy(rho) * dy(w)) / sqrt(dx(rhoold)^2 + dy(rhoold)^2 + epseps))))
     + int2d(Th) (rhointerface * diffrate * w )
     - int2d(Th) (rhooutside * addrate * w)
@@ -321,23 +329,23 @@ problem DummyPhaseField(dummyphi, dummyv, master=0, solver=sparsesolver) // ,
 phi = initPhi;
 rho = initRho;
 
-RhoPhi
+MakeRhoPhiMesh
 // Initial mesh adaptation
 getAdaptMesh
 // Reinitialise the function, since it has a known value, adapt mesh again
 phi = initPhi;
 rho = initRho;
-RhoPhi
+MakeRhoPhiMesh
 getAdaptMesh
 // Reinitialise the function, since it has a known value, adapt mesh again
 phi = initPhi;
 rho = initRho;
-RhoPhi
+MakeRhoPhiMesh
 getAdaptMesh
 // Final initialisation of the function
 phi = initPhi;
 rho = initRho;
-RhoPhi
+MakeRhoPhiMesh
 cout << "CURRENT AREA: " << phiArea << endl;
 phi = fmin(phi,1);
 phiold=phi;
@@ -346,6 +354,7 @@ real overlapcheck = int2d(Th)((phi>1.001) * phi);
 GetArea
 A0 = phiArea-overlapcheck;
 A0P = rhoArea;
+A0R = rhophiArea;
 cout << "phi area is: " << A0 << endl;
 cout << "rho area is: " << A0P << endl;
 
@@ -393,14 +402,10 @@ while(true)//(maxCFL > 1e-4)
         cout << "Value of addition param: " << addrate << endl;
     }
 
-    // if (counter == endrelaxation)
-    //     massfield = phi;
-    // if (counter > endrelaxation)
-    //     massfield = massfield + (rho > 0.02) * (phi - phiold);    
 
     // Prepare for the next time step
-    // rho = (rho > phi) * phi + (rho < phi) * rho;
-    rho =  (phi < 0.2) * (rho > phi) * phi + (phi > 0.2) * rho + (phi < 0.2) * (rho < phi) * rho;
+    // rho = (phi < 0.8) * (rho > phi) * phi + (phi > 0.8) * (rho < phi) * rho;
+    // rho =  (phi < 0.2) * (rho > phi) * phi + (phi > 0.2) * rho + (phi < 0.2) * (rho < phi) * rho;
     rhoold = rho;
     phiold = phi;
     dxOld = dxNew;
@@ -424,10 +429,8 @@ while(true)//(maxCFL > 1e-4)
         absdelphi = sqrt(dx(dummyphi)^2 + dy(dummyphi)^2);
         phibulk = (absdelphi < 0.3) * dummyphi;
         phiinterface = (absdelphi > 2);
-        rhointerfacetwo = (sqrt(dx(rho)^2 + dy(rho)^2) > 0.1) * dummyphi > 0.8;
-        rhointerfacetwo = 1 - rhointerfacetwo;
-        // plot(dummyphi,fill=1,value=1, wait=true);
-        // plot(rhointerfacetwo,fill=1,value=1, wait=true);
+
+        // plot(phiinterface,fill=1,value=1, wait=true);
     
     }
     // if (counter % 20 == 0)
@@ -436,15 +439,14 @@ while(true)//(maxCFL > 1e-4)
     //     plot(phiinterface, wait=true, fill=1,value=1);
     // }
 
-    Vhfield boolRhoPhitoPlot = (RhoPhitoPlot < -0.2)*RhoPhitoPlot + (RhoPhitoPlot > 0.2)*RhoPhitoPlot;
+    Vhfield boolRhoPhitoPlot = (RhoPhi < -0.2)*RhoPhi + (RhoPhi > 0.2)*RhoPhi;
 
-    RhoPhi
+    MakeRhoPhiMesh
     // Vhfield nablaphi;
     // nablaphi = (sqrt(dx(phi)^2 + dy(phi)^2));
     if (counter % screenStep == 0)
     {
-        plot(RhoPhitoPlot,fill=1,value=1, wait=false);
-        // plot(RhoPhitoPlot,fill=1,value=1, wait=false);
+        plot(RhoPhi,fill=1,value=1, wait=false);
     }
         
         
