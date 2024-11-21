@@ -8,6 +8,8 @@ load "Element_P3";
 bool addstem=false;
 real endrelaxation=10;
 int screenStep = 10;
+int equilibriaterho=200;
+
 
 verbosity=0;
 real PrintStep=100;
@@ -118,6 +120,9 @@ macro solvePhase()
     rhooutside = (rhooutside > 2);
     rhointerface = (phi > 0.75) * (sqrt(dx(rho)^2 + dy(rho)^2)) * (rho < 0.55) * (phi);
     BalanceDifferentiation;
+    diffrate = chooseamount / int2d(Th) (dt * rhointerface );
+    if (diffrate > 40)
+        diffrate = 40;
 
     if (counter < endrelaxation)
     {
@@ -125,7 +130,7 @@ macro solvePhase()
         phibulk = (absdelphi < 0.1) * dummyphi;
         phiinterface = (absdelphi * dummyphi > 0.04);
         relaxphasefield;
-        RelaxRhoField;
+        RhoField;
     }
     else 
     {
@@ -140,7 +145,7 @@ macro solvePhase()
         RhoField;
         postgral = (rho^2 * (3 - 2*rho)) * ((phi^2 * (3 - 2*rho)) - 1);
         phasefield;
-        phimoved = int2d(Th)(fmax(beforegral-postgral,0));
+        phimoved = int2d(Th)(beforegral-postgral);
         phiold = phi;
         
     }
@@ -156,7 +161,7 @@ macro solvePhase()
 
 macro BalanceDifferentiation()
 {
-    real diffamount = RhoDifferentiate;
+    diffamount = RhoDifferentiate;
     real addamount = NoParamRhoAdd;
     addrate = diffamount / addamount;
     if (!addstem)
@@ -192,11 +197,19 @@ real A0 = 3.143;              // Target value for A
 real epseps = 1e-9;           // small prefactor for 1/sqrt
 real dt = 0.00005;
 
-real aP = 6;               // Coefficient a (increased need to be at 1 or 0, increase causes decreases interface length)
-real kP = 0.003;               // smoothness of interface transition, decrease causes decrease in interface length
+real initaP = 0.5; // for equilibration (equal to phi)
+real initkP = 0.0006; // for equilibration (equal to phi)
+real trueaP = initaP * 10;
+real truekP = initkP * 10;
+// the values i used to make video were 5 and 0.01
+
+real aP = initaP;               // Coefficient a (increased need to be at 1 or 0, increase causes decreases interface length)
+real kP = initkP;               // smoothness of interface transition, decrease causes decrease in interface length
 real A0P = 3.143;              // Target value for A
 real A0R = 0.;
 real diffrate = 6;//2.5;
+real diffamount;
+real chooseamount = 2e-4;
 real addrate=0;
 
 
@@ -410,6 +423,11 @@ while(true)//(maxCFL > 1e-4)
     phiold = phi;
     dxOld = dxNew;
     nAdapt++;
+    if (counter == equilibriaterho)
+    {
+        kP = truekP;
+        aP = trueaP;
+    }
     // if (counter > endrelaxation)
     
 
