@@ -145,15 +145,15 @@ macro solvePhase()
         RhoField;
         postgral = (rho^2 * (3 - 2*rho)) * ((phi^2 * (3 - 2*rho)) - 1);
         phasefield;
-        phimoved = int2d(Th)(beforegral-postgral);
+        phimoved = fmax(int2d(Th)(beforegral-postgral),0);
         phiold = phi;
         
     }
-    A0 = A0 + RhoDifferentiate;
     if (!addstem)
     {
-        A0 = A0 - RhoDifferentiate + phimoved;
-        A0P = A0P;
+        A0 = A0;
+        A0P = A0P - phimoved;
+        A0R = A0R - phimoved;
     }
         
 }
@@ -198,9 +198,9 @@ real epseps = 1e-9;           // small prefactor for 1/sqrt
 real dt = 0.00005;
 
 real initaP = 0.5; // for equilibration (equal to phi)
-real initkP = 0.0006; // for equilibration (equal to phi)
-real trueaP = initaP * 10;
-real truekP = initkP * 10;
+real initkP = 0.0012; // for equilibration (equal to phi)
+real trueaP = initaP*10;  //initaP * 15;
+real truekP = initkP*10;// initkP * 15;
 // the values i used to make video were 5 and 0.01
 
 real aP = initaP;               // Coefficient a (increased need to be at 1 or 0, increase causes decreases interface length)
@@ -371,6 +371,7 @@ A0R = rhophiArea;
 cout << "phi area is: " << A0 << endl;
 cout << "rho area is: " << A0P << endl;
 
+
 plot(Th, wait=true);
 
 
@@ -412,6 +413,7 @@ while(true)//(maxCFL > 1e-4)
         cout << "ct = " << curt << ", ";
         cout << "phi area: " << phiArea << "  with constraint: " << A0 << endl;
         cout << "rho area: " << rhoArea << "  with constraint: " << A0P << endl;
+        cout << "rhophi area: " << rhophiArea << " with constraint: " << A0R << endl;
         cout << "Value of addition param: " << addrate << endl;
     }
 
