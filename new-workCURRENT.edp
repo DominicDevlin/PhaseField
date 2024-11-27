@@ -271,6 +271,7 @@ problem phasefield(phi, v, master=0, solver=sparsesolver) // ,
     + int2d(Th) (1/eta * phi * (kP * (dx(rho) * dx(v) + dy(rho) * dy(v))))
     + int2d(Th) (1/eta * ( v * (12 * lmda *(rhoArea-A0P)*rho*(1-rho))))
     + int2d(Th) (1/eta * ( v * (12 * lmda *(rhophiArea-A0R)*rho*phi*phiold*(1-rhoold*phiold))))
+    // try growing!!! with vector from rho~0.1
     + int2d(Th) (1/eta * ( v * (2 * lmda * (initfield > 0.9) * phi)))
     - int2d(Th) (1/eta * ( v * (2 * lmda * (initfield > 0.9) * initfield)));
     // + int2d(Th) (1/eta * (v * (12 * lmda * (onlyphiArea-A0phi) * phi * (1-rho)^2 * (1 - phiold * (1-rho) ))));
