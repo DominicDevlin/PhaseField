@@ -7,7 +7,7 @@ load "Element_P3";
 
 bool addstem=false;
 real endrelaxation=10;
-int screenStep = 10;
+int screenStep = 1;
 int equilibriaterho=200;
 
 
@@ -90,7 +90,8 @@ Vhfield postgral;
 Vhfield maxrho;
 Vhfield rhominusphi;
 
-Vhfield initfield;
+Vhfield rigidphifield;
+Vhfield rigidityconstraint;
 
 // -------------------------------------------------------------------------------------------------------------------------------------
 // Compilation of macros
@@ -270,10 +271,10 @@ problem phasefield(phi, v, master=0, solver=sparsesolver) // ,
     + int2d(Th) (1/eta * phi * (v * aP * rho - 3*v*aP*rho*rho + 2*v*aP*rho * rho^2))
     + int2d(Th) (1/eta * phi * (kP * (dx(rho) * dx(v) + dy(rho) * dy(v))))
     + int2d(Th) (1/eta * ( v * (12 * lmda *(rhoArea-A0P)*rho*(1-rho))))
-    + int2d(Th) (1/eta * ( v * (12 * lmda *(rhophiArea-A0R)*rho*phi*phiold*(1-rhoold*phiold))))
+    + int2d(Th) (1/eta * ( v * (12 * lmda *(rhophiArea-A0R)*rho*phi*phiold*(1-rhoold*phiold))));
     // try growing!!! with vector from rho~0.1
-    + int2d(Th) (1/eta * ( v * (2 * lmda * (initfield > 0.9) * phi)))
-    - int2d(Th) (1/eta * ( v * (2 * lmda * (initfield > 0.9) * initfield)));
+    + int2d(Th) (1/eta * ( v * (2 * lmda * rigidityconstraint * phi)))
+    - int2d(Th) (1/eta * ( v * (2 * lmda * rigidityconstraint * rigidphifield)));
     // + int2d(Th) (1/eta * (v * (12 * lmda * (onlyphiArea-A0phi) * phi * (1-rho)^2 * (1 - phiold * (1-rho) ))));
     // + int1d(Th,2,3,4)(1/eta*(gammas*phi*v))
     // + on(1,5,7,phi=0);
@@ -338,36 +339,52 @@ problem DummyPhaseField(dummyphi, dummyv, master=0, solver=sparsesolver) // ,
     // + int1d(Th,2,3,4)(1/eta*(gammas*dummyphi*dummyv))
     // + on(1,5,7,dummyphi=0);
 
+Vhfield diffrho;
+Vhfield diffrhoold;
+Vhfield diffw;
+real diffaP = 0.1;
+real diffkP = 10;
+real diffA0P;
+real diffrhoArea;
+real drtau=0.0001;
+
+problem DiffuseRhoField(diffrho, diffw, master=0, solver=sparsesolver)
+    = int2d(Th) (diffw* (diffrho)/drtau )
+    + int2d(Th) (1/eta * (diffw * diffaP * diffrho - 3*diffw*diffaP*diffrho*rhoold + 2*diffw*diffaP*diffrho * diffrhoold^2))
+    + int2d(Th) (1/eta * (kP * (dx(diffw) *dx(diffrho) + dy(diffw) * dy(diffrho))))
+    + int2d(Th) (1/eta * ( diffw * (12 * lmda *(diffrhoArea-diffA0P)*diffrho*(1-diffrhoold))))
+    - int2d(Th) ( diffw * (diffrhoold)/drtau  );
+
 
 
 // Initialisation
 
 // simulate dummy phi to check correct field:
-phi = 0.5 * (1-tanh((abs(y - dyc + 0.5) - dR) / DropTh));
-MakeRhoPhiMesh
-getAdaptMesh
-phi = 0.5 * (1-tanh((abs(y - dyc + 0.5) - dR) / DropTh));
-MakeRhoPhiMesh
-getAdaptMesh
-phi = 0.5 * (1-tanh((abs(y - dyc + 0.5) - dR) / DropTh));
-MakeRhoPhiMesh
-getAdaptMesh
-phi = 0.5 * (1-tanh((abs(y - dyc + 0.5) - dR) / DropTh));
-phiold = phi;
-phi = fmin(phi,1);
-phiold=phi;
-GetArea
-A0 = phiArea;
-cout << "start A0: " << A0 << endl;
+// phi = 0.5 * (1-tanh((abs(y - dyc + 0.5) - dR) / DropTh));
+// MakeRhoPhiMesh
+// getAdaptMesh
+// phi = 0.5 * (1-tanh((abs(y - dyc + 0.5) - dR) / DropTh));
+// MakeRhoPhiMesh
+// getAdaptMesh
+// phi = 0.5 * (1-tanh((abs(y - dyc + 0.5) - dR) / DropTh));
+// MakeRhoPhiMesh
+// getAdaptMesh
+// phi = 0.5 * (1-tanh((abs(y - dyc + 0.5) - dR) / DropTh));
+// phiold = phi;
+// phi = fmin(phi,1);
+// phiold=phi;
+// GetArea
+// A0 = phiArea;
+// cout << "start A0: " << A0 << endl;
 
-real findfieldsteps = 200;
-for (int i = 0; i < findfieldsteps; ++i)
-{
-    GetArea
-    relaxphasefield;
-    phiold = phi;
-}
-initfield = (phi > 0.9) * phi;
+// real findfieldsteps = 200;
+// for (int i = 0; i < findfieldsteps; ++i)
+// {
+//     GetArea
+//     relaxphasefield;
+//     phiold = phi;
+// }
+// initfield = (phi > 0.9) * phi;
 
 
 func initPhi = 0.5 * (1-tanh((abs(y - dyc + 0.5) - dR) / DropTh))// 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-0.4-dyc)^2) - dR) / (sqrt(2) * DropTh)))
@@ -451,6 +468,30 @@ while(true)//(maxCFL > 1e-4)
         cout << "rho area: " << rhoArea << "  with constraint: " << A0P << endl;
         cout << "rhophi area: " << rhophiArea << " with constraint: " << A0R << endl;
         cout << "Value of addition param: " << addrate << endl;
+    }
+
+    if (counter == 20)
+    {
+        diffrho = rho*2;
+        diffrho = (diffrho > 1.1) * 1.1 + (diffrho < 1.1) * diffrho;
+        diffrhoold = diffrho;
+        diffA0P = int2d(Th)(diffrho^2 * (3 - 2*diffrho));
+        diffrhoArea = diffA0P;
+
+        for (int dp = 0; dp < 100; ++dp)
+        {
+            plot(diffrho, value=true, fill=true, wait=false);
+            DiffuseRhoField;
+            diffrhoArea = int2d(Th)(diffrho^2 * (3 - 2*diffrho));
+            diffrhoold = diffrho;
+            
+        }
+        diffrho = (diffrho > 0.01) * sqrt(diffrho);
+        diffrho = (diffrho > 0.01) * sqrt(diffrho);
+        diffrho = (diffrho > 0.01) * sqrt(diffrho);
+        rigidityconstraint = 1 - diffrho;
+        plot(rigidityconstraint, wait=true, fill=true, value=true);
+        rigidphifield = phi;
     }
 
 
