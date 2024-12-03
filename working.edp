@@ -225,10 +225,10 @@ real addrate=0;
 
 
 
-// adhesion to surface (negative means adhesion)
+// adhesion to surface (negative means adhesion), currently depracated.
 real gammas=10;
 // adhesion between two cell types
-real gammaSL=0.0;
+real gammaSL=0.000;
 
 
 // Initial parameters of the drop
@@ -274,8 +274,8 @@ problem phasefield(phi, v, master=0, solver=sparsesolver) // ,
     + int2d(Th) (1/eta * phi * (v * aP * rho - 3*v*aP*rho*rho + 2*v*aP*rho * rho^2))
     + int2d(Th) (1/eta * phi * (kP * (dx(rho) * dx(v) + dy(rho) * dy(v))))
     + int2d(Th) (1/eta * ( v * (12 * lmda *(rhoArea-A0P)*rho*(1-rho))))
-    + int2d(Th) (1/eta * ( v * (12 * lmda *(rhophiArea-A0R)*rho*phi*phiold*(1-rhoold*phiold))));
-    + int2d(Th) (1/eta * (phiold > 0.75) * (rho < 0.55) * phi * gammaSL * (dx(rho) * dx(v) + dy(rho) * dy(v)) / sqrt(dx(rhoold)^2 + dy(rhoold)^2 + epseps));
+    + int2d(Th) (1/eta * ( v * (12 * lmda *(rhophiArea-A0R)*rho*phi*phiold*(1-rhoold*phiold))))
+    + int2d(Th) (1/eta * (1-rhointerface) * phi * gammaSL * (dx(rho) * dx(v) + dy(rho) * dy(v)) / sqrt(dx(rhoold)^2 + dy(rhoold)^2 + epseps));
     // + int2d(Th) (1/eta * ( v * (20000 * lmda * rigidityconstraint * (rigidphifield > 0.001) * (phi/fmax(rigidphifield,epseps)-1/fmax(rigidphifield,epseps)))));
     // - int2d(Th) (1/eta * ( v * (100 * lmda * rigidityconstraint * rigidphifield)));
     // + int1d(Th,2,3,4)(1/eta*(gammas*phi*v))
@@ -310,10 +310,11 @@ problem RhoField(rho, w, master=0, solver=sparsesolver)
     + int2d(Th) (1/eta * phi * (kP * (dx(w) *dx(rho) + dy(w) * dy(rho))))
     + int2d(Th) (1/eta * ( w * (12 * lmda *(rhoArea-A0P)*rho*(1-rhoold))))
     + int2d(Th) (1/eta * ( w * (12 * lmda *(rhophiArea-A0R)*rho*phi*phiold*(1-rhoold*phiold))))
-    + int2d(Th) (1/eta * (phi > 0.75) * (rhoold < 0.55) * phi * gammaSL * (dx(rho) * dx(w) + dy(rho) * dy(w)) / sqrt(dx(rhoold)^2 + dy(rhoold)^2 + epseps))
-    // + int2d(Th) (rhointerface * diffrate * w ) // slightly incorrect ues of diffrate as constant, not weak form.
+    + int2d(Th) (1/eta * ( (1-rhointerface) * gammaSL * (dx(w) *dx(rho) + dy(w) * dy(rho))))
+    + int2d(Th) (1/eta * (1-rhointerface) * phi * gammaSL * (dx(rho) * dx(w) + dy(rho) * dy(w)) / sqrt(dx(rhoold)^2 + dy(rhoold)^2 + epseps))
+    + int2d(Th) (rhointerface * diffrate * w ) // slightly incorrect ues of diffrate as constant, not weak form.
     // in strong form 
-    + int2d(Th) ((phi > 0.75) * (rhoold < 0.55) * phi * diffrate * (dx(w) *dx(rho) + dy(w) * dy(rho)) / (sqrt(dx(rhoold)^2 + dy(rhoold)^2 + epseps)) )
+    // + int2d(Th) ((phi > 0.75) * (rhoold < 0.55) * phi * diffrate * (dx(w) *dx(rho) + dy(w) * dy(rho)) / (sqrt(dx(rhoold)^2 + dy(rhoold)^2 + epseps)) )
     // - int2d(Th) (rhooutside * addrate * w)
     - int2d(Th) ( w * (rhoold)/dt  );
 
@@ -517,8 +518,10 @@ while(true)//(maxCFL > 1e-4)
     {
         plot(RhoPhi,fill=1,value=1, wait=false);
     }
-        
-        
+    
+    Vhfield tmpc;
+    tmpc = (1-rhointerface) * phi * 0.003 * (dx(rho) + dy(rho)) / sqrt(dx(rhoold)^2 + dy(rhoold)^2 + epseps);
+    plot(tmpc,fill=1,value=1, wait=false);
 
     if (counter % PrintStep == 0 && doPrint)
     {
