@@ -228,7 +228,7 @@ real addrate=0;
 // adhesion to surface (negative means adhesion), currently depracated.
 real gammas=10;
 // adhesion between two cell types
-real gammaSL=0.000;
+real gammaSL=0.0;
 
 
 // Initial parameters of the drop
