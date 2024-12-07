@@ -274,10 +274,11 @@ problem phasefield(phi, v, master=0, solver=sparsesolver) // ,
     + int2d(Th) (1/eta * phi * (v * aP * rho - 3*v*aP*rho*rho + 2*v*aP*rho * rho^2))
     + int2d(Th) (1/eta * phi * (kP * (dx(rho) * dx(v) + dy(rho) * dy(v))))
     + int2d(Th) (1/eta * ( v * (12 * lmda *(rhoArea-A0P)*rho*(1-rho))))
-    + int2d(Th) (1/eta * ( v * (12 * lmda *(rhophiArea-A0R)*rho*phi*phiold*(1-rhoold*phiold))))
-    + int2d(Th) (1/eta * (1-rhointerface) * phi * gammaSL * (dx(rho) * dx(v) + dy(rho) * dy(v)) / sqrt(dx(rhoold)^2 + dy(rhoold)^2 + epseps));
-    // + int2d(Th) (1/eta * ( v * (20000 * lmda * rigidityconstraint * (rigidphifield > 0.001) * (phi/fmax(rigidphifield,epseps)-1/fmax(rigidphifield,epseps)))));
-    // - int2d(Th) (1/eta * ( v * (100 * lmda * rigidityconstraint * rigidphifield)));
+    + int2d(Th) (1/eta * ( v * (12 * lmda *(rhophiArea-A0R)*rho*phi*phiold*(1-rhoold*phiold))));
+    // try growing!!! with vector from rho~0.1
+    // + int2d(Th) (1/eta * ( v * (20 * lmda * rigidityconstraint * phi)))
+    // - int2d(Th) (1/eta * ( v * (20 * lmda * rigidityconstraint * rigidphifield)));
+    // + int2d(Th) (1/eta * (v * (12 * lmda * (onlyphiArea-A0phi) * phi * (1-rho)^2 * (1 - phiold * (1-rho) ))));
     // + int1d(Th,2,3,4)(1/eta*(gammas*phi*v))
     // + on(1,5,7,phi=0);
 
@@ -455,19 +456,19 @@ while(true)//(maxCFL > 1e-4)
     //         diffrhoold = diffrho;
             
     //     }
-    //     // apply square root three times to increase width
-    //     diffrho = sqrt(fmax(diffrho,0) + epseps);
-    //     diffrho = sqrt(fmax(diffrho,0) + epseps);
-    //     diffrho = sqrt(fmax(diffrho,0) + epseps);
-    //     // apply sigmoid to sharpen boundary around 0.5
-    //     diffrho = diffrho^5 / (diffrho^5 + (1-diffrho)^5);
-    //     // plot(diffrho, wait=false, fill=true, value=true);
-    //     // ensure max at 1 and min at 0
+    //     plot(diffrho, wait=true, fill=true, value=true);
+    //     diffrho = (diffrho > 0.01) * sqrt(diffrho) + (diffrho < 0.01) * diffrho;
+    //     plot(diffrho, wait=true, fill=true, value=true);
+    //     diffrho = (diffrho > 0.01) * sqrt(diffrho) + diffrho;
+    //     plot(diffrho, wait=true, fill=true, value=true);
+    //     diffrho = (diffrho > 0.01) * sqrt(diffrho) + diffrho;
+    //     diffrho = (diffrho > 1) + (diffrho < 1) * (diffrho > 0) * diffrho;
     //     rigidityconstraint = 1 - diffrho;
-        
+    //     plot(rigidityconstraint, wait=true, fill=true, value=true);
     //     rigidphifield = phi;
+    //     Vhfield tmpf = rigidityconstraint * rigidphifield;
+    //     plot(tmpf, wait=true, fill=true, value=true);
     // }
-
 
 
     // Prepare for the next time step
