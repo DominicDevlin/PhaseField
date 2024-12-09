@@ -93,8 +93,6 @@ Vhfield postgral;
 Vhfield maxrho;
 Vhfield rhominusphi;
 
-Vhfield rigidphifield;
-Vhfield rigidityconstraint;
 
 // -------------------------------------------------------------------------------------------------------------------------------------
 // Compilation of macros
@@ -103,6 +101,7 @@ Vhfield rigidityconstraint;
 macro getAdaptMesh()
 Th = adaptmesh(Th,rhomesh,hmin=1.0/(n*refI),hmax=1.0/n,iso=true,ratio=mGrw,err=0.01,nbvx=4e4,periodic=[[2,y],[4,y],[1,x],[3,x]]);
 v = 0;
+w=0;
 phi = phi;
 // EOM
 
@@ -237,17 +236,7 @@ real dR = 0.6;  // Radius
 real dRrho = 0.4;  // Radius
 real dxc= 0.0;  // x coordinate
 real dyc= 1.0 + 0.2;  // y coordinate, 0.2 is start above gorund
-real yct= dyc; // Variable to track the y coordinate of center of mass
-real xct= dxc; // -;- x coordinate -;-
 real DropTh = 0.025;
-// Initialise the drop
-
-// func initPhi = 0.5 * (1-tanh((max(abs(x - dxc), abs(y - dyc + 0.5)) - dR) / DropTh))// 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-0.4-dyc)^2) - dR) / (sqrt(2) * DropTh)))
-//  + 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-0.5-dyc)^2) - dRrho) / (sqrt(2) * DropTh)));
-
-// func initPhi = 0.5 * (1-tanh((abs(x - dxc) + abs(y - dyc) - dR) / sqrt(2) / DropTh));
-
-
 
 problem relaxphasefield(phi, v, master=0, solver=sparsesolver) // , 
     = int2d(Th) (  v * (phi)/dt  )
@@ -257,10 +246,6 @@ problem relaxphasefield(phi, v, master=0, solver=sparsesolver) // ,
     + int2d(Th) (1/eta * (epsilon * (dx(v) *dx(phi) + dy(v) * dy(phi))))
     + int2d(Th) (1/eta * ( v * (12 * lmda *(phiArea-A0)*phi*(1-phiold))))
     - int2d(Th) (  v * (phiold)/dt  );
-    // + int1d(Th,2,3,4)(1/eta*(gammas*phi*v));
-    // + on(1,5,7,phi=0);
-    // + on(2, 3, 4, phi=0);
-    // + on(3, phi=1);
 
 /* the below equation has the curvature term removed*/
 problem phasefield(phi, v, master=0, solver=sparsesolver) // , 
@@ -279,8 +264,7 @@ problem phasefield(phi, v, master=0, solver=sparsesolver) // ,
     // + int2d(Th) (1/eta * (1-rhointerface) * phi * gammaSL * (dx(rho) * dx(v) + dy(rho) * dy(v)) / sqrt(dx(rhoold)^2 + dy(rhoold)^2 + epseps));
     // + int2d(Th) (1/eta * ( v * (20000 * lmda * rigidityconstraint * (rigidphifield > 0.001) * (phi/fmax(rigidphifield,epseps)-1/fmax(rigidphifield,epseps)))));
     // - int2d(Th) (1/eta * ( v * (100 * lmda * rigidityconstraint * rigidphifield)));
-    // + int1d(Th,2,3,4)(1/eta*(gammas*phi*v))
-    // + on(1,5,7,phi=0);
+
 
 func RhoDifferentiate = int2d(Th) (dt * rhointerface * diffrate );
 func NoParamRhoAdd = int2d(Th) (dt * rhooutside);
@@ -317,17 +301,11 @@ real dtau = 0.00001;
 
 problem DummyPhaseField(dummyphi, dummyv, master=0, solver=sparsesolver) // , 
     = int2d(Th) (  dummyv * (dummyphi)/dtau  )
-    //+ int2d(Th) (1/eta * (v * a * phi - 3*v*a*phi*phiold + 2*v*a*phi*phiold^2))
-    // + int2d(Th) (1/eta * (k * (dx(v) *dx(phi) + dy(v) * dy(phi))))
     + int2d(Th) (1/eta * (dummyv * 0.5 * dummyphi - 1.5*dummyv*dummyphi*phiold + dummyv*dummyphi*phiold^2))
     + int2d(Th) (1/eta * (epsilon * (dx(dummyv) *dx(dummyphi) + dy(dummyv) * dy(dummyphi))))
     + int2d(Th) (1/eta * ( dummyv * (12 * lmda *(phiArea-A0)*dummyphi*(1-phiold))))
     - int2d(Th) (  dummyv * (dummyphiold)/dtau  );
-    // + int2d(Th) (1/eta * dummyphi * (dummyv * aP * rho - 3*dummyv*aP*rho*rho + 2*dummyv*aP*rho * rho^2))
-    // + int2d(Th) (1/eta * dummyphi * (kP * (dx(dummyv) *dx(rho) + dy(dummyv) * dy(rho))))
-    // + int2d(Th) (1/eta * ( dummyv * (12 * lmda *(rhoArea-A0P)*rho*(1-rhoold))))
-    // + int1d(Th,2,3,4)(1/eta*(gammas*dummyphi*dummyv))
-    // + on(1,5,7,dummyphi=0);
+
 
 
 // Initialisation
@@ -375,9 +353,6 @@ cout << "rho area is: " << A0P << endl;
 int nAdapt=0;
 real curt=0.0;
 // // Time stepping
-real divChck, dxdtChck = 10.0, dxOld = 0.0, dxNew;
-int  NstedChck = 0;
-// continue simulation until CFL condition fails
 int counter = 0;
 while(true)//(maxCFL > 1e-4)
 {
@@ -411,7 +386,6 @@ while(true)//(maxCFL > 1e-4)
     // Prepare for the next time step
     rhoold = rho;
     phiold = phi;
-    dxOld = dxNew;
     nAdapt++;
     if (curt > equilibraterho)
     {

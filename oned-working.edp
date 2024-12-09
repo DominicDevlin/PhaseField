@@ -1,0 +1,218 @@
+load "gmsh";
+load "iovtk";
+load "UMFPACK64";
+load "isoline";
+load "Element_P3";
+load "msh3" 
+
+
+bool addstem=true;
+real endrelaxation=10;
+int screenStep = 1;
+// use lower surface tension at the beginning of simulation
+int equilibraterho=0.005;
+
+
+verbosity=0;
+real PrintStep=100;
+bool doPrint=true;
+bool printinterface=true;
+string foldern = "images/phirho-images/";
+string folderint1 = "images/interface1/";
+string folderint2 = "images/interface2/";
+string folderphi = "images/phi-images/";
+string folderrho = "images/rho-images/";
+string command0 = "mkdir images";
+string command1 = "mkdir images/phirho-images";
+string command2 = "mkdir images/interface1";
+string command3 = "mkdir images/interface2";
+string command4 = "mkdir images/phi-images";
+string command5 = "mkdir images/rho-images";
+
+if (doPrint)
+{
+    system(command0);
+    if (printinterface)
+    {
+        system(command2);
+        system(command3);
+    }
+    system(command1);
+    system(command4);
+    system(command5);
+}
+   
+
+// -------------------------------------------------------------------------------------------------------------------------------------
+// Mesh and grid
+
+border OX(t=0,4){x=t;y=0;} 
+border OY(t=0,1){x=0;y=t;}
+
+// Mesh resolution
+int  n     = 2; // Number of segments per unit length
+real refI  = 14.0; // Refinement factor for the interface
+real mGrw  = 1.2;  // Growth rate of the mesh elements
+int  dref  = 10; // Number of time-steps between mesh adaption
+
+int m=100;
+meshL Th=segment(m);
+plot(Th, cmm="NO ADAPTED MESH ",wait=true);
+
+// -------------------------------------------------------------------------------------------------------------------------------------
+// Fields
+fespace Vhfield (Th,P2);
+Vhfield phi;
+Vhfield v;
+Vhfield phiold;
+Vhfield u;
+
+Vhfield rho;
+Vhfield rhoold;
+Vhfield w;
+Vhfield rhomesh;
+
+Vhfield absdelphi;
+Vhfield phiinterface;
+Vhfield phibulk;
+Vhfield rhointerface;
+Vhfield rhooutside;
+
+Vhfield RhoPhi;
+Vhfield BoolRhoPhi;
+Vhfield curvature;
+
+Vhfield precurvatureX;
+Vhfield precurvatureY;
+Vhfield divprecurvature;
+
+Vhfield beforegral;
+Vhfield postgral;
+
+Vhfield maxrho;
+Vhfield rhominusphi;
+
+
+// -------------------------------------------------------------------------------------------------------------------------------------
+// Compilation of macros
+
+
+
+// Macro for non-linear solutions
+macro solvePhase()
+{
+    phasefield;
+    phiold = phi;
+}
+// EOM
+
+macro BalanceDifferentiation()
+{
+    diffamount = RhoDifferentiate;
+    real addamount = NoParamRhoAdd;
+    addrate = diffamount / addamount;
+    if (!addstem)
+        addrate=0.;
+}
+//EOM
+
+
+real phiArea=0.;
+real rhoArea=0.;
+real rhophiArea=0.;
+
+
+macro GetArea()
+    phiArea = int1d(Th)(phi^2 * (3 - 2*phi));
+
+// EOM
+
+
+real epsilon=0.0006;     // smoothness
+real gammaphi=0.;     // surface tension of phi
+
+real eta = 0.002;             // viscosity type1
+// real eta2 = 0.001;             // viscocity type2
+real a = 0.5;               // Coefficient a (depracated)
+real k = 0.001;               // phase width coefficient k (depracacted)
+real lmda = 10;               // concentration constraint
+real A0 = 3.143;              // Target value for A
+real epseps = 1e-9;           // small prefactor for 1/sqrt
+real dt = 0.00005;
+
+real initaP = 0.5; // for equilibration (equal to phi)
+real initkP = 0.0012; // for equilibration (equal to phi)
+real trueaP = initaP*10;  //initaP * 15;
+real truekP = initkP*10;// initkP * 15;
+// the values i used to make video were 5 and 0.01
+
+real aP = initaP;               // Coefficient a (increased need to be at 1 or 0, increase causes decreases interface length)
+real kP = initkP;               // smoothness of interface transition, decrease causes decrease in interface length
+real A0P = 3.143;              // Target value for A
+real A0R = 0.;
+real A0phi = 0.;
+real diffrate = 6; // this is being treated dynamically.
+real diffamount=0;
+real chooseamount =0.5e-4;
+real addrate=0;
+
+
+// Initial parameters of the drop
+real dR = 0.6;  // Radius
+real dRrho = 0.4;  // Radius
+real dxc= 0.0;  // x coordinate
+real dyc= 1.0 + 0.2;  // y coordinate, 0.2 is start above gorund
+real DropTh = 0.025;
+
+problem phasefield(phi, v, master=0, solver=sparsesolver) // , 
+    = int1d(Th) (  v * (phi)/dt  )
+    //+ int2d(Th) (1/eta * (v * a * phi - 3*v*a*phi*phiold + 2*v*a*phi*phiold^2))
+    // + int2d(Th) (1/eta * (k * (dx(v) *dx(phi) + dy(v) * dy(phi))))
+    + int1d(Th) (1/eta * (v * 0.5 * phi - v* 1.5 * phi *phiold + v*phi*phiold^2))
+    + int1d(Th) (1/eta * (epsilon * (dx(v) *dx(phi) + dy(v) * dy(phi))))
+    + int1d(Th) (1/eta * ( v * (12 * lmda *(phiArea-A0)*phi*(1-phiold))))
+    - int1d(Th) (  v * (phiold)/dt  );
+
+
+// Initialisation
+
+func initPhi = 0.5 * (1-tanh((abs(x - dxc + 0.5) - dR) / DropTh));
+
+phi = initPhi;
+
+
+cout << "CURRENT AREA: " << phiArea << endl;
+phi = fmin(phi,1);
+phiold=phi;
+GetArea
+A0 = phiArea;
+cout << "phi area is: " << A0 << endl;
+
+
+int nAdapt=0;
+real curt=0.0;
+
+int counter = 0;
+while(true)//(maxCFL > 1e-4)
+{
+
+    ++counter;
+
+    // solve equations
+    curt = curt+dt;
+    GetArea
+    solvePhase
+
+    // Prepare for the next time step
+    rhoold = rho;
+    nAdapt++;
+
+    // Vhfield nablaphi;
+    // nablaphi = (sqrt(dx(phi)^2 + dy(phi)^2));
+    if (counter % screenStep == 0)
+    {
+        plot(Th,OX(1),OY(1),fill=1,value=1,wait=false);
+    }
+    
+
+}
