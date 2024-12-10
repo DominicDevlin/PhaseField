@@ -7,7 +7,7 @@ load "Element_P3";
 
 bool addstem=true;
 real endrelaxation=10;
-int screenStep = 1;
+int screenStep = 5;
 // use lower surface tension at the beginning of simulation
 int equilibraterho=0.005;
 
@@ -123,11 +123,11 @@ macro solvePhase()
 
     rhooutside = (phi < 0.5) * (sqrt(dx(rho)^2 + dy(rho)^2));
     rhooutside = (rhooutside > 2);
-    rhointerface = (phi > 0.75) * (sqrt(dx(rho)^2 + dy(rho)^2)) * (rho < 0.55) * (phi);
+    rhointerface = (phi > 0.75) * (sqrt(dx(rho)^2 + dy(rho)^2)) * (rho < 0.55) * phi;
     BalanceDifferentiation;
-    diffrate = chooseamount / int2d(Th) (dt * rhointerface );
-    if (diffrate > 40)
-        diffrate = 40;
+    diffparam = diffrate / int2d(Th) (dt * rhointerface );
+    if (diffparam > 40)
+        diffparam = 40;
 
     if (counter < endrelaxation)
     {
@@ -145,7 +145,6 @@ macro solvePhase()
         divprecurvature = dx(precurvatureX) + dy(precurvatureY);
         curvature = sqrt(dx(phi)^2 + dy(phi)^2) * divprecurvature;
 
-
         beforegral = (rho^2 * (3 - 2*rho)) * ((phi^2 * (3 - 2*rho)) - 1);
         RhoField;
         postgral = (rho^2 * (3 - 2*rho)) * ((phi^2 * (3 - 2*rho)) - 1);
@@ -154,16 +153,10 @@ macro solvePhase()
         phiold = phi;
         
     }
-    if (!addstem)
-    {
-        A0 = A0;
-        A0P = A0P - phimoved;
-        A0R = A0R - phimoved;
-    }
-    else
-    {
-        A0 = A0 + phimoved;
-    }
+    A0 = A0 + phimoved;
+    A0R = A0R + netrate;
+    A0P = A0P + netrate;
+
         
 }
 // EOM
@@ -171,15 +164,23 @@ macro solvePhase()
 macro BalanceDifferentiation()
 {
     diffamount = RhoDifferentiate;
-    real addamount = NoParamRhoAdd;
-    addrate = diffamount / addamount;
-    if (!addstem)
-        addrate=0.;
 }
 //EOM
+// real addamount = NoParamRhoAdd;
+// addrate = diffamount / addamount;
+// if (!addstem)
+//     addrate=0.;
 
-// func getrhophiarea = int2d(Th)(phi * rho^2 * (3 - 2*rho)) - int2d(Th)(rho^2 * (3 - 2*rho));
-
+// if (!addstem)
+// {
+//     A0 = A0;
+//     A0P = A0P - phimoved;
+//     A0R = A0R - phimoved;
+// }
+// else
+// {
+//     A0 = A0 + phimoved;
+// }
 
 
 real phiArea=0.;
@@ -208,7 +209,7 @@ real epseps = 1e-9;           // small prefactor for 1/sqrt
 real dt = 0.00005;
 
 real initaP = 0.5; // for equilibration (equal to phi)
-real initkP = 0.0012; // for equilibration (equal to phi)
+real initkP = 0.0012; // for equilibration NOTE: MIGHT BE BETTER AT DOUBLE PHI!! (equal to phi)
 real trueaP = initaP*10;  //initaP * 15;
 real truekP = initkP*10;// initkP * 15;
 // the values i used to make video were 5 and 0.01
@@ -218,10 +219,11 @@ real kP = initkP;               // smoothness of interface transition, decrease 
 real A0P = 3.143;              // Target value for A
 real A0R = 0.;
 real A0phi = 0.;
-real diffrate = 6; // this is being treated dynamically.
+real diffparam = 6; // this is being treated dynamically.
 real diffamount=0;
-real chooseamount =0.5e-4;
-real addrate=0;
+real diffrate = 1e-4;
+real addrate=0.5e-4;
+real netrate=addrate-diffrate;
 
 
 
@@ -266,7 +268,7 @@ problem phasefield(phi, v, master=0, solver=sparsesolver) // ,
     // - int2d(Th) (1/eta * ( v * (100 * lmda * rigidityconstraint * rigidphifield)));
 
 
-func RhoDifferentiate = int2d(Th) (dt * rhointerface * diffrate );
+func RhoDifferentiate = int2d(Th) (dt * rhointerface * diffparam );
 func NoParamRhoAdd = int2d(Th) (dt * rhooutside);
 
 
@@ -285,13 +287,14 @@ problem RhoField(rho, w, master=0, solver=sparsesolver)
     + int2d(Th) (1/eta * ( w * (12 * lmda *(rhoArea-A0P)*rho*(1-rhoold))))
     + int2d(Th) (1/eta * ( w * (12 * lmda *(rhophiArea-A0R)*rho*phi*phiold*(1-rhoold*phiold))))
     // in strong form (slightly in correc)
-    // + int2d(Th) (rhointerface * diffrate * w ) // slightly incorrect ues of diffrate as constant,
+    // + int2d(Th) (rhointerface * diffparam * w ) // slightly incorrect ues of diffparam as constant,
     // in weak form 
-    + int2d(Th) ((phi > 0.75) * (rhoold < 0.55) * phi * diffrate * ((dx(rho) *dx(w) + dy(rho) * dy(w)) / sqrt(dx(rhoold)^2 + dy(rhoold)^2 + epseps)))
-    - int2d(Th) (rhooutside * addrate * w)
+    + int2d(Th) ((phi > 0.75) * (rhoold < 0.55) * diffparam * w * phi * sqrt(dx(rhoold)^2 + dy(rhoold)^2))
+    
     - int2d(Th) ( w * (rhoold)/dt  );
     // + int2d(Th) (1/eta * ( (1-rhointerface) * gammaSL * (dx(w) *dx(rho) + dy(w) * dy(rho))))
     // + int2d(Th) (1/eta * (1-rhointerface) * phi * gammaSL * (dx(rho) * dx(w) + dy(rho) * dy(w)) / sqrt(dx(rhoold)^2 + dy(rhoold)^2 + epseps))
+    // - int2d(Th) (rhooutside * addrate * w)
 
 
 Vhfield dummyphi;
@@ -416,8 +419,12 @@ while(true)//(maxCFL > 1e-4)
     Vhfield boolRhoPhitoPlot = (RhoPhi < -0.2)*RhoPhi + (RhoPhi > 0.2)*RhoPhi;
 
     MakeRhoPhiMesh
+
     // Vhfield nablaphi;
     // nablaphi = (sqrt(dx(phi)^2 + dy(phi)^2));
+    // Vhfield tmp = ((phi > 0.75) * (rhoold < 0.55) * phi * diffparam * sqrt(dx(rho)^2+ dy(rho)^2));
+    // Vhfield tmp = ((phi > 0.75) * (rhoold < 0.55) * phi * diffparam * (dx(rho)*dx(rho)+ dy(rho)*dy(rho))/sqrt(dx(rhoold)^2 + dy(rhoold)^2 + epseps));
+
     if (counter % screenStep == 0)
     {
         plot(RhoPhi,fill=1,value=1, wait=false);
