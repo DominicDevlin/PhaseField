@@ -200,7 +200,7 @@ real epsilon=0.0006;     // smoothness
 real gammaphi=0.;     // surface tension of phi
 
 real eta = 0.002;             // viscosity type1
-// real eta2 = 0.001;             // viscocity type2
+// real eta2 = 0.0002;             // viscocity type2
 real a = 0.5;               // Coefficient a (depracated)
 real k = 0.001;               // phase width coefficient k (depracacted)
 real lmda = 10;               // concentration constraint
@@ -208,6 +208,7 @@ real A0 = 3.143;              // Target value for A
 real epseps = 1e-9;           // small prefactor for 1/sqrt
 real dt = 0.00005;
 
+real phitension=20;
 real initaP = 0.5; // for equilibration (equal to phi)
 real initkP = 0.0012; // for equilibration NOTE: MIGHT BE BETTER AT DOUBLE PHI!! (equal to phi)
 real trueaP = initaP*10;  //initaP * 15;
@@ -252,10 +253,10 @@ problem relaxphasefield(phi, v, master=0, solver=sparsesolver) // ,
 /* the below equation has the curvature term removed*/
 problem phasefield(phi, v, master=0, solver=sparsesolver) // , 
     = int2d(Th) (  v * (phi)/dt  )
-    + int2d(Th) (1/eta * (v * 0.5 * phi - v* 1.5 * phi *phiold + v*phi*phiold^2))
-    + int2d(Th) (1/eta *  (epsilon * (dx(v) *dx(phi) + dy(v) * dy(phi))))
+    + int2d(Th) (1/eta * phitension * (v * 0.5 * phi - v* 1.5 * phi *phiold + v*phi*phiold^2))
+    + int2d(Th) (1/eta *  phitension * (epsilon * (dx(v) *dx(phi) + dy(v) * dy(phi))))
     // + int2d(Th) ( phiinterface * (1/eta * ((epsilon - gammaphi) * v * curvature)))
-    + int2d(Th) ( (1/eta * phiinterface * ((epsilon) * v * curvature)))
+    + int2d(Th) ( (1/eta * phitension * phiinterface * ((epsilon) * v * curvature)))
     + int2d(Th) (1/eta * ( v * (12 * lmda *(phiArea-A0)*phi*(1-phiold))))
     // - int2d(Th) (rhooutside * addrate * v)
     - int2d(Th) (  v * (phiold)/dt  )
@@ -290,7 +291,7 @@ problem RhoField(rho, w, master=0, solver=sparsesolver)
     // + int2d(Th) (rhointerface * diffparam * w ) // slightly incorrect ues of diffparam as constant,
     // in weak form 
     + int2d(Th) ((phi > 0.75) * (rhoold < 0.55) * diffparam * w * phi * sqrt(dx(rhoold)^2 + dy(rhoold)^2))
-    
+
     - int2d(Th) ( w * (rhoold)/dt  );
     // + int2d(Th) (1/eta * ( (1-rhointerface) * gammaSL * (dx(w) *dx(rho) + dy(w) * dy(rho))))
     // + int2d(Th) (1/eta * (1-rhointerface) * phi * gammaSL * (dx(rho) * dx(w) + dy(rho) * dy(w)) / sqrt(dx(rhoold)^2 + dy(rhoold)^2 + epseps))

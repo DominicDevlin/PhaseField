@@ -146,6 +146,7 @@ real A0 = 3.143;              // Target value for A
 real epseps = 1e-9;           // small prefactor for 1/sqrt
 real dt = 0.00005;
 
+real phitension=4;
 real initaP = 0.5; // for equilibration (equal to phi)
 real initkP = 0.0012; // for equilibration (equal to phi)
 real trueaP = initaP*2;  //initaP * 15;
@@ -187,8 +188,8 @@ problem relaxphasefield(phi, v, master=0, solver=sparsesolver) // ,
 
 problem phasefield(phi, v, master=0, solver=sparsesolver) // , 
     = int1d(Th) (  v * (phi)/dt  )
-    + int1d(Th) (1/eta * (v * 0.5 * phi - v* 1.5 * phi *phiold + v*phi*phiold^2))
-    + int1d(Th) (1/eta *  (epsilon * (dx(v) *dx(phi))))
+    + int1d(Th) (1/eta * phitension * (v * 0.5 * phi - v* 1.5 * phi *phiold + v*phi*phiold^2))
+    + int1d(Th) (1/eta *  phitension * (epsilon * (dx(v) *dx(phi))))
     + int1d(Th) (1/eta * ( v * (12 * lmda *(phiArea-A0)*phi*(1-phiold))))
     // - int2d(Th) (rhooutside * addrate * v)
     - int1d(Th) (  v * (phiold)/dt  )
