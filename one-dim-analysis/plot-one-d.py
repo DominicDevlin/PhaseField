@@ -27,7 +27,7 @@ xd = datadiff[:, 0]
 times = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]  # Just an example mapping
 
 # Choose the desired time (e.g., t = 3)
-desired_time = 2
+desired_time = 6
 # Find the column index for this time:a
 # times[0] corresponds to data[:,1], times[1] -> data[:,2], etc.
 time_index = times.index(desired_time) + 1  # +1 because x is in column 0

@@ -87,7 +87,9 @@ macro solvePhase()
 
     rhointerface = (phi > 0.75) * (sqrt(dx(rho)^2 + dy(rho)^2)) * (rho < 0.55);
     BalanceDifferentiation;
-    diffparam = diffrate / int1d(Th) (dt * rhointerface );
+    real overlap = int1d(Th) (rhointerface );
+    real funcoverlap = overlap / (overlap^2 + 0.05);
+    diffparam = diffrate/dt * funcoverlap;
     if (diffparam > 40)
         diffparam = 40;
 
@@ -146,11 +148,11 @@ real A0 = 3.143;              // Target value for A
 real epseps = 1e-9;           // small prefactor for 1/sqrt
 real dt = 0.00005;
 
-real phitension=4;
+real phitension=0.2;
 real initaP = 0.5; // for equilibration (equal to phi)
 real initkP = 0.0012; // for equilibration (equal to phi)
-real trueaP = initaP*2;  //initaP * 15;
-real truekP = initkP*2;// initkP * 15;
+real trueaP = initaP*4;  //initaP * 15;
+real truekP = initkP*4;// initkP * 15;
 // the values i used to make video were 5 and 0.01
 
 real aP = initaP;               // Coefficient a (increased need to be at 1 or 0, increase causes decreases interface length)
