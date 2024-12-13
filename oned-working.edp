@@ -8,6 +8,7 @@ load "msh3"
 
 bool addstem=true;
 real endrelaxation=10;
+bool printScreen=true;
 int screenStep = 100;
 // use lower surface tension at the beginning of simulation
 int equilibraterho=0.002;

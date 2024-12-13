@@ -7,6 +7,7 @@ load "Element_P3";
 
 bool addstem=true;
 real endrelaxation=10;
+bool printScreen=true;
 int screenStep = 5;
 // use lower surface tension at the beginning of simulation
 int equilibraterho=0.005;
@@ -427,7 +428,7 @@ while(true)//(maxCFL > 1e-4)
     // Vhfield tmp = ((phi > 0.75) * (rhoold < 0.55) * phi * diffparam * sqrt(dx(rho)^2+ dy(rho)^2));
     // Vhfield tmp = ((phi > 0.75) * (rhoold < 0.55) * phi * diffparam * (dx(rho)*dx(rho)+ dy(rho)*dy(rho))/sqrt(dx(rhoold)^2 + dy(rhoold)^2 + epseps));
 
-    if (counter % screenStep == 0)
+    if (counter % screenStep == 0 && printScreen)
     {
         plot(RhoPhi,fill=1,value=1, wait=false);
     }
