@@ -29,6 +29,15 @@ string command3 = "mkdir images/interface2";
 string command4 = "mkdir images/phi-images";
 string command5 = "mkdir images/rho-images";
 
+bool makeData = true;
+string datafolder = "model-output";
+string datacommand = "mkdir model-output";
+
+if (makeData)
+{
+    system(datacommand);
+}
+
 
 if (doPrint)
 {
@@ -129,7 +138,6 @@ macro solvePhase()
     real overlap = int2d(Th) (rhointerface );
     real funcoverlap = overlap / (overlap^2 + 0.02);
     diffparam = diffrate/dt * funcoverlap;
-    cout << 1/overlap << "\t" << funcoverlap << "\t" << diffparam << endl;
 
     if (counter < endrelaxation)
     {
@@ -459,6 +467,24 @@ while(true)//(maxCFL > 1e-4)
     // Vhfield check = phi * (1 - rho);
     // plot(check,fill=1,value=1, wait=false);
     // plot(rho,fill=1,value=1, wait=true);
+
+    if (makeData && counter==30)
+    {
+        // matrix Vphi;
+        // matrix Vrho;
+        // matrix Vdiff;
+        // Vphi.resize(maxcount, Vhfield.ndof);
+        // Vrho.resize(maxcount, Vhfield.ndof);
+        // Vdiff.resize(maxcount, Vhfield.ndof);
+        string filen = datafolder + "/phi_data.dat";
+        ofstream TheFile(filen);
+        Vhfield xx=x;
+        Vhfield yy=y;
+        for(int i=0; i< Vhfield.ndof; ++i)
+        {
+            TheFile << xx[][i] << "\t" << yy[][i] << "\t" << phi[][i] << endl;
+        }
+    }
 }
 
 // Vhfield diffrho;
