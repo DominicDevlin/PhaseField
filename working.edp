@@ -6,16 +6,15 @@ load "Element_P3";
 
 
 bool addstem=true;
-real endrelaxation=10;
+real endrelaxation=10; // n steps before swapping to phase field main
 bool printScreen=true;
 int screenStep = 5;
-// use lower surface tension at the beginning of simulation
-int equilibraterho=0.005;
+int equilibraterho=0.002; // use lower rho surface tension at the beginning of simulation
 
 
 verbosity=0;
 real PrintStep=100;
-bool doPrint=true;
+bool doPrint=false;
 bool printinterface=true;
 string foldern = "images/phirho-images/";
 string folderint1 = "images/interface1/";
@@ -30,6 +29,7 @@ string command4 = "mkdir images/phi-images";
 string command5 = "mkdir images/rho-images";
 
 bool makeData = true;
+int OutputTime=100;
 string datafolder = "model-output";
 string datacommand = "mkdir model-output";
 
@@ -218,7 +218,7 @@ real A0 = 3.143;              // Target value for A
 real epseps = 1e-9;           // small prefactor for 1/sqrt
 real dt = 0.00005;
 
-real phitension=0.2;
+real phitension=2;
 real initaP = 0.5; // for equilibration (equal to phi)
 real initkP = 0.0012; // for equilibration NOTE: MIGHT BE BETTER AT DOUBLE PHI!! (equal to phi)
 real trueaP = initaP*10;  //initaP * 15;
@@ -322,7 +322,18 @@ problem DummyPhaseField(dummyphi, dummyv, master=0, solver=sparsesolver) // ,
 
 
 
+// currently do not know if curvature removal energy is correct?? Can I just integrate??
+func TotalEnergy = int2d(Th)(phitension/4 * phi^2 * (1-phi)^2 + phitension * epsilon / 2 * abs(dx(phi) + dy(phi))^2)
+                    + lmda * (phiArea-A0)^2
+                    + int2d(Th)(phi * aP/2 * rho^2 * (1-rho)^2 + kP/2 * abs(dx(rho) + dy(rho))^2)
+                    + lmda * (rhoArea - A0P)^2
+                    + lmda * (rhophiArea - A0R)^2
+                    - int2d(Th) ( (phitension * phiinterface * ((epsilon) * curvature)));
+
+
 // Initialisation
+
+
 
 func initPhi = 0.5 * (1-tanh((abs(y - dyc + 0.5) - dR) / DropTh))// 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-0.4-dyc)^2) - dR) / (sqrt(2) * DropTh)))
  + 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-0.4-dyc)^2) - dRrho) / (sqrt(2) * DropTh)));
@@ -459,16 +470,10 @@ while(true)//(maxCFL > 1e-4)
         plot(rhointerface, ps=outputn2, fill=1, wait=false);
         plot(rhooutside, ps=outputn3, fill=1, wait=false);
     }
-    
-    // if (counter % 20 == 10)
-    //     plot(rhointerface,fill=1,value=1, wait=false);
-    
 
-    // Vhfield check = phi * (1 - rho);
-    // plot(check,fill=1,value=1, wait=false);
-    // plot(rho,fill=1,value=1, wait=true);
+    // cout << TotalEnergy << endl;
 
-    if (makeData && counter==30)
+    if (makeData && counter==OutputTime)
     {
         // matrix Vphi;
         // matrix Vrho;
@@ -483,6 +488,21 @@ while(true)//(maxCFL > 1e-4)
         for(int i=0; i< Vhfield.ndof; ++i)
         {
             TheFile << xx[][i] << "\t" << yy[][i] << "\t" << phi[][i] << endl;
+        }
+
+        filen = datafolder + "/rho_data.dat";
+        ofstream TheFilerho(filen);
+        for(int i=0; i< Vhfield.ndof; ++i)
+        {
+            TheFilerho << xx[][i] << "\t" << yy[][i] << "\t" << rho[][i] << endl;
+        }
+
+        Vhfield diffregion = ((phi > 0.8) * (rhoold < 0.7) * diffparam * sqrt(dx(rho)+dy(rho)^2));
+        filen = datafolder + "/diff_data.dat";
+        ofstream TheFileDiff(filen);
+        for(int i=0; i< Vhfield.ndof; ++i)
+        {
+            TheFileDiff << xx[][i] << "\t" << yy[][i] << "\t" << diffregion[][i] << endl;
         }
     }
 }
