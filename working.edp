@@ -7,14 +7,14 @@ load "Element_P3";
 
 bool addstem=true;
 real endrelaxation=10; // n steps before swapping to phase field main
-bool printScreen=true;
+bool printScreen=false;
 int screenStep = 5;
 int equilibraterho=0.002; // use lower rho surface tension at the beginning of simulation
 
 
 verbosity=0;
 real PrintStep=100;
-bool doPrint=false;
+bool doPrint=true;
 bool printinterface=true;
 string foldern = "images/phirho-images/";
 string folderint1 = "images/interface1/";
@@ -218,11 +218,11 @@ real A0 = 3.143;              // Target value for A
 real epseps = 1e-9;           // small prefactor for 1/sqrt
 real dt = 0.00005;
 
-real phitension=2;
+real phitension=1;
 real initaP = 0.5; // for equilibration (equal to phi)
 real initkP = 0.0012; // for equilibration NOTE: MIGHT BE BETTER AT DOUBLE PHI!! (equal to phi)
-real trueaP = initaP*10;  //initaP * 15;
-real truekP = initkP*10;// initkP * 15;
+real trueaP = initaP*2;  //initaP * 15;
+real truekP = initkP*2;// initkP * 15;
 // the values i used to make video were 5 and 0.01
 
 real aP = initaP;               // Coefficient a (increased need to be at 1 or 0, increase causes decreases interface length)
@@ -232,7 +232,7 @@ real A0R = 0.;
 real A0phi = 0.;
 real diffparam = 6; // this is being treated dynamically.
 real diffamount=0;
-real diffrate = 1e-4;
+real diffrate = 0;//1e-4;
 real addrate=0.5e-4;
 real netrate=addrate-diffrate;
 
@@ -241,7 +241,7 @@ real netrate=addrate-diffrate;
 // adhesion to surface (negative means adhesion), currently depracated.
 real gammas=10;
 // adhesion between two cell types
-real gammaSL=0.0;
+real gammaSL=0.002;
 
 
 // Initial parameters of the drop
@@ -268,6 +268,8 @@ problem phasefield(phi, v, master=0, solver=sparsesolver) // ,
     // + int2d(Th) ( phiinterface * (1/eta * ((epsilon - gammaphi) * v * curvature)))
     + int2d(Th) ( (1/eta * phitension * phiinterface * ((epsilon) * v * curvature)))
     + int2d(Th) (1/eta * ( v * (12 * lmda *(phiArea-A0)*phi*(1-phiold))))
+    // surface energy between solid and liquid just for phi?
+    - int2d(Th) (1/eta * (v * gammaSL * sqrt(dx(rho)^2 + dy(rho)^2 + epseps)))
     // - int2d(Th) (rhooutside * addrate * v)
     - int2d(Th) (  v * (phiold)/dt  )
     + int2d(Th) (1/eta * phi * (v * aP * rho - 3*v*aP*rho*rho + 2*v*aP*rho * rho^2))
