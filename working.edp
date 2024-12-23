@@ -9,7 +9,7 @@ bool addstem=true;
 real endrelaxation=10; // n steps before swapping to phase field main
 bool printScreen=true;
 int screenStep = 5;
-int equilibraterho=0.002; // use lower rho surface tension at the beginning of simulation
+real equilibraterho=0.00; // use lower rho surface tension at the beginning of simulation
 
 
 verbosity=0;
@@ -169,7 +169,8 @@ macro solvePhase()
         phasefield;
         phimoved = fmax(int2d(Th)(beforegral-postgral),0);
         phiold = phi;
-        
+        if (phimoved > netrate)
+            phimoved = netrate;
     }
     A0 = A0 + phimoved;
     A0R = A0R + netrate;
@@ -226,11 +227,11 @@ real A0 = 3.143;              // Target value for A
 real epseps = 1e-9;           // small prefactor for 1/sqrt
 real dt = 0.00005;
 
-real phitension=0.1;
+real phitension=4;
 real initaP = 0.5; // for equilibration (equal to phi)
-real initkP = 0.0012; // for equilibration NOTE: MIGHT BE BETTER AT slightly higher value than phi for sharper interface
-real trueaP = initaP*2;  //initaP * 15;
-real truekP = initkP*2;// initkP * 15;
+real initkP = 0.001; // for equilibration NOTE: MIGHT BE BETTER AT slightly higher value than phi for sharper interface
+real trueaP = initaP*20;  //initaP * 15;
+real truekP = initkP*20;// initkP * 15;
 // the values i used to make video were 5 and 0.01
 
 real aP = initaP;               // Coefficient a (increased need to be at 1 or 0, increase causes decreases interface length)
@@ -249,7 +250,7 @@ real netrate=addrate-diffrate;
 // adhesion to surface (negative means adhesion), currently depracated.
 real gammas=10;
 // adhesion between two cell types
-real gammaSL=0.00;
+real gammaSL=0.002;
 
 
 // Initial parameters of the drop
@@ -257,7 +258,7 @@ real dR = 0.6;  // Radius
 real dRrho = 0.4;  // Radius
 real dxc= 0.0;  // x coordinate
 real dyc= 1.0 + 0.2;  // y coordinate, 0.2 is start above gorund
-real DropTh = 0.025;
+real DropTh = sqrt(k/a);
 
 problem relaxphasefield(phi, v, master=0, solver=sparsesolver) // , 
     = int2d(Th) (  v * (phi)/dt  )
@@ -277,11 +278,11 @@ problem phasefield(phi, v, master=0, solver=sparsesolver) // ,
     + int2d(Th) ( (1/eta * phitension * phiinterface * ((epsilon) * v * curvature)))
     + int2d(Th) (1/eta * ( v * (12 * lmda *(phiArea-A0)*phi*(1-phiold))))
     // surface energy between solid and liquid just for phi?
-    + int2d(Th) (1/eta * (v * gammaSL * phi * RhoOutline * RhoCurve))
+    + int2d(Th) (1/eta * (v * gammaSL * (phiold > 0.9) * RhoOutline * RhoCurve))
     // - int2d(Th) (rhooutside * addrate * v)
     - int2d(Th) (  v * (phiold)/dt  )
-    + int2d(Th) (1/eta * phi * (v * aP * rho - 3*v*aP*rho*rho + 2*v*aP*rho * rho^2))
-    + int2d(Th) (1/eta * phi * (kP * (dx(rho) * dx(v) + dy(rho) * dy(v))))
+    + int2d(Th) (1/eta * (v * aP * rho - 3*v*aP*rho*rho + 2*v*aP*rho * rho^2))
+    + int2d(Th) (1/eta * (kP * (dx(rho) * dx(v) + dy(rho) * dy(v))))
     + int2d(Th) (1/eta * ( v * (12 * lmda *(rhoArea-A0P)*rho*(1-rho))))
     + int2d(Th) (1/eta * ( v * (12 * lmda *(rhophiArea-A0R)*rho*phi*phiold*(1-rhoold*phiold))));
     // + int2d(Th) (1/eta * (1-rhointerface) * phi * gammaSL * (dx(rho) * dx(v) + dy(rho) * dy(v)) / sqrt(dx(rhoold)^2 + dy(rhoold)^2 + epseps));
@@ -303,11 +304,11 @@ problem RelaxRhoField(rho, w, master=0, solver=sparsesolver)
 
 problem RhoField(rho, w, master=0, solver=sparsesolver)
     = int2d(Th) (w * (rho)/dt )
-    + int2d(Th) (1/eta * phi * rho * (w * aP - 3*w*aP*rhoold + 2*w*aP*rhoold^2))
-    + int2d(Th) (1/eta * phi * (kP * (dx(w) *dx(rho) + dy(w) * dy(rho))))
+    + int2d(Th) (1/eta * rho * (w * aP - 3*w*aP*rhoold + 2*w*aP*rhoold^2))
+    + int2d(Th) (1/eta * (kP * (dx(w) *dx(rho) + dy(w) * dy(rho))))
     + int2d(Th) (1/eta * ( w * (12 * lmda *(rhoArea-A0P)*rho*(1-rhoold))))
     + int2d(Th) (1/eta * ( w * (12 * lmda *(rhophiArea-A0R)*rho*phi*phiold*(1-rhoold*phiold))))
-    + int2d(Th) (1/eta * (w * gammaSL * phi * RhoOutline * RhoCurve))
+    + int2d(Th) (1/eta * (w * gammaSL * (phi > 0.9) * RhoOutline * RhoCurve))
     // in strong form (slightly in correc)
     // + int2d(Th) (rhointerface * diffparam * w ) // slightly incorrect ues of diffparam as constant,
     // in weak form 
@@ -428,6 +429,13 @@ while(true)//(maxCFL > 1e-4)
         kP = truekP;
         aP = trueaP;
     }    
+    if (counter == endrelaxation)
+    {
+        GetArea
+        A0 = phiArea;
+        A0P = rhoArea;
+        A0R = rhophiArea;
+    }
 
     if (counter % 5 == 0)
     {
