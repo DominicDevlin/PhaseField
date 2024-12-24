@@ -152,12 +152,6 @@ macro solvePhase()
     }
     else 
     {
-        Vhfield prexrho = dx(rho) / sqrt(dx(rho)^2 + dy(rho)^2 + epseps);
-        Vhfield preyrho = dy(rho) / sqrt(dx(rho)^2 + dy(rho)^2 + epseps);
-        PreRhoCurve = dx(prexrho) + dy(preyrho);
-        RhoCurve = sqrt(dx(rho)^2 + dy(rho)^2) * PreRhoCurve;
-        RhoOutline = (sqrt(dx(rho)^2 + dy(rho)^2) > 1);
-
         precurvatureX = dx(phi) / sqrt(dx(phi)^2 + dy(phi)^2 + epseps);
         precurvatureY = dy(phi) / sqrt(dx(phi)^2 + dy(phi)^2 + epseps);
         divprecurvature = dx(precurvatureX) + dy(precurvatureY);
@@ -185,6 +179,12 @@ macro BalanceDifferentiation()
     diffamount = RhoDifferentiate;
 }
 //EOM
+
+// Vhfield prexrho = (dx(rho)) / sqrt(dx(rho)^2 + dy(rho)^2 + epseps);
+// Vhfield preyrho = (dy(rho)) / sqrt(dx(rho)^2 + dy(rho)^2 + epseps);
+// RhoCurve = dx(prexrho) + dy(preyrho);
+// RhoOutline = (sqrt(dx(rho)^2 + dy(rho)^2) > 1);
+
 // real addamount = NoParamRhoAdd;
 // addrate = diffamount / addamount;
 // if (!addstem)
@@ -210,28 +210,28 @@ real rhophiArea=0.;
 macro GetArea()
     rhoArea = int2d(Th)(rho^2 * (3 - 2*rho));
     rhophiArea = int2d(Th)((rho*phi)^2 * (3 - 2*(rho*phi)));
-    phiArea = int2d(Th)(phi^2 * (3 - 2*phi));
-
+    phiArea = int2d(Th)(phi^2 * (3 - 2*phi)) - int2d(Th)((rho*phi)^2 * (3 - 2*(rho*phi)));
 // EOM
 
 
-real epsilon=0.0006;     // smoothness
 real gammaphi=0.;     // surface tension of phi
 
 real eta = 0.002;             // viscosity type1
 // real eta2 = 0.0002;             // viscocity type2
-real a = 0.5;               // Coefficient a (depracated)
-real k = 0.001;               // phase width coefficient k (depracacted)
+real a = 0.5;               // Coefficient a 
+real k = 0.001;               // phase width coefficient k
 real lmda = 10;               // concentration constraint
 real A0 = 3.143;              // Target value for A
 real epseps = 1e-9;           // small prefactor for 1/sqrt
 real dt = 0.00005;
 
-real phitension=4;
+real phitension=1;
+real rhotension=10;
+
 real initaP = 0.5; // for equilibration (equal to phi)
 real initkP = 0.001; // for equilibration NOTE: MIGHT BE BETTER AT slightly higher value than phi for sharper interface
-real trueaP = initaP*20;  //initaP * 15;
-real truekP = initkP*20;// initkP * 15;
+real trueaP = initaP*rhotension;  //initaP * 15;
+real truekP = initkP*rhotension;// initkP * 15;
 // the values i used to make video were 5 and 0.01
 
 real aP = initaP;               // Coefficient a (increased need to be at 1 or 0, increase causes decreases interface length)
@@ -250,39 +250,33 @@ real netrate=addrate-diffrate;
 // adhesion to surface (negative means adhesion), currently depracated.
 real gammas=10;
 // adhesion between two cell types
-real gammaSL=0.002;
+real gammaSL=-0.03;
 
 
-// Initial parameters of the drop
-real dR = 0.6;  // Radius
-real dRrho = 0.4;  // Radius
-real dxc= 0.0;  // x coordinate
-real dyc= 1.0 + 0.2;  // y coordinate, 0.2 is start above gorund
-real DropTh = sqrt(k/a);
+
 
 problem relaxphasefield(phi, v, master=0, solver=sparsesolver) // , 
     = int2d(Th) (  v * (phi)/dt  )
     //+ int2d(Th) (1/eta * (v * a * phi - 3*v*a*phi*phiold + 2*v*a*phi*phiold^2))
     // + int2d(Th) (1/eta * (k * (dx(v) *dx(phi) + dy(v) * dy(phi))))
-    + int2d(Th) (1/eta * (v * 0.5 * phi - v* 1.5 * phi *phiold + v*phi*phiold^2))
-    + int2d(Th) (1/eta * (epsilon * (dx(v) *dx(phi) + dy(v) * dy(phi))))
+    + int2d(Th) (1/eta * a * (v * phi - v*3*phi*phiold + 2 * v*phi*phiold^2))
+    + int2d(Th) (1/eta * (k * (dx(v) *dx(phi) + dy(v) * dy(phi))))
     + int2d(Th) (1/eta * ( v * (12 * lmda *(phiArea-A0)*phi*(1-phiold))))
     - int2d(Th) (  v * (phiold)/dt  );
 
 /* the below equation has the curvature term removed*/
 problem phasefield(phi, v, master=0, solver=sparsesolver) // , 
     = int2d(Th) (  v * (phi)/dt  )
-    + int2d(Th) (1/eta * phitension * (v * 0.5 * phi - v* 1.5 * phi *phiold + v*phi*phiold^2))
-    + int2d(Th) (1/eta *  phitension * (epsilon * (dx(v) *dx(phi) + dy(v) * dy(phi))))
-    // + int2d(Th) ( phiinterface * (1/eta * ((epsilon - gammaphi) * v * curvature)))
-    + int2d(Th) ( (1/eta * phitension * phiinterface * ((epsilon) * v * curvature)))
+    + int2d(Th) (1/eta * phitension * a * (v * phi - v*3*phi*phiold + 2*v*phi*phiold^2))
+    + int2d(Th) (1/eta *  phitension * (k * (dx(v) *dx(phi) + dy(v) * dy(phi))))
+    + int2d(Th) ( (1/eta * phitension * phiinterface * ((k) * v * curvature)))
     + int2d(Th) (1/eta * ( v * (12 * lmda *(phiArea-A0)*phi*(1-phiold))))
     // surface energy between solid and liquid just for phi?
-    + int2d(Th) (1/eta * (v * gammaSL * (phiold > 0.9) * RhoOutline * RhoCurve))
+    // + int2d(Th) (1/eta * (v * gammaSL * (phiold > 0.9) * (rho < 0.9) * RhoOutline * RhoCurve))
     // - int2d(Th) (rhooutside * addrate * v)
     - int2d(Th) (  v * (phiold)/dt  )
-    + int2d(Th) (1/eta * (v * aP * rho - 3*v*aP*rho*rho + 2*v*aP*rho * rho^2))
-    + int2d(Th) (1/eta * (kP * (dx(rho) * dx(v) + dy(rho) * dy(v))))
+    + int2d(Th) (1/eta * phi * (v * aP * rho - 3*v*aP*rho*rho + 2*v*aP*rho * rho^2))
+    + int2d(Th) (1/eta * phi * (kP * (dx(rho) * dx(v) + dy(rho) * dy(v))))
     + int2d(Th) (1/eta * ( v * (12 * lmda *(rhoArea-A0P)*rho*(1-rho))))
     + int2d(Th) (1/eta * ( v * (12 * lmda *(rhophiArea-A0R)*rho*phi*phiold*(1-rhoold*phiold))));
     // + int2d(Th) (1/eta * (1-rhointerface) * phi * gammaSL * (dx(rho) * dx(v) + dy(rho) * dy(v)) / sqrt(dx(rhoold)^2 + dy(rhoold)^2 + epseps));
@@ -304,11 +298,11 @@ problem RelaxRhoField(rho, w, master=0, solver=sparsesolver)
 
 problem RhoField(rho, w, master=0, solver=sparsesolver)
     = int2d(Th) (w * (rho)/dt )
-    + int2d(Th) (1/eta * rho * (w * aP - 3*w*aP*rhoold + 2*w*aP*rhoold^2))
-    + int2d(Th) (1/eta * (kP * (dx(w) *dx(rho) + dy(w) * dy(rho))))
+    + int2d(Th) (1/eta * phi * rho * (w * aP - 3*w*aP*rhoold + 2*w*aP*rhoold^2))
+    + int2d(Th) (1/eta * phi * (kP * (dx(w) *dx(rho) + dy(w) * dy(rho))))
     + int2d(Th) (1/eta * ( w * (12 * lmda *(rhoArea-A0P)*rho*(1-rhoold))))
     + int2d(Th) (1/eta * ( w * (12 * lmda *(rhophiArea-A0R)*rho*phi*phiold*(1-rhoold*phiold))))
-    + int2d(Th) (1/eta * (w * gammaSL * (phi > 0.9) * RhoOutline * RhoCurve))
+    // + int2d(Th) (1/eta * (w * gammaSL * (phi > 0.9) * (rhoold < 0.9) * RhoOutline * RhoCurve))
     // in strong form (slightly in correc)
     // + int2d(Th) (rhointerface * diffparam * w ) // slightly incorrect ues of diffparam as constant,
     // in weak form 
@@ -327,29 +321,39 @@ real dtau = 0.00001;
 
 problem DummyPhaseField(dummyphi, dummyv, master=0, solver=sparsesolver) // , 
     = int2d(Th) (  dummyv * (dummyphi)/dtau  )
-    + int2d(Th) (1/eta * (dummyv * 0.5 * dummyphi - 1.5*dummyv*dummyphi*phiold + dummyv*dummyphi*phiold^2))
-    + int2d(Th) (1/eta * (epsilon * (dx(dummyv) *dx(dummyphi) + dy(dummyv) * dy(dummyphi))))
+    + int2d(Th) (1/eta * k * rhotension * (dummyv * dummyphi - 3*dummyv*dummyphi*phiold + 2*dummyv*dummyphi*phiold^2))
+    + int2d(Th) (1/eta * rhotension * (k * (dx(dummyv) *dx(dummyphi) + dy(dummyv) * dy(dummyphi))))
     + int2d(Th) (1/eta * ( dummyv * (12 * lmda *(phiArea-A0)*dummyphi*(1-phiold))))
     - int2d(Th) (  dummyv * (dummyphiold)/dtau  );
 
 
 
 // currently do not know if curvature removal energy is correct?? Can I just integrate??
-func TotalEnergy = int2d(Th)(phitension/4 * phi^2 * (1-phi)^2 + phitension * epsilon / 2 * abs(dx(phi) + dy(phi))^2)
+func TotalEnergy = int2d(Th)(phitension/4 * phi^2 * (1-phi)^2 + phitension * k / 2 * abs(dx(phi) + dy(phi))^2)
                     + lmda * (phiArea-A0)^2
                     + int2d(Th)(phi * aP/2 * rho^2 * (1-rho)^2 + kP/2 * abs(dx(rho) + dy(rho))^2)
                     + lmda * (rhoArea - A0P)^2
                     + lmda * (rhophiArea - A0R)^2
-                    - int2d(Th) ( (phitension * phiinterface * ((epsilon) * curvature)));
+                    - int2d(Th) ( (phitension * phiinterface * ((k) * curvature)));
 
 
 // Initialisation
+// Initial parameters of the drop
+real dR = 0.6;  // Radius
+real dRrho = 0.4;  // Radius
+real dxc= 0.0;  // x coordinate
+real dyc= 1.0 + 0.2;  // y coordinate, 0.2 is start above gorund
+real DropTh = sqrt(k/a);
+real dyct = 1.0 + 0.3;
 
 
+// func initPhi = 0.5 * (1-tanh((abs(y - dyc + 0.5) - dR) / DropTh))// 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-0.4-dyc)^2) - dR) / (sqrt(2) * DropTh)))
+//  + 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-0.4-dyc)^2) - dRrho) / (sqrt(2) * DropTh)));
+// func initRho = 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-0.4-dyc)^2) - dRrho) / (sqrt(2) * DropTh)));
+func initPhi = 0.5 * (1-tanh((abs(y - dyc + 0.5) - dR) / DropTh))
+    + (y >= dyct) * 0.5 * (1 - tanh((sqrt((x - dxc)^2 + (y - dyct)^2) - dR) / (sqrt(2) * DropTh)));
 
-func initPhi = 0.5 * (1-tanh((abs(y - dyc + 0.5) - dR) / DropTh))// 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-0.4-dyc)^2) - dR) / (sqrt(2) * DropTh)))
- + 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-0.4-dyc)^2) - dRrho) / (sqrt(2) * DropTh)));
-func initRho = 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-0.4-dyc)^2) - dRrho) / (sqrt(2) * DropTh)));
+func initRho = (y >= dyct) * 0.5 * (1 - tanh((sqrt((x - dxc)^2 + (y - dyct)^2) - dR) / (sqrt(2) * DropTh)));
 
 phi = initPhi;
 rho = initRho;
@@ -411,7 +415,7 @@ while(true)//(maxCFL > 1e-4)
     curt = curt+dt;
     GetArea
     solvePhase
-    if (counter % 20 == 0)
+    if (counter % 1 == 0)
     {
         cout << "ct = " << curt << ", ";
         cout << "phi area: " << phiArea << "  with constraint: " << A0 << endl;
@@ -429,12 +433,13 @@ while(true)//(maxCFL > 1e-4)
         kP = truekP;
         aP = trueaP;
     }    
-    if (counter == endrelaxation)
+    if (counter < endrelaxation + 4)
     {
         GetArea
         A0 = phiArea;
         A0P = rhoArea;
         A0R = rhophiArea;
+        // cout << A0 << "\t" << A0P << "\t" << A0R << endl;
     }
 
     if (counter % 5 == 0)
