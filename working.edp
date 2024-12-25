@@ -348,8 +348,8 @@ real dyct = 1.0 + 0.2;
 
 real sxmin=-0.6;
 real sxmax=0.6;
-real symin=1.2;
-real symax=1.8;
+real symin=1.3;
+real symax=1.9;
 
 // func initPhi = 0.5 * (1-tanh((abs(y - dyc + 0.5) - dR) / DropTh))// 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-0.4-dyc)^2) - dR) / (sqrt(2) * DropTh)))
 //  + 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-0.4-dyc)^2) - dRrho) / (sqrt(2) * DropTh)));
