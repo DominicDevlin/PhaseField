@@ -226,7 +226,7 @@ real epseps = 1e-9;           // small prefactor for 1/sqrt
 real dt = 0.00005;
 
 real phitension=1;
-real rhotension=10;
+real rhotension=1;
 
 real initaP = 0.5; // for equilibration (equal to phi)
 real initkP = 0.001; // for equilibration NOTE: MIGHT BE BETTER AT slightly higher value than phi for sharper interface
@@ -344,16 +344,27 @@ real dRrho = 0.4;  // Radius
 real dxc= 0.0;  // x coordinate
 real dyc= 1.0 + 0.2;  // y coordinate, 0.2 is start above gorund
 real DropTh = sqrt(k/a);
-real dyct = 1.0 + 0.3;
+real dyct = 1.0 + 0.2;
 
+real sxmin=-0.6;
+real sxmax=0.6;
+real symin=1.2;
+real symax=1.8;
 
 // func initPhi = 0.5 * (1-tanh((abs(y - dyc + 0.5) - dR) / DropTh))// 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-0.4-dyc)^2) - dR) / (sqrt(2) * DropTh)))
 //  + 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-0.4-dyc)^2) - dRrho) / (sqrt(2) * DropTh)));
 // func initRho = 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-0.4-dyc)^2) - dRrho) / (sqrt(2) * DropTh)));
 func initPhi = 0.5 * (1-tanh((abs(y - dyc + 0.5) - dR) / DropTh))
-    + (y >= dyct) * 0.5 * (1 - tanh((sqrt((x - dxc)^2 + (y - dyct)^2) - dR) / (sqrt(2) * DropTh)));
+    //+ (y >= dyct) * 0.5 * (1 - tanh((sqrt((x - dxc)^2 + (y - dyct)^2) - dR) / (sqrt(2) * DropTh)));
+     + 0.25 * (tanh((x - sxmax)/DropTh) - tanh((x - sxmin)/DropTh)) * (tanh((y - symax)/DropTh) - tanh((y - symin)/DropTh));
+// func initRho = (y >= dyct) * 0.5 * (1 - tanh((sqrt((x - dxc)^2 + (y - dyct)^2) - dR) / (sqrt(2) * DropTh)));
+func initRho = 0.25 * (tanh((x - sxmax)/DropTh) - tanh((x - sxmin)/DropTh)) * (tanh((y - symax)/DropTh) - tanh((y - symin)/DropTh));
 
-func initRho = (y >= dyct) * 0.5 * (1 - tanh((sqrt((x - dxc)^2 + (y - dyct)^2) - dR) / (sqrt(2) * DropTh)));
+ 
+// func initPhi = 0.5 * (tanh((x - 0)/DropTh) - tanh((x - 1)/DropTh)); 
+// func initRho = 0.5 * (tanh((x - 0)/DropTh) - tanh((x - 1)/DropTh)) ;
+// cout << initRho << endl;
+
 
 phi = initPhi;
 rho = initRho;
