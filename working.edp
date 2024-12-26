@@ -226,7 +226,7 @@ real epseps = 1e-9;           // small prefactor for 1/sqrt
 real dt = 0.00005;
 
 real phitension=1;
-real rhotension=1;
+real rhotension=8;
 
 real initaP = 0.5; // for equilibration (equal to phi)
 real initkP = 0.001; // for equilibration NOTE: MIGHT BE BETTER AT slightly higher value than phi for sharper interface
