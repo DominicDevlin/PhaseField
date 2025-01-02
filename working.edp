@@ -219,7 +219,7 @@ real dt = 0.01;
 
 
 real phitension=0.25;
-real rhotension=0.5;
+real rhotension=1.5;
 
 real initaP = 1; // for equilibration (equal to phi)
 real initkP = 0.0006; // for equilibration NOTE: MIGHT BE BETTER AT slightly lower value than phi for sharper interface
