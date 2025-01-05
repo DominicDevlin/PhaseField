@@ -3,18 +3,18 @@ import matplotlib.pyplot as plt
 
 # Load the data from a text file
 # The data.txt file should contain the provided rows of numbers
-dataphi = np.loadtxt('phi_data.dat')
+dataphi = np.loadtxt('data/phi_data-5-5.dat')
 dataphi = dataphi[dataphi[:, 0].argsort()]
 # The first column is the x-axis
 x = dataphi[:, 0]
 
 
-datarho = np.loadtxt('rho_data.dat')
+datarho = np.loadtxt('data/rho_data-5-5.dat')
 datarho = datarho[datarho[:, 0].argsort()]
 # The first column is the x-axis
 xr = datarho[:, 0]
 
-datadiff = np.loadtxt('diff_data.dat')
+datadiff = np.loadtxt('data/diff_data-5-5.dat')
 datadiff = datadiff[datarho[:, 0].argsort()]
 # The first column is the x-axis
 xd = datadiff[:, 0]
@@ -27,7 +27,7 @@ xd = datadiff[:, 0]
 times = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]  # Just an example mapping
 
 # Choose the desired time (e.g., t = 3)
-desired_time = 6
+desired_time = 0
 # Find the column index for this time:a
 # times[0] corresponds to data[:,1], times[1] -> data[:,2], etc.
 time_index = times.index(desired_time) + 1  # +1 because x is in column 0

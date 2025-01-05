@@ -6,6 +6,7 @@ load "Element_P3";
 load "msh3" 
 
 
+
 bool addstem=true;
 real endrelaxation=10;
 bool printScreen=true;
@@ -13,13 +14,25 @@ int screenStep = 100;
 // use lower surface tension at the beginning of simulation
 int equilibraterho=0.002;
 
+for(int i=0;i<ARGV.n;++i)
+{
+    cout << ARGV[i] << endl;
+}
+
+if (ARGV.n > 2)
+{
+    printScreen = false;
+}
 
 verbosity=0;
 real PrintStep=100;
 
-string foldern= "one-dim-analysis";
+string foldern= "one-dim-analysis/data";
+string parstr = "";
 string command = "mkdir one-dim-analysis";
+string commandtwo = "mkdir one-dim-analysis/data";
 system(command);
+system(commandtwo);
 
 
 
@@ -41,7 +54,8 @@ func toretx = x*seglength;
 func torety = 0;
 func toretz = 0;
 meshL Th=segment(m,[toretx,torety,toretz]);
-plot(Th, cmm="NO ADAPTED MESH ",wait=true);
+if (printScreen)
+    plot(Th, cmm="NO ADAPTED MESH ",wait=false);
 
 // -------------------------------------------------------------------------------------------------------------------------------------
 // Fields
@@ -59,7 +73,7 @@ Vhfield rhomesh;
 Vhfield absdelphi;
 Vhfield phiinterface;
 Vhfield phibulk;
-Vhfield rhointerface;
+Vhfield rhophiinterface;
 Vhfield rhooutside;
 
 Vhfield RhoPhi;
@@ -86,13 +100,12 @@ real phimoved=0;
 macro solvePhase()
 {
 
-    rhointerface = (phi > 0.75) * (sqrt(dx(rho)^2 + dy(rho)^2)) * (rho < 0.55);
+    rhophiinterface = (phi > 0.75) * (sqrt(dx(rho)^2 + dy(rho)^2)) * (rho < 0.55);
     BalanceDifferentiation;
-    real overlap = int1d(Th) (rhointerface );
-    real funcoverlap = overlap / (overlap^2 + 0.05);
+    real overlap = int1d(Th) (rhophiinterface );
+    real funcoverlap = overlap / (overlap^2 + 0.02);
     diffparam = diffrate/dt * funcoverlap;
-    if (diffparam > 40)
-        diffparam = 40;
+    BalanceDifferentiation;
 
     if (counter < endrelaxation)
     {
@@ -110,10 +123,13 @@ macro solvePhase()
         phasefield;
         phimoved = fmax(int1d(Th)(beforegral-postgral),0);
         phiold = phi;
+        if (phimoved < 0)
+            phimoved = 0;
     }
     A0 = A0 + phimoved;
-    A0R = A0R + netrate;
-    A0P = A0P + netrate;
+    real loss = netrate * diffamount;
+    A0R = A0R - loss;
+    A0P = A0P - loss;
 }
 // EOM
 
@@ -137,23 +153,36 @@ macro GetArea()
 // EOM
 
 
-real epsilon=0.0006;     // smoothness
 real gammaphi=0.;     // surface tension of phi
 
-real eta = 0.002;             // viscosity type1
-// real eta2 = 0.001;             // viscocity type2
-real a = 0.5;               // Coefficient a (depracated)
-real k = 0.001;               // phase width coefficient k (depracacted)
+real eta = 1;             // viscosity type1
+real a = 1;               // Coefficient a 
+real k = 0.001;               // phase width coefficient k
 real lmda = 10;               // concentration constraint
+real lmdarho = 10;               // concentration constraint
+real lmdarhophi = 10;               // concentration constraint
 real A0 = 3.143;              // Target value for A
 real epseps = 1e-9;           // small prefactor for 1/sqrt
-real dt = 0.00005;
+real dt = 0.01;
 
-real phitension=0.2;
-real initaP = 0.5; // for equilibration (equal to phi)
-real initkP = 0.0012; // for equilibration (equal to phi)
-real trueaP = initaP*4;  //initaP * 15;
-real truekP = initkP*4;// initkP * 15;
+
+real phitension=1;
+real rhotension=10;
+
+if (ARGV.n > 2)
+{
+    phitension = atof(ARGV[2]);
+    rhotension = atof(ARGV[3]);
+    parstr = "-" + ARGV[2] + "-" + ARGV[3];
+}
+
+cout << "phi tension is: " << phitension << endl;
+cout << "rho tension is: " << rhotension << endl;
+
+real initaP = 1; // for equilibration (equal to phi)
+real initkP = 0.001; // for equilibration NOTE: MIGHT BE BETTER AT slightly lower value than phi for sharper interface
+real trueaP = initaP*rhotension;  //initaP * 15;
+real truekP = initkP*rhotension;// initkP * 15;
 // the values i used to make video were 5 and 0.01
 
 real aP = initaP;               // Coefficient a (increased need to be at 1 or 0, increase causes decreases interface length)
@@ -161,11 +190,18 @@ real kP = initkP;               // smoothness of interface transition, decrease 
 real A0P = 3.143;              // Target value for A
 real A0R = 0.;
 real A0phi = 0.;
+
+
 real diffparam = 0; // this is being treated dynamically.
 real diffamount=0;
-real diffrate =3e-4;
-real addrate=3e-4;
-real netrate=addrate-diffrate;
+real diffrate =0;// 0.5e-4;//1e-4;//1e-4;
+real addrate= 0;//0.25e-4;//0.5e-4;
+real netrate=1;
+if (addrate > 0)
+    netrate=(diffrate-addrate)/diffrate;
+
+
+
 
 
 // Initial parameters of the drop
@@ -175,15 +211,13 @@ real DropTh = 0.025;
 real dRrho = 0.5;
 real dxcRho = 2;
 
-func RhoDifferentiate = int1d(Th) (dt * rhointerface * diffparam );
+func RhoDifferentiate = int1d(Th) (dt * (phi > 0.75) * (rho < 0.55) * diffparam * phi * sqrt(dx(rho)^2 + dy(rho)^2));
 
 
 problem relaxphasefield(phi, v, master=0, solver=sparsesolver) // , 
     = int1d(Th) (  v * (phi)/dt  )
-    //+ int2d(Th) (1/eta * (v * a * phi - 3*v*a*phi*phiold + 2*v*a*phi*phiold^2))
-    // + int2d(Th) (1/eta * (k * (dx(v) *dx(phi) + dy(v) * dy(phi))))
-    + int1d(Th) (1/eta * (v * 0.5 * phi - v* 1.5 * phi *phiold + v*phi*phiold^2))
-    + int1d(Th) (1/eta * (epsilon * (dx(v) *dx(phi))))
+    + int1d(Th) (1/eta * a * (v * phi - v*3*phi*phiold + 2 * v*phi*phiold^2))
+    + int1d(Th) (1/eta * (k * (dx(v) *dx(phi) + dy(v) * dy(phi))))
     + int1d(Th) (1/eta * ( v * (12 * lmda *(phiArea-A0)*phi*(1-phiold))))
     - int1d(Th) (  v * (phiold)/dt  )
     +on(1,2,phi=0);
@@ -191,39 +225,33 @@ problem relaxphasefield(phi, v, master=0, solver=sparsesolver) // ,
 
 problem phasefield(phi, v, master=0, solver=sparsesolver) // , 
     = int1d(Th) (  v * (phi)/dt  )
-    + int1d(Th) (1/eta * phitension * (v * 0.5 * phi - v* 1.5 * phi *phiold + v*phi*phiold^2))
-    + int1d(Th) (1/eta *  phitension * (epsilon * (dx(v) *dx(phi))))
+    + int1d(Th) (1/eta * phitension * a * (v* 0.5 * phi - v*1.5*phi*phiold + v*phi*phiold^2))
+    + int1d(Th) (1/eta *  phitension * (k * (dx(v) *dx(phi) + dy(v) * dy(phi))))
     + int1d(Th) (1/eta * ( v * (12 * lmda *(phiArea-A0)*phi*(1-phiold))))
-    // - int2d(Th) (rhooutside * addrate * v)
     - int1d(Th) (  v * (phiold)/dt  )
-    + int1d(Th) (1/eta * phi * (v * aP * rho - 3*v*aP*rho*rho + 2*v*aP*rho * rho^2))
-    + int1d(Th) (1/eta * phi * (kP * (dx(rho) * dx(v) )))
-    + int1d(Th) (1/eta * ( v * (12 * lmda *(rhoArea-A0P)*rho*(1-rho))))
-    + int1d(Th) (1/eta * ( v * (12 * lmda *(rhophiArea-A0R)*rho*phi*phiold*(1-rhoold*phiold))));
+    + int1d(Th) (1/eta * phi * (v * 0.5 * aP * rho - 1.5*v*aP*rho*rho + v*aP*rho * rho^2))
+    + int1d(Th) (1/eta * phi * (kP * (dx(rho) * dx(v) + dy(rho) * dy(v))))
+    - int1d(Th) ((phiold > 0.75) * (rho < 0.55) * diffparam * v * sqrt(dx(rho)^2 + dy(rho)^2))
+    + int1d(Th) (1/eta * ( v * (12 * lmdarhophi *(rhophiArea-A0R)*rho*phi*(1-rhoold))));
 
 problem RelaxRhoField(rho, w, master=0, solver=sparsesolver)
     = int1d(Th) (w * (rho)/dt )
-    + int1d(Th) (1/eta * phi * (w * aP * rho - 3*w*aP*rho*rhoold + 2*w*aP*rho * rhoold^2))
-    + int1d(Th) (1/eta * phi * (kP * (dx(w) *dx(rho))))
-    + int1d(Th) (1/eta * ( w * (12 * lmda *(rhoArea-A0P)*rho*(1-rhoold))))
-    + int1d(Th) (1/eta * ( w * (12 * lmda *(rhophiArea-A0R)*rho*phi*phiold*(1-rhoold*phiold))))
+    + int1d(Th) (1/eta * phi * (0.5 * w * aP * rho - 1.5*w*aP*rho*rhoold + w*aP*rho * rhoold^2))
+    + int1d(Th) (1/eta * phi * (kP * (dx(w) *dx(rho) + dy(w) * dy(rho))))
+    + int1d(Th) (1/eta * ( w * (12 * lmdarho *(rhoArea-A0P)*rho*(1-rhoold))))
+    + int1d(Th) (1/eta * ( w * (12 * lmdarhophi *(rhophiArea-A0R)*rho*phi*(1-rhoold))))
     - int1d(Th) ( w * (rhoold)/dt  );
 
 problem RhoField(rho, w, master=0, solver=sparsesolver)
     = int1d(Th) (w * (rho)/dt )
-    + int1d(Th) (1/eta * phi * rho * (w * aP - 3*w*aP*rhoold + 2*w*aP*rhoold^2))
-    + int1d(Th) (1/eta * phi * (kP * (dx(w) *dx(rho) )))
-    + int1d(Th) (1/eta * ( w * (12 * lmda *(rhoArea-A0P)*rho*(1-rhoold))))
-    + int1d(Th) (1/eta * ( w * (12 * lmda *(rhophiArea-A0R)*rho*phi*phiold*(1-rhoold*phiold))))
-    // in strong form (slightly in correc)
-    // + int2d(Th) (rhointerface * diffparam * w ) // slightly incorrect ues of diffparam as constant,
-    // in weak form 
-    + int1d(Th) ((phi > 0.75) * (rhoold < 0.55) * diffparam * w * sqrt((dx(rhoold)^2) ))
-    - int1d(Th) (rhooutside * addrate * w)
+    + int1d(Th) (1/eta * rho * (0.5 * w * a - 1.5*w*a*rhoold + w*a*rhoold^2))
+    + int1d(Th) (1/eta * (k * (dx(w) *dx(rho) + dy(w) * dy(rho))))
+    + int1d(Th) (1/eta * phi * rho * (0.5 * w * aP - 1.5*w*aP*rhoold + w*aP*rhoold^2))
+    + int1d(Th) (1/eta * phi * (kP * (dx(w) *dx(rho) + dy(w) * dy(rho))))
+    + int1d(Th) (1/eta * ( w * (12 * lmdarho *(rhoArea-A0P)*rho*(1-rhoold))))
+    + int1d(Th) (1/eta * ( w * (12 * lmdarhophi *(rhophiArea-A0R)*rho*phi*(1-rhoold))))
+    + int1d(Th) ((phi > 0.75) * (rhoold < 0.55) * diffparam * w * sqrt(dx(rhoold)^2 + dy(rhoold)^2))
     - int1d(Th) ( w * (rhoold)/dt  );
-    // + int2d(Th) (1/eta * ( (1-rhointerface) * gammaSL * (dx(w) *dx(rho) + dy(w) * dy(rho))))
-    // + int2d(Th) (1/eta * (1-rhointerface) * phi * gammaSL * (dx(rho) * dx(w) + dy(rho) * dy(w)) / sqrt(dx(rhoold)^2 + dy(rhoold)^2 + epseps))
-
 
 
 // Initialisation
@@ -252,7 +280,7 @@ real curt=0.0;
 Vhfield xx=x;
 Vhfield yy=y;
 
-int maxcount = 10;
+int maxcount = 1;
 int counter = 0;
 int OutPutCounter=0;
 matrix Vphi;
@@ -282,8 +310,9 @@ while(OutPutCounter < maxcount)//(maxCFL > 1e-4)
         kP = truekP;
         aP = trueaP;
 
-        if (counter % 400 == 0)
+        if (counter % 1000 == 0)
         {
+            cout << curt << endl;
             Vhfield diffregion = ((phi > 0.75) * (rhoold < 0.55) * diffparam * sqrt(dx(rho)^2));
             for(int i=0; i< Vhfield.ndof; ++i)
             {
@@ -300,7 +329,7 @@ while(OutPutCounter < maxcount)//(maxCFL > 1e-4)
 
 
 
-    if (counter % screenStep == 0)
+    if (counter % screenStep == 0 && printScreen)
     {
         plot(phi,fill=1,value=1,wait=false);
     }
@@ -308,7 +337,7 @@ while(OutPutCounter < maxcount)//(maxCFL > 1e-4)
 }
 
 
-string filen = foldern + "/phi_data.dat";
+string filen = foldern + "/phi_data" + parstr + ".dat";
 ofstream TheFile(filen);
 for(int i=0; i< Vhfield.ndof; ++i)
 {
@@ -321,7 +350,7 @@ for(int i=0; i< Vhfield.ndof; ++i)
     TheFile << endl; 
 } 
 
-filen = foldern + "/rho_data.dat";
+filen = foldern + "/rho_data" + parstr + ".dat";
 ofstream TheFiler(filen);
 for(int i=0; i< Vhfield.ndof; ++i)
 {
@@ -334,7 +363,7 @@ for(int i=0; i< Vhfield.ndof; ++i)
     TheFiler << endl; 
 } 
 
-filen = foldern + "/diff_data.dat";
+filen = foldern + "/diff_data" + parstr + ".dat";
 ofstream TheFiled(filen);
 for(int i=0; i< Vhfield.ndof; ++i)
 {
