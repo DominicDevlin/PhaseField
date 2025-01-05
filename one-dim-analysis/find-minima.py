@@ -62,23 +62,23 @@ for fpath in files:
             hit=True
             break
 
-
-    minima.append(curmin)
-    print(param1, param2, curmin)
-    
-    # if len(minima_indices) == 1:
-    #     idx = minima_indices[0]
-    #     minima.append(y[idx])
-    # else:
-    #     print(fpath, minima_indices)
-    #     minima.append(1.0)
+    if param1 < 16 and param2 < 16:
+        minima.append(curmin)
+        print(param1, param2, curmin)
         
-    gamma_phis.append(param1)
-    gamma_rhos.append(param2)
+        # if len(minima_indices) == 1:
+        #     idx = minima_indices[0]
+        #     minima.append(y[idx])
+        # else:
+        #     print(fpath, minima_indices)
+        #     minima.append(1.0)
+            
+        gamma_phis.append(param1)
+        gamma_rhos.append(param2)
 
-    # 3) Print results
-    # for idx in minima_indices:
-    #     print(f"Local minimum at index={idx}: x={x[idx]}, y={y[idx]}")
+        # 3) Print results
+        # for idx in minima_indices:
+        #     print(f"Local minimum at index={idx}: x={x[idx]}, y={y[idx]}")
         
         
         
