@@ -64,13 +64,12 @@ def get_data():
                 hit=True
                 break
 
-        # if param1 < 16 and param2 < 16:
-        minima.append(curmin)
-        print(param1, param2, curmin)
-            
-            
-        gamma_phis.append(param1)
-        gamma_rhos.append(param2)
+        if param1 < 2:# and param2 < 16:
+            minima.append(curmin)
+            print(param1, param2, curmin)
+                
+            gamma_phis.append(param1)
+            gamma_rhos.append(param2)
 
         # 3) Print results
         # for idx in minima_indices:
@@ -125,8 +124,7 @@ def PlotLine():
         gamma_p = np.sqrt((8/9)*a*k)
         gamma_r = np.sqrt((8/9)*g*a*k)
         print(gamma_p, gamma_r)
-        newL = (4*gamma_p**2 + (g*a*k/2) )/(g*a*k) # float( gamma_r)/2. + 2.*gamma_p) / (gamma_r )
-        print("here: ", newL)
+        newL = (4*gamma_p**2 + ((8./9.)*g*a*k/2) )/((8./9.)*g*a*k) # float( gamma_r)/2. + 2.*gamma_p) / (gamma_r )
         if newL > 1:
             Lvals.append(1.)
         else:

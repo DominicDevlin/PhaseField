@@ -11,37 +11,49 @@ bool printScreen=true;
 int screenStep = 5;
 real equilibraterho=0.00; // use lower rho surface tension at the beginning of simulation
 
+string parstr = "";
+string dirstr = "";
+if (ARGV.n > 3)
+{
+    parstr = "-" + ARGV[2] + "-" + ARGV[3];
+    dirstr =  ARGV[2] + "-" + ARGV[3] + "/";
+    printScreen = false;
+}
 
 verbosity=0;
-real PrintStep=100;
+real PrintStep=1000;
 bool doPrint=true;
-bool printinterface=true;
+bool printinterface=false;
 bool PrintEnergy=true;
-string foldern = "images/phirho-images/";
-string folderint1 = "images/interface1/";
-string folderint2 = "images/interface2/";
-string folderphi = "images/phi-images/";
-string folderrho = "images/rho-images/";
-string command0 = "mkdir images";
-string command1 = "mkdir images/phirho-images";
-string command2 = "mkdir images/interface1";
-string command3 = "mkdir images/interface2";
-string command4 = "mkdir images/phi-images";
-string command5 = "mkdir images/rho-images";
+string foldern = "images/" + dirstr + "phirho-images/";
+string folderint1 = "images/" + dirstr + "interface1/";
+string folderint2 = "images/" + dirstr + "interface2/";
+string folderphi = "images/" + dirstr + "phi-images/";
+string folderrho = "images/" + dirstr + "rho-images/";
+string commandstart = "mkdir images";
+string command0 = "mkdir images/" + dirstr;
+string command1 = "mkdir images/" + dirstr + "phirho-images";
+string command2 = "mkdir images/" + dirstr + "interface1";
+string command3 = "mkdir images/" + dirstr + "interface2";
+string command4 = "mkdir images/" + dirstr + "phi-images";
+string command5 = "mkdir images/" + dirstr + "rho-images";
 
 bool makeData = true;
 int OutputTime=20;
-string datafolder = "model-output";
-string datacommand = "mkdir model-output";
+string datafolder = "model-output/" + dirstr;
+string datacommand1 = "mkdir model-output";
+string datacommand2 = "mkdir model-output/" + dirstr;
 
 if (makeData)
 {
-    system(datacommand);
+    system(datacommand1);
+    system(datacommand2);
 }
 
 
 if (doPrint)
 {
+    system(commandstart);
     system(command0);
     if (printinterface)
     {
@@ -60,7 +72,7 @@ if (doPrint)
 real xmin =  -1.5;
 real xmax =  1.5;
 real ymin =  0;
-real ymax =  4;
+real ymax =  5;
 
 // Mesh resolution
 int  n     = 2; // Number of segments per unit length
@@ -214,10 +226,16 @@ real A0 = 3.143;              // Target value for A
 real epseps = 1e-9;           // small prefactor for 1/sqrt
 real dt = 0.01;
 
-
-
 real phitension=6;
 real rhotension=1;
+
+if (ARGV.n > 3)
+{
+    phitension = atof(ARGV[2]);
+    rhotension = atof(ARGV[3]);
+    makeData=true;
+}
+
 
 real initaP = 1; // for equilibration (equal to phi)
 real initkP = 0.001; // for equilibration NOTE: MIGHT BE BETTER AT slightly lower value than phi for sharper interface
@@ -353,10 +371,10 @@ func TotalEnergy = int2d(Th)((a*phitension)*0.25 * phi^2 * (1-phi)^2 + (phitensi
 real dR = 0.6;  // Radius
 real dRrho = 0.4;  // Radius
 real dxc= 0.0;  // x coordinate
-real dyc= 0.7;  // y coordinate, 0.2 is start above gorund
+real dyc= 0.8;  // y coordinate, 0.2 is start above gorund
 real DropTh = sqrt((2*k)/a);
 real rhoDropTh = sqrt((2*initkP)/initaP);
-real dyct = 1.3; // dR + dyc will give same top point (half in half out)
+real dyct = 1.4; // dR + dyc will give same top point (half in half out)
 
 // "Half lengths" in each direction for a 2:1 aspect ratio
 real Lx = 2.0 * dR;  // x half-extent
@@ -424,7 +442,9 @@ int nAdapt=0;
 real curt=0.0;
 // // Time stepping
 int counter = 0;
-while(true)//(maxCFL > 1e-4)
+real endsim=0.5;
+bool recorded;
+while(curt < endsim)//(maxCFL > 1e-4)
 {
     // If needed, carry out mesh adaptation, solve again, adapt again
     if( nAdapt == dref)
@@ -497,7 +517,7 @@ while(true)//(maxCFL > 1e-4)
     }
 
 
-    boolRhoPhitoPlot = (RhoPhiPlot < -0.2)*RhoPhiPlot + (RhoPhiPlot > 0.2)*RhoPhiPlot;
+    // boolRhoPhitoPlot = (RhoPhiPlot < -0.2)*RhoPhiPlot + (RhoPhiPlot > 0.2)*RhoPhiPlot;
 
     MakeRhoPhiMesh
 
@@ -509,7 +529,7 @@ while(true)//(maxCFL > 1e-4)
     if (counter % PrintStep == 0 && doPrint)
     {
         string outputn = foldern + "image-" + curt + ".eps";
-        plot(boolRhoPhitoPlot, ps=outputn, fill=1, wait=false);
+        plot(RhoPhiPlot, ps=outputn, fill=1, wait=false);
         outputn = folderphi + "image-" + curt + ".eps";
         plot(phi, ps=outputn, fill=1, wait=false, value=true);
         outputn = folderrho + "image-" + curt + ".eps";
@@ -526,15 +546,16 @@ while(true)//(maxCFL > 1e-4)
     }
 
 
-    if (makeData && counter==OutputTime)
+    if (makeData && curt > endsim-0.1 && recorded == false)
     {
+        recorded = true;
         // matrix Vphi;
         // matrix Vrho;
         // matrix Vdiff;
         // Vphi.resize(maxcount, Vhfield.ndof);
         // Vrho.resize(maxcount, Vhfield.ndof);
         // Vdiff.resize(maxcount, Vhfield.ndof);
-        string filen = datafolder + "/phi_data.dat";
+        string filen = datafolder + "phi_data" + parstr + ".dat";
         ofstream TheFile(filen);
         Vhfield xx=x;
         Vhfield yy=y;
@@ -543,7 +564,7 @@ while(true)//(maxCFL > 1e-4)
             TheFile << xx[][i] << "\t" << yy[][i] << "\t" << phi[][i] << endl;
         }
 
-        filen = datafolder + "/rho_data.dat";
+        filen = datafolder + "rho_data" + parstr + ".dat";
         ofstream TheFilerho(filen);
         for(int i=0; i< Vhfield.ndof; ++i)
         {
@@ -551,7 +572,7 @@ while(true)//(maxCFL > 1e-4)
         }
 
         Vhfield diffregion = ((phi > 0.8) * (rhoold < 0.7) * diffparam * sqrt(dx(rho)+dy(rho)^2));
-        filen = datafolder + "/diff_data.dat";
+        filen = datafolder + "diff_data" + parstr + ".dat";
         ofstream TheFileDiff(filen);
         for(int i=0; i< Vhfield.ndof; ++i)
         {
@@ -568,24 +589,25 @@ while(true)//(maxCFL > 1e-4)
         real t5 = int2d(Th)(((a)*0.25 * rho^2 * (1-rho)^2));
         real t6 = int2d(Th)(((k) * 0.5 * abs(dx(rho) + dy(rho))^2));
         real t7 = lmdarho * (rhoArea - A0P)^2;
+        // currently not removing curvature from rho.
         real t8 = int2d(Th) ( (rhointerface * ((k) * Rcurvature)));
 
         // coupling
         real t9 = int2d(Th)(phi * ((aP)*0.25 * rho^2 * (1-rho)^2));
         real t10 = int2d(Th)(phi * ((kP) * 0.5 * abs(dx(rho) + dy(rho))^2));
         real t11 = lmdarhophi * (rhophiArea - A0R)^2;
-        real teng = t1+t2+t3-t4+t5+t6+t7-t8+t9+t10+t11;
+        real teng = t1+t2+t3-t4+t5+t6+t7+t9+t10+t11;
 
         if (counter == 10)
         {
-            string filen = datafolder + "/total_energy.dat";
+            string filen = datafolder + "total_energy" + parstr + ".dat";
             ofstream TheFileEn(filen);
             TheFileEn << curt << "\t" << t1 << "\t" << t2 << "\t" << t3 << "\t" << t4 << "\t" << t5 << "\t" << t6 << "\t" << 
                         t7 << "\t" << t8 << "\t" << t9 << "\t" << t10 << "\t" << t11 << "\t" << teng << endl;
         }
         else
         {
-            string filen = datafolder + "/total_energy.dat";
+            string filen = datafolder + "total_energy" + parstr + ".dat";
             ofstream TheFileEn(filen, append);
             TheFileEn << curt << "\t" << t1 << "\t" << t2 << "\t" << t3 << "\t" << t4 << "\t" << t5 << "\t" << t6 << "\t" << 
                         t7 << "\t" << t8 << "\t" << t9 << "\t" << t10 << "\t" << t11 << "\t" << teng << endl;
