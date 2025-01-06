@@ -3,18 +3,18 @@ import matplotlib.pyplot as plt
 
 # Load the data from a text file
 # The data.txt file should contain the provided rows of numbers
-dataphi = np.loadtxt('data/phi_data-5-5.dat')
+dataphi = np.loadtxt('data/phi_data.dat')
 dataphi = dataphi[dataphi[:, 0].argsort()]
 # The first column is the x-axis
 x = dataphi[:, 0]
 
 
-datarho = np.loadtxt('data/rho_data-5-5.dat')
+datarho = np.loadtxt('data/rho_data.dat')
 datarho = datarho[datarho[:, 0].argsort()]
 # The first column is the x-axis
 xr = datarho[:, 0]
 
-datadiff = np.loadtxt('data/diff_data-5-5.dat')
+datadiff = np.loadtxt('data/diff_data.dat')
 datadiff = datadiff[datarho[:, 0].argsort()]
 # The first column is the x-axis
 xd = datadiff[:, 0]

@@ -19,13 +19,12 @@ for(int i=0;i<ARGV.n;++i)
     cout << ARGV[i] << endl;
 }
 
-if (ARGV.n > 2)
+if (ARGV.n > 3)
 {
     printScreen = false;
 }
 
 verbosity=0;
-real PrintStep=100;
 
 string foldern= "one-dim-analysis/data";
 string parstr = "";
@@ -169,7 +168,7 @@ real dt = 0.01;
 real phitension=1;
 real rhotension=10;
 
-if (ARGV.n > 2)
+if (ARGV.n > 3)
 {
     phitension = atof(ARGV[2]);
     rhotension = atof(ARGV[3]);
@@ -204,12 +203,7 @@ if (addrate > 0)
 
 
 
-// Initial parameters of the drop
-real dR = 1;  // Radius
-real dxc= 1.5;  // x coordinate
-real DropTh = 0.025;
-real dRrho = 0.5;
-real dxcRho = 2;
+
 
 func RhoDifferentiate = int1d(Th) (dt * (phi > 0.75) * (rho < 0.55) * diffparam * phi * sqrt(dx(rho)^2 + dy(rho)^2));
 
@@ -255,6 +249,14 @@ problem RhoField(rho, w, master=0, solver=sparsesolver)
 
 
 // Initialisation
+
+
+// Initial parameters of the drop
+real dR = 1;  // Radius
+real dxc= 1.5;  // x coordinate
+real DropTh = sqrt((2*k)/a);
+real dRrho = 0.5;
+real dxcRho = 2;
 
 func initPhi = 0.5 * (1-tanh((abs(x - dxc) - dR) / DropTh));
 func initRho = 0.5 * (1 - tanh((abs(x-dxcRho)- dRrho) / DropTh));
@@ -310,7 +312,7 @@ while(OutPutCounter < maxcount)//(maxCFL > 1e-4)
         kP = truekP;
         aP = trueaP;
 
-        if (counter % 1000 == 0)
+        if (counter % 1 == 0)
         {
             cout << curt << endl;
             Vhfield diffregion = ((phi > 0.75) * (rhoold < 0.55) * diffparam * sqrt(dx(rho)^2));
@@ -328,10 +330,9 @@ while(OutPutCounter < maxcount)//(maxCFL > 1e-4)
     }  
 
 
-
     if (counter % screenStep == 0 && printScreen)
     {
-        plot(phi,fill=1,value=1,wait=false);
+        plot(phi,fill=1,value=1,wait=true);
     }
 
 }

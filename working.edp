@@ -358,10 +358,12 @@ real DropTh = sqrt((2*k)/a);
 real rhoDropTh = sqrt((2*initkP)/initaP);
 real dyct = 1.3; // dR + dyc will give same top point (half in half out)
 
+// "Half lengths" in each direction for a 2:1 aspect ratio
+real Lx = 2.0 * dR;  // x half-extent
+real Ly = 1.0 * dR;  // y half-extent
 
 
-
-func initPhi = 0.5 * (1.0- tanh(( max(abs(x - dxc)/2, abs(y - dyc)) - dR )/ DropTh)) //0.5 * (1-tanh((abs(y - dyc) - dR) / DropTh))// 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-0.4-dyc)^2) - dR) / (sqrt(2) * DropTh)))
+func initPhi = 0.5 * (1.0- tanh(( max(abs((x - dxc) / Lx), abs((y - dyc) / Ly)) - 1.0 )/ DropTh)) //0.5 * (1-tanh((abs(y - dyc) - dR) / DropTh))// 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-0.4-dyc)^2) - dR) / (sqrt(2) * DropTh)))
  + 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-dyct)^2) - dRrho) / (sqrt(2) * rhoDropTh)));
 func initRho = 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-dyct)^2) - dRrho) / (sqrt(2) * rhoDropTh)));
 
