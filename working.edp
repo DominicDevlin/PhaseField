@@ -39,7 +39,6 @@ string command4 = "mkdir images/" + dirstr + "phi-images";
 string command5 = "mkdir images/" + dirstr + "rho-images";
 
 bool makeData = true;
-int OutputTime=20;
 string datafolder = "model-output/" + dirstr;
 string datacommand1 = "mkdir model-output";
 string datacommand2 = "mkdir model-output/" + dirstr;
