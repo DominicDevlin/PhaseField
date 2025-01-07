@@ -15,8 +15,8 @@ string parstr = "";
 string dirstr = "";
 if (ARGV.n > 3)
 {
-    parstr = "-" + ARGV[2] + "-" + ARGV[3];
-    dirstr =  ARGV[2] + "-" + ARGV[3] + "/";
+    parstr = "-" + ARGV[3] + "-" + ARGV[4];
+    dirstr =  ARGV[3] + "-" + ARGV[4] + "/";
     printScreen = false;
 }
 
@@ -150,7 +150,7 @@ macro solvePhase()
 
     rhooutside = (phi < 0.5) * (sqrt(dx(rho)^2 + dy(rho)^2));
     rhooutside = (rhooutside > 2);
-    rhophiinterface = (phi > 0.75) * (sqrt(dx(rho)^2 + dy(rho)^2)) * (rho < 0.55) * phi;
+    rhophiinterface = (phi > upperdifflimit) * (sqrt(dx(rho)^2 + dy(rho)^2)) * (rho < lowerdifflimit) * phi;
     real overlap = int2d(Th) (rhophiinterface );
     real funcoverlap = overlap / (overlap^2 + 0.02);
     diffparam = diffrate/dt * funcoverlap;
@@ -161,7 +161,7 @@ macro solvePhase()
         absdelphi = sqrt(dx(dummyphi)^2 + dy(dummyphi)^2);
         phiinterface = (absdelphi * dummyphi > 0.04);
         relaxphasefield;
-        RelaxRhoField;
+        RhoField;
     }
     else 
     {
@@ -226,20 +226,22 @@ real epseps = 1e-9;           // small prefactor for 1/sqrt
 real dt = 0.01;
 
 real phitension=6;
+real rhophitension=1;
 real rhotension=1;
 
 if (ARGV.n > 3)
 {
     phitension = atof(ARGV[2]);
-    rhotension = atof(ARGV[3]);
+    rhophitension = atof(ARGV[3]);
+    rhotension = atof(ARGV[4]);
     makeData=true;
 }
 
 
 real initaP = 1; // for equilibration (equal to phi)
 real initkP = 0.001; // for equilibration NOTE: MIGHT BE BETTER AT slightly lower value than phi for sharper interface
-real trueaP = initaP*rhotension;  //initaP * 15;
-real truekP = initkP*rhotension;// initkP * 15;
+real trueaP = initaP*rhophitension;  //initaP * 15;
+real truekP = initkP*rhophitension;// initkP * 15;
 
 real aP = initaP;               // Coefficient a (increased need to be at 1 or 0, increase causes decreases interface length)
 real kP = initkP;               // smoothness of interface transition, decrease causes decrease in interface length
@@ -250,11 +252,13 @@ real A0phi = 0.;
 
 real diffparam = 0; // this is being treated dynamically.
 real diffamount=0;
-real diffrate =0;// 1e-4;//1e-4;//1e-4;
+real diffrate =1e-4;// 1e-4;//1e-4;//1e-4;
 real addrate=0;//0.25e-4;//0.5e-4;
 real netrate=1;
 if (addrate > 0)
     netrate=(diffrate-addrate)/diffrate;
+real upperdifflimit=0.6;
+real lowerdifflimit=0.4;
 
 
 
@@ -289,31 +293,21 @@ problem phasefield(phi, v, master=0, solver=sparsesolver) // ,
     + int2d(Th) (1/eta * phi * (v * 0.5 * aP * rho - 1.5*v*aP*rho*rho + v*aP*rho * rho^2))
     + int2d(Th) (1/eta * phi * (kP * (dx(rho) * dx(v) + dy(rho) * dy(v))))
     // + int2d(Th) (1/eta * ( v * (12 * lmdarho *(rhoArea-A0P)*rho*(1-rho))))
-    - int2d(Th) ((phiold > 0.75) * (rho < 0.55) * diffparam * v * sqrt(dx(rho)^2 + dy(rho)^2))
+    - int2d(Th) ((phiold > upperdifflimit) * (rho < lowerdifflimit) * diffparam * v * sqrt(dx(rho)^2 + dy(rho)^2))
     + int2d(Th) (1/eta * ( v * (12 * lmdarhophi *(rhophiArea-A0R)*rho*phi*(1-rhoold))));
     // + int2d(Th) (1/eta * (1-rhointerface) * phi * gammaSL * (dx(rho) * dx(v) + dy(rho) * dy(v)) / sqrt(dx(rhoold)^2 + dy(rhoold)^2 + epseps));
     // + int2d(Th) (1/eta * ( v * (20000 * lmda * rigidityconstraint * (rigidphifield > 0.001) * (phi/fmax(rigidphifield,epseps)-1/fmax(rigidphifield,epseps)))));
     // - int2d(Th) (1/eta * ( v * (100 * lmda * rigidityconstraint * rigidphifield)));
 
 
-func RhoDifferentiate = int2d(Th) (dt * (phi > 0.75) * (rho < 0.55) * diffparam * phi * sqrt(dx(rho)^2 + dy(rho)^2));
+func RhoDifferentiate = int2d(Th) (dt * (phi > upperdifflimit) * (rho < lowerdifflimit) * diffparam * phi * sqrt(dx(rho)^2 + dy(rho)^2));
 
 
-problem RelaxRhoField(rho, w, master=0, solver=sparsesolver)
-    = int2d(Th) (w * (rho)/dt )
-    // + int2d(Th) (1/eta * (0.5 * w * aP * rho - 1.5*w*aP*rho*rhoold + w*aP*rho * rhoold^2))
-    // + int2d(Th) (1/eta * (kP * (dx(w) *dx(rho) + dy(w) * dy(rho))))
-
-    + int2d(Th) (1/eta * phi * (0.5 * w * aP * rho - 1.5*w*aP*rho*rhoold + w*aP*rho * rhoold^2))
-    + int2d(Th) (1/eta * phi * (kP * (dx(w) *dx(rho) + dy(w) * dy(rho))))
-    + int2d(Th) (1/eta * ( w * (12 * lmdarho *(rhoArea-A0P)*rho*(1-rhoold))))
-    + int2d(Th) (1/eta * ( w * (12 * lmdarhophi *(rhophiArea-A0R)*rho*phi*(1-rhoold))))
-    - int2d(Th) ( w * (rhoold)/dt  );
 
 problem RhoField(rho, w, master=0, solver=sparsesolver)
     = int2d(Th) (w * (rho)/dt )
-    + int2d(Th) (1/eta * rho * (0.5 * w * a - 1.5*w*a*rhoold + w*a*rhoold^2))
-    + int2d(Th) (1/eta * (k * (dx(w) *dx(rho) + dy(w) * dy(rho))))
+    + int2d(Th) (1/eta * rhotension * rho * (0.5 * w * a - 1.5*w*a*rhoold + w*a*rhoold^2))
+    + int2d(Th) (1/eta * rhotension * (k * (dx(w) *dx(rho) + dy(w) * dy(rho))))
     + int2d(Th) (1/eta * phi * rho * (0.5 * w * aP - 1.5*w*aP*rhoold + w*aP*rhoold^2))
     + int2d(Th) (1/eta * phi * (kP * (dx(w) *dx(rho) + dy(w) * dy(rho))))
     + int2d(Th) (1/eta * ( w * (12 * lmdarho *(rhoArea-A0P)*rho*(1-rhoold))))
@@ -323,7 +317,7 @@ problem RhoField(rho, w, master=0, solver=sparsesolver)
     // in strong form (slightly in correc)
     // + int2d(Th) (rhointerface * diffparam * w ) // slightly incorrect ues of diffparam as constant,
     // in weak form 
-    + int2d(Th) ((phi > 0.75) * (rhoold < 0.55) * diffparam * w * sqrt(dx(rhoold)^2 + dy(rhoold)^2))
+    + int2d(Th) ((phi > upperdifflimit) * (rhoold < lowerdifflimit) * diffparam * w * sqrt(dx(rhoold)^2 + dy(rhoold)^2))
 
     - int2d(Th) ( w * (rhoold)/dt  );
     // + int2d(Th) (1/eta * ( (1-rhointerface) * gammaSL * (dx(w) *dx(rho) + dy(w) * dy(rho))))
@@ -441,7 +435,7 @@ int nAdapt=0;
 real curt=0.0;
 // // Time stepping
 int counter = 0;
-real endsim=0.5;
+real endsim=52;
 bool recorded;
 while(curt < endsim)//(maxCFL > 1e-4)
 {

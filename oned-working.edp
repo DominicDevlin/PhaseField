@@ -166,7 +166,7 @@ real dt = 0.01;
 
 
 real phitension=1;
-real rhotension=10;
+real rhotension=10.5;
 
 if (ARGV.n > 3)
 {
@@ -312,10 +312,10 @@ while(OutPutCounter < maxcount)//(maxCFL > 1e-4)
         kP = truekP;
         aP = trueaP;
 
-        if (counter % 1 == 0)
+        if (counter % 1000 == 0)
         {
             cout << curt << endl;
-            Vhfield diffregion = ((phi > 0.75) * (rhoold < 0.55) * diffparam * sqrt(dx(rho)^2));
+            Vhfield diffregion = ((phi > 0.6) * (rhoold < 0.4) * sqrt(dx(rho)^2));
             for(int i=0; i< Vhfield.ndof; ++i)
             {
                 Vphi(OutPutCounter, i) = phi[][i];
@@ -332,7 +332,7 @@ while(OutPutCounter < maxcount)//(maxCFL > 1e-4)
 
     if (counter % screenStep == 0 && printScreen)
     {
-        plot(phi,fill=1,value=1,wait=true);
+        plot(phi,fill=1,value=1,wait=false);
     }
 
 }

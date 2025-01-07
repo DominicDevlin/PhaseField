@@ -23,6 +23,29 @@ minima = []
 
 
 
+def solve_quadratic(a, b, c):
+    # Calculate the discriminant
+    discriminant = b**2 - 4*a*c
+    
+    # For real solutions (discriminant >= 0)
+    if discriminant > 0:
+        root1 = (-b + math.sqrt(discriminant)) / (2*a)
+        root2 = (-b - math.sqrt(discriminant)) / (2*a)
+        return (root1, root2)
+    elif discriminant == 0:
+        # One real root (double root)
+        root = -b / (2*a)
+        return (root, root)
+    else:
+        # If the discriminant is negative, provide complex solutions
+        real_part = -b / (2*a)
+        imaginary_part = math.sqrt(-discriminant) / (2*a)
+        root1 = complex(real_part, imaginary_part)
+        root2 = complex(real_part, -imaginary_part)
+        return (root1, root2)
+
+
+
 def get_data():
     for fpath in files:
         # Extract filename without path
@@ -118,15 +141,34 @@ def PlotLine():
     Lvals = []
 
     for g in sorted_gamma_rhos:
-        a=1.
-        k=0.001
+        eps=0.001
+        gphi = 1
 
-        gamma_p = np.sqrt((8/9)*a*k)
-        gamma_r = np.sqrt((8/9)*g*a*k)
-        print(gamma_p, gamma_r)
-        newL = (4*gamma_p**2 + ((8./9.)*g*a*k/2) )/((8./9.)*g*a*k) # float( gamma_r)/2. + 2.*gamma_p) / (gamma_r )
+        gamma_p = np.sqrt((8/9)*gphi*eps)
+        gamma_r = np.sqrt((8/9)*g*eps)
+        # make quadratic:
+        # qa = 9*gamma_p**2
+        # qb = - gamma_r**2
+        # qc = gamma_r**2 / 2. + 0*gamma_p**2
+
+        # r1, r2 = solve_quadratic(qa, qb, qc)
+        # newL=0
+        # # print(r1, r2)
+        # if (r1.imag != 0 or r2.imag != 0):
+        #     newL = 1
+        # else:
+        #     r1real = r1.real
+        #     r2real = r2.real
+        #     print(r1real, r2real)
+        #     if (r2real < r1real):
+        #         newL = r2real
+        #     else:  
+        #         newL = r1real   
+        # newL = (3*gamma_p**2 + ((8./9.)*g*eps/2))/((8./9.)*g*eps - (8./9.)*eps)
+        # newL = (4*gamma_p**2 + ((8./9.)*g*eps/2) )/((8./9.)*g*eps ) # float( gamma_r)/2. + 2.*gamma_p) / (gamma_r )
+        newL = 4*(gphi)/g + 0.5
         if newL > 1:
-            Lvals.append(1.)
+            Lvals.append(math.nan)
         else:
             Lvals.append(2*newL-1)
 
