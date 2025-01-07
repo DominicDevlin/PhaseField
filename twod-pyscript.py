@@ -1,9 +1,7 @@
 import subprocess
 import sys
-
-
-
-        
+import numpy as np
+      
 
 index = 0
 
@@ -12,32 +10,111 @@ if (len(sys.argv) > 1):
     print("INDEX IS: ", index)
     # prepend = "xvfb-run -a "
 
+# constant params.
+tauphi = 2.
 
-gamma_phi = 2.
-gamma_rhophi = 1.
-gamma_rho = 1.
+eps=0.001
+sigma12s = [0.12, 0.16, 0.2, 0.24]  # <-- desired sigma_12 value
 
-# gamma_phi_vals should be [1, 2, 3, 4, 5]
-gamma_rhophi_vals = list(range(2, 21, 4))
-# gamma_rho_vals should be between 1 and 20 (inclusive)
-gamma_rho_vals = list(range(2, 21, 4))
 
-# Create all pairs of (gamma_phi, gamma_rho)
 pairs = []
-for r1 in gamma_rhophi_vals:
-    for r2 in gamma_rho_vals:
-        pairs.append((r1, r2))
+results = []
+
+
+for sigma12_target in sigma12s:
+    tauphirho_values = [1, 1.5625, 2.25, 3.0625, 4, 5.0625, 6.25, 7.5625, 9, 12.25, 16, 20.25, 25, 30.25, 36, 42.25, 49]
+    taurho_values = []
+
+    for tauphirho in tauphirho_values:
+        # ---- 1) Compute quantities that depend on tauphirho but not on taurho ----
+        #
+        # phiint = [ (32/9)*tauphi*eps + (4/9)*tauphirho*eps ] / [ (8/9)*tauphirho*eps ]
+        # Simplifies to phiint = 4*(tauphi/tauphirho) + 1/2
+        phiint = 4.0*(tauphi/tauphirho) + 0.5
+
+        # gamma_phirho1 = sqrt( (8/9)*tauphirho*eps * phiint )
+        gamma_phirho1 = np.sqrt((8./9.)*tauphirho*eps*phiint)
+
+        # ---- 2) Solve for taurho so that sigma12 stays fixed ----
+        # We want sigma12_target = gamma_phirho1 + sqrt((8/9)*taurho*eps).
+        # => taurho = ( (sigma12_target - gamma_phirho1)**2 ) / ( (8/9)*eps )
+        const_for_taurho = (8./9.) * eps
+        # Be careful to avoid negative radicand:
+        inside_sqrt = sigma12_target - gamma_phirho1
+        
+        if inside_sqrt < 0:
+            # If gamma_phirho1 alone is already bigger than sigma12_target, 
+            # then you cannot keep sigma_12 at that smaller value.
+            taurho = None
+            sigma12_computed = None
+            msg = "Impossible to keep sigma12 at {} because gamma_phirho1 already exceeds it!".format(sigma12_target)
+            print(msg)
+        else:
+            taurho = (inside_sqrt**2) / const_for_taurho
+
+            # ---- 3) Re-compute gamma_rho with the solved taurho ----
+            gamma_rho = np.sqrt((8./9.)*taurho*eps)
+
+            # Double check sigma12 is indeed ~ sigma12_target
+            sigma12_computed = gamma_phirho1 + gamma_rho
+
+        # ---- 4) Now we can compute sigma13, sigma23, etc. if needed ----
+        # gamma_phi  = sqrt((8/9)*tauphi*eps)
+        gamma_phi = np.sqrt((8./9.)*tauphi*eps)
+        
+        # gamma_phirho2 = sqrt((4/9)*tauphirho*eps)
+        gamma_phirho2 = np.sqrt((4./9.)*tauphirho*eps)
+
+        # sigma13 = gamma_phirho2 + gamma_rho + gamma_phi
+        # sigma23 = gamma_phi
+        sigma13 = None
+        sigma23 = None
+        
+        if taurho is not None:
+            sigma13 = gamma_phirho2 + gamma_rho + gamma_phi
+            sigma23 = gamma_phi
+            taurho_values.append(taurho)
+
+        # ---- 5) Store or print results ----
+        results.append({
+            'tauphirho'   : tauphirho,
+            'taurho'      : taurho,
+            'sigma12_fix' : sigma12_computed,
+            'sigma13'     : sigma13,
+            'sigma23'     : sigma23,
+        })
+    # Create all pairs of (gamma_phi, gamma_rho)
+    for r in range(len(taurho_values)):
+        pairs.append((tauphirho_values[r], taurho_values[r]))
+
+
+# Print the table of results
+print("   tauphirho     taurho         sigma12     sigma13     sigma23")
+for res in results:
+    print(
+        f"{res['tauphirho']:>10} "
+        f"{res['taurho'] if res['taurho'] is not None else 'N/A':>10} "
+        f"{res['sigma12_fix'] if res['sigma12_fix'] else 'N/A':>10} "
+        f"{res['sigma13'] if res['sigma13'] else 'N/A':>10} "
+        f"{res['sigma23'] if res['sigma23'] else 'N/A':>10}"
+    )
 
 # Select the pair at the given index
 # (Make sure index is valid for pairs; you may want to add a check if needed)
-gamma_rhophi, gamma_rho = pairs[index]
+taurhophi, taurho = pairs[index]
 
-print("gamma_phi:", gamma_phi)
-print("gamma_rho:", gamma_rhophi)
-print("gamma_rho:", gamma_rho)
+tauphi_str = f"{tauphi:.3g}"
+taurhophi_str = f"{taurhophi:.3g}"
+taurho_str = f"{taurho:.3g}"
+
+
+print("totals: ", len(pairs))
+print("tau phi:", tauphi_str)
+print("tau rhophi:", taurhophi_str)
+print("tau rho:", taurho_str)
 
 # Build the command as a list of strings
-command = ["FreeFem++", "working.edp", str(gamma_phi), str(gamma_rhophi), str(gamma_rho)]
+command = ["FreeFem++", "working.edp", tauphi_str, taurhophi_str, taurho_str]
 
 print(f"Running: {' '.join(command)}")
 # Execute the command

@@ -4,7 +4,7 @@ load "UMFPACK64";
 load "isoline";
 load "Element_P3";
 
-
+real endsim=52;
 bool addstem=true;
 real endrelaxation=10; // n steps before swapping to phase field main
 bool printScreen=true;
@@ -15,8 +15,8 @@ string parstr = "";
 string dirstr = "";
 if (ARGV.n > 3)
 {
-    parstr = "-" + ARGV[3] + "-" + ARGV[4];
-    dirstr =  ARGV[3] + "-" + ARGV[4] + "/";
+    parstr = "-" + ARGV[2] + "-" + ARGV[3] + "-" + ARGV[4];
+    dirstr =  ARGV[2] + "-" + ARGV[3] + "-" + ARGV[4] + "/";
     printScreen = false;
 }
 
@@ -435,7 +435,6 @@ int nAdapt=0;
 real curt=0.0;
 // // Time stepping
 int counter = 0;
-real endsim=52;
 bool recorded;
 while(curt < endsim)//(maxCFL > 1e-4)
 {

@@ -12,11 +12,11 @@ import matplotlib.pyplot as plt
 
 
 eps=0.001
-tauphi=2
+tauphi=2.0
 sigma12_target = 0.2  # <-- your desired sigma_12 value
 
 
-tauphirho_values = [1, 2, 5, 10, 20, 30]  # examples
+tauphirho_values = [1, 4, 9, 16, 25, 36, 49, 64]  # examples
 
 
 results = []
