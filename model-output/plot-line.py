@@ -3,11 +3,15 @@ import matplotlib.pyplot as plt
 
 # Load the data from a text file
 # The data.txt file should contain the provided rows of numbers
-dataphi = np.loadtxt('phi_data.dat')
+datan= '-2-42.2-1.72'
+dir = 'data/' + datan[1:] +'/'
 
-datarho = np.loadtxt('rho_data.dat')
 
-datadiff = np.loadtxt('diff_data.dat')
+dataphi = np.loadtxt(dir + 'phi_data' + datan + '.dat')
+
+datarho = np.loadtxt(dir + 'rho_data' + datan + '.dat')
+
+datadiff = np.loadtxt(dir + 'diff_data' + datan + '.dat')
 
 dataphi = dataphi[dataphi[:, 1].argsort()]
 datarho = datarho[datarho[:, 1].argsort()]
@@ -33,7 +37,7 @@ for i in range(len(x)):
         phi_values.append(phi[i])
         rho_values.append(rho[i])
         if diff[i] < 0.01:
-            diff_values.append(0)
+            diff_values.append(np.nan)
         else:
             diff_values.append(diff[i])
 

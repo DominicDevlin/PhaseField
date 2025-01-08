@@ -22,7 +22,7 @@ if (ARGV.n > 3)
 
 verbosity=0;
 real PrintStep=1000;
-bool doPrint=true;
+bool doPrint=false;
 bool printinterface=false;
 bool PrintEnergy=true;
 string foldern = "images/" + dirstr + "phirho-images/";
@@ -68,10 +68,10 @@ if (doPrint)
 // -------------------------------------------------------------------------------------------------------------------------------------
 // Mesh and grid
 
-real xmin =  -1.5;
-real xmax =  1.5;
+real xmin =  -2;
+real xmax =  2;
 real ymin =  0;
-real ymax =  5;
+real ymax =  6;
 
 // Mesh resolution
 int  n     = 2; // Number of segments per unit length
@@ -147,13 +147,15 @@ real phimoved=0;
 // Macro for non-linear solutions
 macro solvePhase()
 {
-
-    rhooutside = (phi < 0.5) * (sqrt(dx(rho)^2 + dy(rho)^2));
-    rhooutside = (rhooutside > 2);
-    rhophiinterface = (phi > upperdifflimit) * (sqrt(dx(rho)^2 + dy(rho)^2)) * (rho < lowerdifflimit) * phi;
-    real overlap = int2d(Th) (rhophiinterface );
-    real funcoverlap = overlap / (overlap^2 + 0.02);
-    diffparam = diffrate/dt * funcoverlap;
+    if (dynamicdiff)
+    {
+        rhooutside = (phi < 0.5) * (sqrt(dx(rho)^2 + dy(rho)^2));
+        rhooutside = (rhooutside > 2);
+        rhophiinterface = (phi > upperdifflimit) * (sqrt(dx(rho)^2 + dy(rho)^2)) * (rho < lowerdifflimit) * phi;
+        real overlap = int2d(Th) (rhophiinterface );
+        real funcoverlap = overlap / (overlap^2 + 0.02);
+        diffparam = diffrate/dt * funcoverlap;
+    }
     BalanceDifferentiation;
 
     if (counter < endrelaxation)
@@ -184,10 +186,29 @@ macro solvePhase()
         if (phimoved < 0)
             phimoved = 0;
     }
-    A0 = A0 + phimoved;
-    real loss = netrate * diffamount;
-    A0R = A0R - loss;
-    A0P = A0P - loss;
+
+    if (dynamicdiff) 
+    {
+        real loss = netrate * diffamount;
+        A0R = A0R - loss;
+        A0P = A0P - loss;
+        
+        real maxadd = addproportion * diffamount;
+        if (phimoved > maxadd)
+            phimoved = maxadd;
+        A0 = A0 + phimoved;
+    }
+    else
+    {
+        real gain = absgrowth - diffamount;
+        A0R = A0R + gain;
+        A0P = A0P + gain;
+        if (phimoved > absgrowth)
+            phimoved = absgrowth;
+        A0 = A0 + phimoved;
+    }
+    
+
 
         
 }
@@ -225,8 +246,8 @@ real A0 = 3.143;              // Target value for A
 real epseps = 1e-9;           // small prefactor for 1/sqrt
 real dt = 0.01;
 
-real phitension=6;
-real rhophitension=1;
+real phitension=1;
+real rhophitension=10;
 real rhotension=1;
 
 if (ARGV.n > 3)
@@ -249,14 +270,22 @@ real A0P = 3.143;              // Target value for A
 real A0R = 0.;
 real A0phi = 0.;
 
+bool dynamicdiff = false;
 
-real diffparam = 0; // this is being treated dynamically.
-real diffamount=0;
+// dynamic
 real diffrate =1e-4;// 1e-4;//1e-4;//1e-4;
-real addrate=0;//0.25e-4;//0.5e-4;
+real addproportion = 0.; // between 0 and 1
+real addrate=addproportion * diffrate;//0.25e-4;//0.5e-4;
 real netrate=1;
 if (addrate > 0)
     netrate=(diffrate-addrate)/diffrate;
+
+// non dynamic
+real diffparam = 0.025; // this is being treated dynamically if dynamic param is true.
+real absgrowth = 0;
+
+real diffamount=0;
+
 real upperdifflimit=0.6;
 real lowerdifflimit=0.4;
 
@@ -274,7 +303,7 @@ problem relaxphasefield(phi, v, master=0, solver=sparsesolver) // ,
     = int2d(Th) (  v * (phi)/dt  )
     //+ int2d(Th) (1/eta * (v * a * phi - 3*v*a*phi*phiold + 2*v*a*phi*phiold^2))
     // + int2d(Th) (1/eta * (k * (dx(v) *dx(phi) + dy(v) * dy(phi))))
-    + int2d(Th) (1/eta * a * (v * phi - v*3*phi*phiold + 2 * v*phi*phiold^2))
+    + int2d(Th) (1/eta * a * (0.5 * v * phi - v*1.5*phi*phiold + v*phi*phiold^2))
     + int2d(Th) (1/eta * (k * (dx(v) *dx(phi) + dy(v) * dy(phi))))
     + int2d(Th) (1/eta * ( v * (12 * lmda *(phiArea-A0)*phi*(1-phiold))))
     - int2d(Th) (  v * (phiold)/dt  );
@@ -293,7 +322,7 @@ problem phasefield(phi, v, master=0, solver=sparsesolver) // ,
     + int2d(Th) (1/eta * phi * (v * 0.5 * aP * rho - 1.5*v*aP*rho*rho + v*aP*rho * rho^2))
     + int2d(Th) (1/eta * phi * (kP * (dx(rho) * dx(v) + dy(rho) * dy(v))))
     // + int2d(Th) (1/eta * ( v * (12 * lmdarho *(rhoArea-A0P)*rho*(1-rho))))
-    - int2d(Th) ((phiold > upperdifflimit) * (rho < lowerdifflimit) * diffparam * v * sqrt(dx(rho)^2 + dy(rho)^2))
+    // - int2d(Th) ((phiold > upperdifflimit) * (rho < lowerdifflimit) * diffparam * v * sqrt(dx(rho)^2 + dy(rho)^2))
     + int2d(Th) (1/eta * ( v * (12 * lmdarhophi *(rhophiArea-A0R)*rho*phi*(1-rhoold))));
     // + int2d(Th) (1/eta * (1-rhointerface) * phi * gammaSL * (dx(rho) * dx(v) + dy(rho) * dy(v)) / sqrt(dx(rhoold)^2 + dy(rhoold)^2 + epseps));
     // + int2d(Th) (1/eta * ( v * (20000 * lmda * rigidityconstraint * (rigidphifield > 0.001) * (phi/fmax(rigidphifield,epseps)-1/fmax(rigidphifield,epseps)))));
@@ -317,7 +346,7 @@ problem RhoField(rho, w, master=0, solver=sparsesolver)
     // in strong form (slightly in correc)
     // + int2d(Th) (rhointerface * diffparam * w ) // slightly incorrect ues of diffparam as constant,
     // in weak form 
-    + int2d(Th) ((phi > upperdifflimit) * (rhoold < lowerdifflimit) * diffparam * w * sqrt(dx(rhoold)^2 + dy(rhoold)^2))
+    + int2d(Th) ((phi > upperdifflimit) * (rhoold < lowerdifflimit) * diffparam * w * phi * sqrt(dx(rhoold)^2 + dy(rhoold)^2))
 
     - int2d(Th) ( w * (rhoold)/dt  );
     // + int2d(Th) (1/eta * ( (1-rhointerface) * gammaSL * (dx(w) *dx(rho) + dy(w) * dy(rho))))
@@ -370,9 +399,8 @@ real rhoDropTh = sqrt((2*initkP)/initaP);
 real dyct = 1.4; // dR + dyc will give same top point (half in half out)
 
 // "Half lengths" in each direction for a 2:1 aspect ratio
-real Lx = 2.0 * dR;  // x half-extent
+real Lx = 3.0 * dR;  // x half-extent
 real Ly = 1.0 * dR;  // y half-extent
-
 
 func initPhi = 0.5 * (1.0- tanh(( max(abs((x - dxc) / Lx), abs((y - dyc) / Ly)) - 1.0 )/ DropTh)) //0.5 * (1-tanh((abs(y - dyc) - dR) / DropTh))// 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-0.4-dyc)^2) - dR) / (sqrt(2) * DropTh)))
  + 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-dyct)^2) - dRrho) / (sqrt(2) * rhoDropTh)));
@@ -462,7 +490,7 @@ while(curt < endsim)//(maxCFL > 1e-4)
         cout << "phi area: " << phiArea << "  with constraint: " << A0 << endl;
         cout << "rho area: " << rhoArea << "  with constraint: " << A0P << endl;
         cout << "rhophi area: " << rhophiArea << " with constraint: " << A0R << endl;
-        cout << "Value of addition param: " << addrate << endl;
+        // cout << "Value of addition param: " << addrate << endl;
     }
 
     // Prepare for the next time step
