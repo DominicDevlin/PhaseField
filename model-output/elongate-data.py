@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 # The data.txt file should contain the provided rows of numbers
 # datan= '-2-42.2-1.72'
 # Get a list of all subdirectories in the 'data' directory
-data_dir = 'data/rdiff/'
+data_dir = 'data/full/'
 subdirectories = [subdir for subdir in os.listdir(data_dir) if os.path.isdir(os.path.join(data_dir, subdir))]
 
 data_taus = []
@@ -56,7 +56,7 @@ for subdir in subdirectories:
                 diff_values.append(diff[i])
 
     # Find the y value for which phi_value goes below 0.5
-    threshold = 0.3
+    threshold = 0.8
     y_threshold = None
 
     for y_val, phi_val in zip(y_values, phi_values):
@@ -64,7 +64,7 @@ for subdir in subdirectories:
             y_threshold = y_val
             break
 
-    y_threshold = y_threshold - 1.8
+    y_threshold = y_threshold - 2
     if y_threshold < 0:
         y_threshold = 0
     
@@ -81,16 +81,17 @@ for subdir in subdirectories:
 tauphi = 2.
 
 eps=0.001
-sigma12s = [0.12, 0.16, 0.2, 0.24]  # <-- desired sigma_12 value
+sigma12s = [0.12, 0.18, 0.24, 0.3] # <-- desired sigma_12 value
 
 plot_x_values=[]
 plot_y_values=[]
 
 for sigma12_target in sigma12s:
     # tauphirho_values = [1, 1.5625, 2.25, 3.0625, 4, 5.0625, 6.25, 7.5625, 9, 12.25, 16, 20.25, 25, 30.25, 36, 42.25, 49]
-    tauphirho_values = [1, 2.25, 4, 6.25, 9, 12.25, 16, 20.25, 25, 30.25, 36, 42.25, 49]
+    tauphirho_values = [1, 1.5625, 2.25, 3.0625, 4, 5.0625, 6.25, 7.5625, 9, 10.5625, 12.25, 14.0625, 16, 18.0625, 20.25, 22.5625, 25, 27.5625, 30.25, 33.0625, 36, 39.0625, 42.25, 45.5625, 49]
     taurho_values = []
     sigma13_values = []
+    real_sigma13s = []
 
     for tauphirho in tauphirho_values:
         # ---- 1) Compute quantities that depend on tauphirho but not on taurho ----
@@ -137,7 +138,9 @@ for sigma12_target in sigma12s:
         
         if taurho is not None:
             sigma13 = gamma_phirho2 + gamma_rho + gamma_phi
-            sigma13_values.append(sigma13/sigma12_target)
+            newsig12 = gamma_phirho1 = np.sqrt((8./9.)*tauphirho*eps) + gamma_rho
+            sigma13_values.append(sigma13/ newsig12)
+            print(newsig12, sigma13)
             sigma23 = gamma_phi
             taurho_values.append(taurho)
 
@@ -176,15 +179,15 @@ for sigma12_target in sigma12s:
     plot_y_values.append(sorted_plot_y_values)
 
 # Make matplotlib line plot
-colors = ['red', 'blue', 'green', 'orange']
+colors = ['red', 'blue', 'green', 'orange', 'purple']
 
 # Make matplotlib line plot
 plt.figure()
 for i in range(len(plot_x_values)):
-    plt.plot(plot_x_values[i], plot_y_values[i], 'o-', color=colors[i % len(colors)], label=f'sigma12 = {sigma12s[i]}')
+    plt.plot(plot_x_values[i], plot_y_values[i], 'o-', color=colors[i % len(colors)], label=f'sigmaHL = {sigma12s[i]}')
 
-plt.xlabel('sigma13 / sigma12')
-plt.ylabel('y_threshold')
+plt.xlabel('sigmaHM / sigmaHL')
+plt.ylabel('elongation')
 plt.legend()
 plt.show()
 

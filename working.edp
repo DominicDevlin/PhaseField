@@ -21,8 +21,8 @@ if (ARGV.n > 3)
 }
 
 verbosity=0;
-real PrintStep=1000;
-bool doPrint=false;
+real PrintStep=5000;
+bool doPrint=true;
 bool printinterface=false;
 bool PrintEnergy=true;
 string foldern = "images/" + dirstr + "phirho-images/";

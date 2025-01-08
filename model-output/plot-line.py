@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 
 # Load the data from a text file
 # The data.txt file should contain the provided rows of numbers
-datan= '-2-42.2-1.72'
-dir = 'data/' + datan[1:] +'/'
+datan= '-2-49-19'
+dir = 'data/full/' + datan[1:] +'/'
 
 
 dataphi = np.loadtxt(dir + 'phi_data' + datan + '.dat')
@@ -32,7 +32,7 @@ rho_values=[]
 diff_values = []
 
 for i in range(len(x)):
-    if x[i] < 0.01 and x[i] > -0.01:
+    if x[i] < -0.23 and x[i] > -0.25:
         y_values.append(y[i])
         phi_values.append(phi[i])
         rho_values.append(rho[i])

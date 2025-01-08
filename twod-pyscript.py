@@ -34,9 +34,11 @@ for sigma12_target in sigma12s:
         # phiint = [ (32/9)*tauphi*eps + (4/9)*tauphirho*eps ] / [ (8/9)*tauphirho*eps ]
         # Simplifies to phiint = 4*(tauphi/tauphirho) + 1/2
         phiint = 4.0*(tauphi/tauphirho) + 0.5
-
+        if (phiint > 1):
+            phiint = 1
         # gamma_phirho1 = sqrt( (8/9)*tauphirho*eps * phiint )
-        gamma_phirho1 = np.sqrt((8./9.)*tauphirho*eps*phiint)
+        gamma_phirho1 = np.sqrt((8./9.)*tauphirho*eps)
+
 
         # ---- 2) Solve for taurho so that sigma12 stays fixed ----
         # We want sigma12_target = gamma_phirho1 + sqrt((8/9)*taurho*eps).
@@ -67,6 +69,8 @@ for sigma12_target in sigma12s:
         
         # gamma_phirho2 = sqrt((4/9)*tauphirho*eps)
         gamma_phirho2 = np.sqrt((4./9.)*tauphirho*eps)
+        
+        # print(gamma_phirho1, gamma_phirho2)
 
         # sigma13 = gamma_phirho2 + gamma_rho + gamma_phi
         # sigma23 = gamma_phi
@@ -75,6 +79,9 @@ for sigma12_target in sigma12s:
         
         if taurho is not None:
             sigma13 = gamma_phirho2 + gamma_rho + gamma_phi
+            sigma12 = gamma_phirho1 + gamma_rho
+            # print(sigma12, sigma13, gamma_phirho1, gamma_phirho2)
+            
             sigma23 = gamma_phi
             taurho_values.append(taurho)
 
@@ -85,6 +92,7 @@ for sigma12_target in sigma12s:
             'sigma12_fix' : sigma12_computed,
             'sigma13'     : sigma13,
             'sigma23'     : sigma23,
+            'phiint'      : phiint,
         })
     # Create all pairs of (gamma_phi, gamma_rho)
     for r in range(len(taurho_values)):
@@ -92,7 +100,7 @@ for sigma12_target in sigma12s:
 
 
 # Print the table of results
-print("   tauphirho     taurho         sigma12     sigma13     sigma23")
+print("   tauphirho     taurho         sigma12     sigma13     sigma23      phiint")
 for res in results:
     print(
         f"{res['tauphirho']:>10} "
@@ -100,6 +108,7 @@ for res in results:
         f"{res['sigma12_fix'] if res['sigma12_fix'] else 'N/A':>10} "
         f"{res['sigma13'] if res['sigma13'] else 'N/A':>10} "
         f"{res['sigma23'] if res['sigma23'] else 'N/A':>10}"
+        f"{res['phiint'] if res['phiint'] else 'N/A':>10}"
     )
 
 # Select the pair at the given index
