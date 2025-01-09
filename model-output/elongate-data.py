@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 # The data.txt file should contain the provided rows of numbers
 # datan= '-2-42.2-1.72'
 # Get a list of all subdirectories in the 'data' directory
-data_dir = 'data/'
+data_dir = 'data/full-new/'
 subdirectories = [subdir for subdir in os.listdir(data_dir) if os.path.isdir(os.path.join(data_dir, subdir))]
 
 data_taus = []
@@ -81,7 +81,7 @@ for subdir in subdirectories:
 tauphi = 2.
 
 eps=0.001
-sigma12s = [0.12, 0.18, 0.24, 0.36] # <-- desired sigma_12 value
+sigma12s = [0.12, 0.18, 0.24, 0.3, 0.36] # <-- desired sigma_12 value
 
 plot_x_values=[]
 plot_y_values=[]
