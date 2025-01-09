@@ -4,7 +4,7 @@ load "UMFPACK64";
 load "isoline";
 load "Element_P3";
 
-real endsim=52;
+real endsim=1.3;
 bool addstem=true;
 real endrelaxation=10; // n steps before swapping to phase field main
 bool printScreen=true;
@@ -21,7 +21,7 @@ if (ARGV.n > 3)
 }
 
 verbosity=0;
-real PrintStep=5000;
+real PrintStep=10;
 bool doPrint=true;
 bool printinterface=false;
 bool PrintEnergy=true;
@@ -246,8 +246,8 @@ real A0 = 3.143;              // Target value for A
 real epseps = 1e-9;           // small prefactor for 1/sqrt
 real dt = 0.01;
 
-real phitension=1;
-real rhophitension=10;
+real phitension=3;
+real rhophitension=1;
 real rhotension=1;
 
 if (ARGV.n > 3)
@@ -273,7 +273,7 @@ real A0phi = 0.;
 bool dynamicdiff = false;
 
 // dynamic
-real diffrate =1e-4;// 1e-4;//1e-4;//1e-4;
+real diffrate =0;//1e-4;// 1e-4;//1e-4;//1e-4;
 real addproportion = 0.; // between 0 and 1
 real addrate=addproportion * diffrate;//0.25e-4;//0.5e-4;
 real netrate=1;
@@ -537,7 +537,7 @@ while(curt < endsim)//(maxCFL > 1e-4)
     }
 
 
-    // boolRhoPhitoPlot = (RhoPhiPlot < -0.2)*RhoPhiPlot + (RhoPhiPlot > 0.2)*RhoPhiPlot;
+    boolRhoPhitoPlot = (RhoPhiPlot < -0.05)*RhoPhiPlot + (RhoPhiPlot > 0.05)*RhoPhiPlot;
 
     MakeRhoPhiMesh
 
@@ -549,7 +549,7 @@ while(curt < endsim)//(maxCFL > 1e-4)
     if (counter % PrintStep == 0 && doPrint)
     {
         string outputn = foldern + "image-" + curt + ".eps";
-        plot(RhoPhiPlot, ps=outputn, fill=1, wait=false);
+        plot(boolRhoPhitoPlot, ps=outputn, fill=1, wait=false);
         outputn = folderphi + "image-" + curt + ".eps";
         plot(phi, ps=outputn, fill=1, wait=false, value=true);
         outputn = folderrho + "image-" + curt + ".eps";

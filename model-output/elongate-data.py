@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 # The data.txt file should contain the provided rows of numbers
 # datan= '-2-42.2-1.72'
 # Get a list of all subdirectories in the 'data' directory
-data_dir = 'data/full/'
+data_dir = 'data/'
 subdirectories = [subdir for subdir in os.listdir(data_dir) if os.path.isdir(os.path.join(data_dir, subdir))]
 
 data_taus = []
@@ -81,7 +81,7 @@ for subdir in subdirectories:
 tauphi = 2.
 
 eps=0.001
-sigma12s = [0.12, 0.18, 0.24, 0.3] # <-- desired sigma_12 value
+sigma12s = [0.12, 0.18, 0.24, 0.36] # <-- desired sigma_12 value
 
 plot_x_values=[]
 plot_y_values=[]
@@ -98,10 +98,9 @@ for sigma12_target in sigma12s:
         #
         # phiint = [ (32/9)*tauphi*eps + (4/9)*tauphirho*eps ] / [ (8/9)*tauphirho*eps ]
         # Simplifies to phiint = 4*(tauphi/tauphirho) + 1/2
-        phiint = 4.0*(tauphi/tauphirho) + 0.5
 
         # gamma_phirho1 = sqrt( (8/9)*tauphirho*eps * phiint )
-        gamma_phirho1 = np.sqrt((8./9.)*tauphirho*eps*phiint)
+        gamma_phirho1 = np.sqrt((8./9.)*tauphirho*eps)
 
         # ---- 2) Solve for taurho so that sigma12 stays fixed ----
         # We want sigma12_target = gamma_phirho1 + sqrt((8/9)*taurho*eps).
@@ -138,9 +137,8 @@ for sigma12_target in sigma12s:
         
         if taurho is not None:
             sigma13 = gamma_phirho2 + gamma_rho + gamma_phi
-            newsig12 = gamma_phirho1 = np.sqrt((8./9.)*tauphirho*eps) + gamma_rho
-            sigma13_values.append(sigma13/ newsig12)
-            print(newsig12, sigma13)
+            # newsig12 = gamma_phirho1 = np.sqrt((8./9.)*tauphirho*eps) + gamma_rho
+            sigma13_values.append(sigma13/ sigma12_target)
             sigma23 = gamma_phi
             taurho_values.append(taurho)
 
@@ -149,24 +147,21 @@ for sigma12_target in sigma12s:
     for r in range(len(taurho_values)):
         tpr = tauphirho_values[r]
         tr = taurho_values[r]
-        # print(tpr, tr)
         constant_list.append((tpr, tr))
         sigma13_shorts.append(sigma13_values[r])
-        # print(sigma13_values[r])
     # print(constant_list, sigma13_shorts)
 
     plotx=[]
     ploty=[]
-
     for ir in range(len(data_taus)):
         for iter in range(len(constant_list)):
             # print(str(data_tau), constant_tuple)
-            if (abs(data_taus[ir][0] - constant_list[iter][0]) < 1e-1 and abs(data_taus[ir][1] - constant_list[iter][1]) < 1e-1):
+            if (abs(data_taus[ir][0] - constant_list[iter][0]) < 0.49 and abs(data_taus[ir][1] - constant_list[iter][1]) < 0.49):
                 y_threshold = y_thresholds[ir]
                 plotx.append(sigma13_shorts[iter])
                 ploty.append(y_threshold)
-                print(sigma13_shorts[iter], y_threshold)
-                # print(f"y_threshold for {constant_tuple}: {y_threshold}")
+                # print(sigma13_shorts[iter], y_threshold)
+                # print(f"y_threshold for {data_taus[ir]}: {y_threshold}")
                 break
             
     # Sort the plot_x_values and plot_y_values based on plot_x_values

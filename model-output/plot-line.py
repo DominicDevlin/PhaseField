@@ -3,8 +3,10 @@ import matplotlib.pyplot as plt
 
 # Load the data from a text file
 # The data.txt file should contain the provided rows of numbers
-datan= '-2-49-19'
-dir = 'data/full/' + datan[1:] +'/'
+datan= ''
+dir = '' + datan[1:]
+if (dir != ''):
+    dir = dir + '/'
 
 
 dataphi = np.loadtxt(dir + 'phi_data' + datan + '.dat')
@@ -30,9 +32,10 @@ y_values=[]
 phi_values=[]
 rho_values=[]
 diff_values = []
+well_values = []
 
 for i in range(len(x)):
-    if x[i] < -0.23 and x[i] > -0.25:
+    if x[i] < 0.02 and x[i] > -0.02:
         y_values.append(y[i])
         phi_values.append(phi[i])
         rho_values.append(rho[i])
@@ -40,8 +43,9 @@ for i in range(len(x)):
             diff_values.append(np.nan)
         else:
             diff_values.append(diff[i])
-
-
+        val =  phi[i]
+        well = val**2*(1-val)**2
+        well_values.append(well)
 
 
 # Generate a figure and a primary axis
@@ -59,7 +63,16 @@ ax2.set_ylabel('Secondary Y-axis Label')
 
 ax1.set_xlabel('X-axis Label')
 ax1.set_ylabel('Primary Y-axis Label')
+fig.set_size_inches(12, 4)
 
+plt.xlim(0, 2.5)
 
 plt.tight_layout()
+plt.show()
+
+fig2, ax2 = plt.subplots()
+ax2.plot(y_values, well_values, linestyle='-', color='black', label='well')
+fig2.set_size_inches(12, 4)
+plt.xlim(0, 2.5)
+fig2.tight_layout()
 plt.show()
