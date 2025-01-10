@@ -4,7 +4,7 @@ load "UMFPACK64";
 load "isoline";
 load "Element_P3";
 
-real endsim=1.3;
+real endsim=52;
 bool addstem=true;
 real endrelaxation=10; // n steps before swapping to phase field main
 bool printScreen=true;
@@ -21,8 +21,10 @@ if (ARGV.n > 3)
 }
 
 verbosity=0;
-real PrintStep=10;
+int PrintStep=5000;
 bool doPrint=true;
+bool doTimespan=true;
+int timePrint=100;
 bool printinterface=false;
 bool PrintEnergy=true;
 string foldern = "images/" + dirstr + "phirho-images/";
@@ -39,6 +41,12 @@ string command4 = "mkdir images/" + dirstr + "phi-images";
 string command5 = "mkdir images/" + dirstr + "rho-images";
 
 bool makeData = true;
+
+if (dirstr == "")
+{
+    dirstr = "data/";
+}
+
 string datafolder = "model-output/" + dirstr;
 string datacommand1 = "mkdir model-output";
 string datacommand2 = "mkdir model-output/" + dirstr;
@@ -599,6 +607,35 @@ while(curt < endsim)//(maxCFL > 1e-4)
             TheFileDiff << xx[][i] << "\t" << yy[][i] << "\t" << diffregion[][i] << endl;
         }
     }
+    if (doTimespan && counter % timePrint == 0)
+    {
+        string filen = datafolder + "phi_data-" + curt + ".dat";
+        ofstream TheFile(filen);
+        Vhfield xx=x;
+        Vhfield yy=y;
+        for(int i=0; i< Vhfield.ndof; ++i)
+        {
+            TheFile << xx[][i] << "\t" << yy[][i] << "\t" << phi[][i] << endl;
+        }
+
+        filen = datafolder + "rho_data-" + curt + ".dat";
+        ofstream TheFilerho(filen);
+        for(int i=0; i< Vhfield.ndof; ++i)
+        {
+            TheFilerho << xx[][i] << "\t" << yy[][i] << "\t" << rho[][i] << endl;
+        }
+
+        Vhfield diffregion = ((phi > 0.8) * (rhoold < 0.7) * diffparam * sqrt(dx(rho)+dy(rho)^2));
+        filen = datafolder + "diff_data-" + curt + ".dat";
+        ofstream TheFileDiff(filen);
+        for(int i=0; i< Vhfield.ndof; ++i)
+        {
+            TheFileDiff << xx[][i] << "\t" << yy[][i] << "\t" << diffregion[][i] << endl;
+        }
+    }
+
+
+
     if (PrintEnergy && counter % 10 == 0)
     {
         real t1 = int2d(Th)((a*phitension) * 0.25 * phi^2 * (1-phi)^2);

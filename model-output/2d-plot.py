@@ -10,15 +10,20 @@ from matplotlib.cm import get_cmap
 #    Replace 'data.csv' with your filename or filepath.
 #    If your data is whitespace-separated, use 'delim_whitespace=True'.
 # ---------------------------------------------------------------
-df = pd.read_csv('phi_data.dat', header=None, names=['x', 'y', 'conc'], delimiter='\t')
-df2 = pd.read_csv('rho_data.dat', header=None, names=['x', 'y', 'conc'], delimiter='\t')
+
+number = '8-33.1-0.0826'
+prepend = 'data/full-bigLM/' + number + '/'
+
+
+df = pd.read_csv(prepend + 'phi_data' + '-' + number + '.dat', header=None, names=['x', 'y', 'conc'], delimiter='\t')
+df2 = pd.read_csv(prepend + 'rho_data' + '-' + number + '.dat', header=None, names=['x', 'y', 'conc'], delimiter='\t')
 
 # ---------------------------------------------------------------
 # 2. Convert DataFrame columns to NumPy arrays
 # ---------------------------------------------------------------
 x = df['x'].values 
 y = df['y'].values
-c = df2['conc'].values# * (df2['conc'].values * 2 - 1)
+c = df['conc'].values* (df2['conc'].values * 2 - 1)
 
 # ---------------------------------------------------------------
 # 3. Create triangulation for contour plotting
@@ -32,14 +37,14 @@ plt.figure(figsize=(8, 12))
 
 # Optionally, specify the contour levels
 # E.g., 50 equally spaced intervals between min and max of c
-levels = np.linspace(c.min(), c.max(), 40)
+levels = np.linspace(-1.03, 1.03, 40)
 
 bwr_cmap = get_cmap('bwr')
 blue_to_white_cmap = LinearSegmentedColormap.from_list(
-    "blue_to_white", bwr_cmap(np.linspace(0.5, 1, 256))
+    "blue_to_white", bwr_cmap(np.linspace(0, 1, 256))
 )
 
-contour_f = plt.tricontourf(triang, c, levels=levels, cmap=blue_to_white_cmap)
+contour_f = plt.tricontourf(triang, c, levels=levels, cmap='bwr')
 plt.colorbar(contour_f, label="Concentration")
 # Set equal aspect ratio for x and y axes
 plt.gca().set_aspect('equal', adjustable='box')

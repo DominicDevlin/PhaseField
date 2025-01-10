@@ -11,7 +11,7 @@ if (len(sys.argv) > 1):
     # prepend = "xvfb-run -a "
 
 # constant params.
-tauphi = 8.
+tauphi = 2.
 
 eps=0.001
 sigma12s = [0.12, 0.18, 0.24, 0.3, 0.36]  # <-- desired sigma_12 value
@@ -23,8 +23,8 @@ results = []
 
 for sigma12_target in sigma12s:
     # tauphirho_values = [1, 1.5625, 2.25, 3.0625, 4, 5.0625, 6.25, 7.5625, 9, 12.25, 16, 20.25, 25, 30.25, 36, 42.25, 49]
-    # tauphirho_values = [1, 1.5625, 2.25, 3.0625, 4, 5.0625, 6.25, 7.5625, 9, 10.5625, 12.25, 14.0625, 16, 18.0625, 20.25, 22.5625, 25, 27.5625, 30.25, 33.0625, 36, 39.0625, 42.25, 45.5625, 49]
-    tauphirho_values = [1, 1.5625, 2.25, 3.0625, 4, 5.0625, 6.25, 7.5625, 9, 10.5625, 12.25, 14.0625, 16, 18.0625, 20.25, 22.5625, 25, 27.5625, 30.25, 33.0625, 36, 39.0625, 42.25, 45.5625, 49, 52.5625, 56.25, 60.0625, 64, 68.0625, 72.25, 76.5625, 81, 85.5625, 90.25, 95.0625, 100]
+    tauphirho_values = [1, 1.5625, 2.25, 3.0625, 4, 5.0625, 6.25, 7.5625, 9, 10.5625, 12.25, 14.0625, 16, 18.0625, 20.25, 22.5625, 25, 27.5625, 30.25, 33.0625, 36, 39.0625, 42.25, 45.5625, 49]
+    # tauphirho_values = [1, 1.5625, 2.25, 3.0625, 4, 5.0625, 6.25, 7.5625, 9, 10.5625, 12.25, 14.0625, 16, 18.0625, 20.25, 22.5625, 25, 27.5625, 30.25, 33.0625, 36, 39.0625, 42.25, 45.5625, 49, 52.5625, 56.25, 60.0625, 64, 68.0625, 72.25, 76.5625, 81, 85.5625, 90.25, 95.0625, 100]
 
     taurho_values = []
 
@@ -92,7 +92,8 @@ for sigma12_target in sigma12s:
             'sigma12_fix' : sigma12_computed,
             'sigma13'     : sigma13,
             'sigma23'     : sigma23,
-            'phiint'      : phiint,
+            'gamma_phirho1'      :  gamma_phirho1,
+            'gamma_phirho2'      :  gamma_phirho2,
         })
     # Create all pairs of (gamma_phi, gamma_rho)
     for r in range(len(taurho_values)):
@@ -106,9 +107,10 @@ for res in results:
         f"{res['tauphirho']:>10} "
         f"{res['taurho'] if res['taurho'] is not None else 'N/A':>10} "
         f"{res['sigma12_fix'] if res['sigma12_fix'] else 'N/A':>10} "
-        f"{res['sigma13'] if res['sigma13'] else 'N/A':>10} "
-        f"{res['sigma23'] if res['sigma23'] else 'N/A':>10}"
-        f"{res['phiint'] if res['phiint'] else 'N/A':>10}"
+        f"{res['sigma13'] if res['sigma13'] else 'N/A':>10}  "
+        f"{res['sigma23'] if res['sigma23'] else 'N/A':>10}  "
+        f"{res['gamma_phirho1'] if res['gamma_phirho1'] else 'N/A':>10}  "
+        f"{res['gamma_phirho2'] if res['gamma_phirho2'] else 'N/A':>10}"
     )
 
 # Select the pair at the given index
@@ -130,4 +132,4 @@ command = ["FreeFem++", "working.edp", tauphi_str, taurhophi_str, taurho_str]
 
 print(f"Running: {' '.join(command)}")
 # Execute the command
-subprocess.run(command)
+# subprocess.run(command)

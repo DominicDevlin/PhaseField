@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 # The data.txt file should contain the provided rows of numbers
 # datan= '-2-42.2-1.72'
 # Get a list of all subdirectories in the 'data' directory
-data_dir = 'data/full-new/'
+data_dir = 'data/full-bigLM/'
 subdirectories = [subdir for subdir in os.listdir(data_dir) if os.path.isdir(os.path.join(data_dir, subdir))]
 
 data_taus = []
@@ -63,6 +63,9 @@ for subdir in subdirectories:
         if phi_val < threshold and y_val > 1:
             y_threshold = y_val
             break
+    
+    if y_threshold is None:
+        y_threshold = 6
 
     y_threshold = y_threshold - 2
     if y_threshold < 0:
@@ -78,7 +81,7 @@ for subdir in subdirectories:
 
 
 # constant params.
-tauphi = 2.
+tauphi = 8.
 
 eps=0.001
 sigma12s = [0.12, 0.18, 0.24, 0.3, 0.36] # <-- desired sigma_12 value
@@ -88,7 +91,9 @@ plot_y_values=[]
 
 for sigma12_target in sigma12s:
     # tauphirho_values = [1, 1.5625, 2.25, 3.0625, 4, 5.0625, 6.25, 7.5625, 9, 12.25, 16, 20.25, 25, 30.25, 36, 42.25, 49]
-    tauphirho_values = [1, 1.5625, 2.25, 3.0625, 4, 5.0625, 6.25, 7.5625, 9, 10.5625, 12.25, 14.0625, 16, 18.0625, 20.25, 22.5625, 25, 27.5625, 30.25, 33.0625, 36, 39.0625, 42.25, 45.5625, 49]
+    # tauphirho_values = [1, 1.5625, 2.25, 3.0625, 4, 5.0625, 6.25, 7.5625, 9, 10.5625, 12.25, 14.0625, 16, 18.0625, 20.25, 22.5625, 25, 27.5625, 30.25, 33.0625, 36, 39.0625, 42.25, 45.5625, 49]
+    tauphirho_values = [1, 1.5625, 2.25, 3.0625, 4, 5.0625, 6.25, 7.5625, 9, 10.5625, 12.25, 14.0625, 16, 18.0625, 20.25, 22.5625, 25, 27.5625, 30.25, 33.0625, 36, 39.0625, 42.25, 45.5625, 49, 52.5625, 56.25, 60.0625, 64, 68.0625, 72.25, 76.5625, 81, 85.5625, 90.25, 95.0625, 100]
+
     taurho_values = []
     sigma13_values = []
     real_sigma13s = []
@@ -177,15 +182,43 @@ for sigma12_target in sigma12s:
 colors = ['red', 'blue', 'green', 'orange', 'purple']
 
 # Make matplotlib line plot
-plt.figure()
+# Create the figure
+fig, ax = plt.subplots()
+
+# Plot each line explicitly
 for i in range(len(plot_x_values)):
-    plt.plot(plot_x_values[i], plot_y_values[i], 'o-', color=colors[i % len(colors)], label=f'sigmaHL = {sigma12s[i]}')
+    ax.plot(
+        plot_x_values[i],
+        plot_y_values[i],
+        'o-',
+        color=colors[i % len(colors)],
+        label=f'sigmaHL = {sigma12s[i]}'
+    )
 
-plt.xlabel('sigmaHM / sigmaHL')
-plt.ylabel('elongation')
-plt.legend()
+# Set tick properties explicitly
+ax.tick_params(
+    axis='both',            # Apply to both axes
+    which='both',           # Major and minor ticks
+    direction='in',         # Tick direction
+    labelsize=14,           # Label font size
+    width=1.5,              # Tick line width
+    length=5              # Tick length
+)
+
+# Set labels explicitly
+ax.set_xlabel('sigmaHM / sigmaHL', fontsize=16, family='Helvetica')  # Font size and family
+ax.set_ylabel('elongation', fontsize=16, family='Helvetica')
+
+ax.spines['top'].set_linewidth(1.5)
+ax.spines['right'].set_linewidth(1.5)
+ax.spines['bottom'].set_linewidth(1.5)
+ax.spines['left'].set_linewidth(1.5)
+
+# Add legend
+ax.legend(fontsize=12)
+
+# Show the plot
 plt.show()
-
     
     
     
