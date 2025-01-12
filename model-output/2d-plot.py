@@ -11,12 +11,13 @@ from matplotlib.cm import get_cmap
 #    If your data is whitespace-separated, use 'delim_whitespace=True'.
 # ---------------------------------------------------------------
 
-number = '8-33.1-0.0826'
-prepend = 'data/full-bigLM/' + number + '/'
+number = 'tmp'
+prepend = 'data/examples/' + number + '/'
+time = '2-6.25-12.5'
 
 
-df = pd.read_csv(prepend + 'phi_data' + '-' + number + '.dat', header=None, names=['x', 'y', 'conc'], delimiter='\t')
-df2 = pd.read_csv(prepend + 'rho_data' + '-' + number + '.dat', header=None, names=['x', 'y', 'conc'], delimiter='\t')
+df = pd.read_csv(prepend + 'phi_data' + '-' + time + '.dat', header=None, names=['x', 'y', 'conc'], delimiter='\t')
+df2 = pd.read_csv(prepend + 'rho_data' + '-' + time + '.dat', header=None, names=['x', 'y', 'conc'], delimiter='\t')
 
 # ---------------------------------------------------------------
 # 2. Convert DataFrame columns to NumPy arrays

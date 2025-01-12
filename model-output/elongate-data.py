@@ -6,8 +6,14 @@ import matplotlib.pyplot as plt
 # The data.txt file should contain the provided rows of numbers
 # datan= '-2-42.2-1.72'
 # Get a list of all subdirectories in the 'data' directory
-data_dir = 'data/full-bigLM/'
+data_dir = 'data/bigdd/'
 subdirectories = [subdir for subdir in os.listdir(data_dir) if os.path.isdir(os.path.join(data_dir, subdir))]
+
+# constant params.
+tauphi = 2.
+
+eps=0.001
+sigma12s = [0.12, 0.18, 0.24, 0.3, 0.36] # <-- desired sigma_12 value
 
 data_taus = []
 data_tau_rhophis = []
@@ -25,6 +31,9 @@ for subdir in subdirectories:
     
 
     # Load the data from the current subdirectory
+    if not os.path.exists(dir + 'phi_data' + datan + '.dat') or not os.path.exists(dir + 'rho_data' + datan + '.dat') or not os.path.exists(dir + 'diff_data' + datan + '.dat'):
+        print("Skipping", subdir)
+        continue
     dataphi = np.loadtxt(dir + 'phi_data' + datan + '.dat')
     datarho = np.loadtxt(dir + 'rho_data' + datan + '.dat')
     datadiff = np.loadtxt(dir + 'diff_data' + datan + '.dat')
@@ -80,11 +89,7 @@ for subdir in subdirectories:
     # print(f"y_threshold for {trhophi, trho}: {y_threshold}")
 
 
-# constant params.
-tauphi = 8.
 
-eps=0.001
-sigma12s = [0.12, 0.18, 0.24, 0.3, 0.36] # <-- desired sigma_12 value
 
 plot_x_values=[]
 plot_y_values=[]

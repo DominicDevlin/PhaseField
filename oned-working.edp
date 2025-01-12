@@ -95,40 +95,58 @@ rhomesh = RhoPhi;
 // EOM
 
 real phimoved=0;
+
+Vhfield thismoving;
+real sdown=0;
+
 // Macro for non-linear solutions
 macro solvePhase()
 {
-
-    rhophiinterface = (phi > 0.75) * (sqrt(dx(rho)^2 + dy(rho)^2)) * (rho < 0.55);
-    BalanceDifferentiation;
-    real overlap = int1d(Th) (rhophiinterface );
-    real funcoverlap = overlap / (overlap^2 + 0.02);
-    diffparam = diffrate/dt * funcoverlap;
-    BalanceDifferentiation;
-
-    if (counter < endrelaxation)
+    if (dynamicdiff)
     {
-
-        relaxphasefield;
-        RelaxRhoField;
+        rhophiinterface = (phi > upperdifflimit) * phi * (rho < lowerdifflimit) * (sqrt(dx(rho)^2 + dy(rho)^2));
+        BalanceDifferentiation;
+        real overlap = int1d(Th) (rhophiinterface );
+        real funcoverlap = overlap / (overlap^2 + 0.02);
+        diffparam = diffrate/dt * funcoverlap;
     }
-    else 
+
+    BalanceDifferentiation;
+
+
+    beforegral = (rho^2 * (3 - 2*rho)) * ((phi^2 * (3 - 2*rho)) - 1);
+    RhoField;
+    postgral = (rho^2 * (3 - 2*rho)) * ((phi^2 * (3 - 2*rho)) - 1);
+    phasefield;
+    phimoved = fmax(int1d(Th)(beforegral-postgral),0);
+
+    if (phimoved < 0)
+        phimoved = 0;
+
+    thismoving = (phiold - phi) ;
+    sdown = int2d(Th)(thismoving * (rho)^2 * (3 - 2*(rho)));
+    cout << "sdown is: " << sdown << endl;  
+    
+    if (dynamicdiff)
     {
+        real loss = netrate * diffamount;
+        A0RP = A0RP - loss;
+        A0P = A0P - loss;
 
-
-        beforegral = (rho^2 * (3 - 2*rho)) * ((phi^2 * (3 - 2*rho)) - 1);
-        RhoField;
-        postgral = (rho^2 * (3 - 2*rho)) * ((phi^2 * (3 - 2*rho)) - 1);
-        phasefield;
-        phimoved = fmax(int1d(Th)(beforegral-postgral),0);
-        phiold = phi;
-        if (phimoved < 0)
-            phimoved = 0;
+        real maxadd = addproportion * diffamount;
+        if (phimoved > maxadd)
+            phimoved = maxadd;
+        A0 = A0 + phimoved;
     }
-    A0 = A0 + phimoved;
-    real loss = netrate * diffamount;
-    A0R = A0R - loss;
-    A0P = A0P - loss;
+    else
+    {
+        real gain = absgrowth - diffamount;
+        A0RP = A0RP + gain - sdown;
+        A0P = A0P + gain;
+        if (phimoved > absgrowth)
+            phimoved = absgrowth;
+        A0 = A0 + phimoved;
+    }
 }
 // EOM
 
@@ -147,7 +165,7 @@ real rhophiArea=0.;
 
 macro GetArea()
     phiArea = int1d(Th)(phi^2 * (3 - 2*phi));
-    rhophiArea = int1d(Th)((rho*phi)^2 * (3 - 2*(rho*phi)));
+    rhophiArea = int1d(Th)(phi * (rho)^2 * (3 - 2*(rho)));
     phiArea = int1d(Th)(phi^2 * (3 - 2*phi));
 // EOM
 
@@ -158,15 +176,17 @@ real eta = 1;             // viscosity type1
 real a = 1;               // Coefficient a 
 real k = 0.001;               // phase width coefficient k
 real lmda = 10;               // concentration constraint
-real lmdarho = 10;               // concentration constraint
-real lmdarhophi = 10;               // concentration constraint
 real A0 = 3.143;              // Target value for A
 real epseps = 1e-9;           // small prefactor for 1/sqrt
 real dt = 0.01;
 
+real upperdifflimit=0.6;
+real lowerdifflimit=0.4;
+
 
 real phitension=1;
-real rhotension=10.5;
+real rhotension=10;
+real rhotension=0.02;
 
 if (ARGV.n > 3)
 {
@@ -178,17 +198,8 @@ if (ARGV.n > 3)
 cout << "phi tension is: " << phitension << endl;
 cout << "rho tension is: " << rhotension << endl;
 
-real initaP = 1; // for equilibration (equal to phi)
-real initkP = 0.001; // for equilibration NOTE: MIGHT BE BETTER AT slightly lower value than phi for sharper interface
-real trueaP = initaP*rhotension;  //initaP * 15;
-real truekP = initkP*rhotension;// initkP * 15;
-// the values i used to make video were 5 and 0.01
-
-real aP = initaP;               // Coefficient a (increased need to be at 1 or 0, increase causes decreases interface length)
-real kP = initkP;               // smoothness of interface transition, decrease causes decrease in interface length
 real A0P = 3.143;              // Target value for A
-real A0R = 0.;
-real A0phi = 0.;
+real A0RP = 0.;
 
 
 real diffparam = 0; // this is being treated dynamically.
@@ -205,12 +216,12 @@ if (addrate > 0)
 
 
 
-func RhoDifferentiate = int1d(Th) (dt * (phi > 0.75) * (rho < 0.55) * diffparam * phi * sqrt(dx(rho)^2 + dy(rho)^2));
+func RhoDifferentiate = int1d(Th) (dt * (phi > upperdifflimit) * (rho < lowerdifflimit) * diffparam * phi * sqrt(dx(rho)^2 + dy(rho)^2));
 
 
 problem relaxphasefield(phi, v, master=0, solver=sparsesolver) // , 
     = int1d(Th) (  v * (phi)/dt  )
-    + int1d(Th) (1/eta * a * (v * phi - v*3*phi*phiold + 2 * v*phi*phiold^2))
+    + int1d(Th) (1/eta * a * (0.5 * v * phi - v*1.5*phi*phiold + v*phi*phiold^2))
     + int1d(Th) (1/eta * (k * (dx(v) *dx(phi) + dy(v) * dy(phi))))
     + int1d(Th) (1/eta * ( v * (12 * lmda *(phiArea-A0)*phi*(1-phiold))))
     - int1d(Th) (  v * (phiold)/dt  )
@@ -223,18 +234,10 @@ problem phasefield(phi, v, master=0, solver=sparsesolver) // ,
     + int1d(Th) (1/eta *  phitension * (k * (dx(v) *dx(phi) + dy(v) * dy(phi))))
     + int1d(Th) (1/eta * ( v * (12 * lmda *(phiArea-A0)*phi*(1-phiold))))
     - int1d(Th) (  v * (phiold)/dt  )
-    + int1d(Th) (1/eta * phi * (v * 0.5 * aP * rho - 1.5*v*aP*rho*rho + v*aP*rho * rho^2))
-    + int1d(Th) (1/eta * phi * (kP * (dx(rho) * dx(v) + dy(rho) * dy(v))))
-    - int1d(Th) ((phiold > 0.75) * (rho < 0.55) * diffparam * v * sqrt(dx(rho)^2 + dy(rho)^2))
-    + int1d(Th) (1/eta * ( v * (12 * lmdarhophi *(rhophiArea-A0R)*rho*phi*(1-rhoold))));
+    + int1d(Th) (1/eta * phi * rhophitension * a * (v * 0.5 * rho - 1.5*v*rho*rho + v*rho * rho^2))
+    + int1d(Th) (1/eta * phi * (k * (dx(rho) * dx(v) + dy(rho) * dy(v))))
+    + int1d(Th) (1/eta * ( v * (12 * lmda *(rhophiArea-A0RP)*rho*phi*(1-rhoold))));
 
-problem RelaxRhoField(rho, w, master=0, solver=sparsesolver)
-    = int1d(Th) (w * (rho)/dt )
-    + int1d(Th) (1/eta * phi * (0.5 * w * aP * rho - 1.5*w*aP*rho*rhoold + w*aP*rho * rhoold^2))
-    + int1d(Th) (1/eta * phi * (kP * (dx(w) *dx(rho) + dy(w) * dy(rho))))
-    + int1d(Th) (1/eta * ( w * (12 * lmdarho *(rhoArea-A0P)*rho*(1-rhoold))))
-    + int1d(Th) (1/eta * ( w * (12 * lmdarhophi *(rhophiArea-A0R)*rho*phi*(1-rhoold))))
-    - int1d(Th) ( w * (rhoold)/dt  );
 
 problem RhoField(rho, w, master=0, solver=sparsesolver)
     = int1d(Th) (w * (rho)/dt )
@@ -242,8 +245,8 @@ problem RhoField(rho, w, master=0, solver=sparsesolver)
     + int1d(Th) (1/eta * (k * (dx(w) *dx(rho) + dy(w) * dy(rho))))
     + int1d(Th) (1/eta * phi * rho * (0.5 * w * aP - 1.5*w*aP*rhoold + w*aP*rhoold^2))
     + int1d(Th) (1/eta * phi * (kP * (dx(w) *dx(rho) + dy(w) * dy(rho))))
-    + int1d(Th) (1/eta * ( w * (12 * lmdarho *(rhoArea-A0P)*rho*(1-rhoold))))
-    + int1d(Th) (1/eta * ( w * (12 * lmdarhophi *(rhophiArea-A0R)*rho*phi*(1-rhoold))))
+    + int1d(Th) (1/eta * ( w * (12 * lmda *(rhoArea-A0P)*rho*(1-rhoold))))
+    + int1d(Th) (1/eta * ( w * (12 * lmda *(rhophiArea-A0R)*rho*phi*(1-rhoold))))
     + int1d(Th) ((phi > 0.75) * (rhoold < 0.55) * diffparam * w * sqrt(dx(rhoold)^2 + dy(rhoold)^2))
     - int1d(Th) ( w * (rhoold)/dt  );
 
