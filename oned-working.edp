@@ -124,7 +124,7 @@ macro solvePhase()
         phimoved = 0;
 
     thismoving = (phiold - phi) ;
-    sdown = int2d(Th)(thismoving * (rho)^2 * (3 - 2*(rho)));
+    sdown = 0; int1d(Th)(thismoving * (phi > (rho + 0.3)) * (rho)^2 * (3 - 2*(rho)));
     cout << "sdown is: " << sdown << endl;  
     
     if (dynamicdiff)
@@ -185,7 +185,7 @@ real lowerdifflimit=0.4;
 
 
 real phitension=1;
-real rhotension=10;
+real rhophitension=20;
 real rhotension=0.02;
 
 if (ARGV.n > 3)
@@ -201,14 +201,21 @@ cout << "rho tension is: " << rhotension << endl;
 real A0P = 3.143;              // Target value for A
 real A0RP = 0.;
 
+bool dynamicdiff = false;
 
-real diffparam = 0; // this is being treated dynamically.
-real diffamount=0;
-real diffrate =0;// 0.5e-4;//1e-4;//1e-4;
-real addrate= 0;//0.25e-4;//0.5e-4;
+// dynamic 
+real diffrate =0;//1e-4;// 1e-4;//1e-4;//1e-4;
+real addproportion = 0.; // between 0 and 1
+real addrate=addproportion * diffrate;//0.25e-4;//0.5e-4;
 real netrate=1;
 if (addrate > 0)
     netrate=(diffrate-addrate)/diffrate;
+
+// non dynamic
+real diffparam = 0.; // this is being treated dynamically if dynamic param is true.
+real absgrowth = 0;
+
+real diffamount=0;
 
 
 
@@ -235,19 +242,19 @@ problem phasefield(phi, v, master=0, solver=sparsesolver) // ,
     + int1d(Th) (1/eta * ( v * (12 * lmda *(phiArea-A0)*phi*(1-phiold))))
     - int1d(Th) (  v * (phiold)/dt  )
     + int1d(Th) (1/eta * phi * rhophitension * a * (v * 0.5 * rho - 1.5*v*rho*rho + v*rho * rho^2))
-    + int1d(Th) (1/eta * phi * (k * (dx(rho) * dx(v) + dy(rho) * dy(v))))
+    + int1d(Th) (1/eta * phi * rhophitension * (k * (dx(rho) * dx(v) + dy(rho) * dy(v))))
     + int1d(Th) (1/eta * ( v * (12 * lmda *(rhophiArea-A0RP)*rho*phi*(1-rhoold))));
 
 
 problem RhoField(rho, w, master=0, solver=sparsesolver)
     = int1d(Th) (w * (rho)/dt )
-    + int1d(Th) (1/eta * rho * (0.5 * w * a - 1.5*w*a*rhoold + w*a*rhoold^2))
-    + int1d(Th) (1/eta * (k * (dx(w) *dx(rho) + dy(w) * dy(rho))))
-    + int1d(Th) (1/eta * phi * rho * (0.5 * w * aP - 1.5*w*aP*rhoold + w*aP*rhoold^2))
-    + int1d(Th) (1/eta * phi * (kP * (dx(w) *dx(rho) + dy(w) * dy(rho))))
+    + int1d(Th) (1/eta * rhotension * rho * a * (0.5 * w - 1.5*w*rhoold + w*rhoold^2))
+    + int1d(Th) (1/eta * rhotension * (k * (dx(w) *dx(rho) + dy(w) * dy(rho))))
+    + int1d(Th) (1/eta * phi * rho * rhophitension * a * (0.5 * w - 1.5*w*rhoold + w*rhoold^2))
+    + int1d(Th) (1/eta * phi * rhophitension * (k * (dx(w) *dx(rho) + dy(w) * dy(rho))))
     + int1d(Th) (1/eta * ( w * (12 * lmda *(rhoArea-A0P)*rho*(1-rhoold))))
-    + int1d(Th) (1/eta * ( w * (12 * lmda *(rhophiArea-A0R)*rho*phi*(1-rhoold))))
-    + int1d(Th) ((phi > 0.75) * (rhoold < 0.55) * diffparam * w * sqrt(dx(rhoold)^2 + dy(rhoold)^2))
+    + int1d(Th) (1/eta * ( w * (12 * lmda *(rhophiArea-A0RP)*rho*phi*(1-rhoold))))
+    + int1d(Th) ((phi > upperdifflimit) * (rhoold < lowerdifflimit) * diffparam * w * sqrt(dx(rhoold)^2 + dy(rhoold)^2))
     - int1d(Th) ( w * (rhoold)/dt  );
 
 
@@ -276,7 +283,7 @@ rhoold=rho;
 GetArea
 A0 = phiArea;
 A0P = rhoArea;
-A0R = rhophiArea;
+A0RP = rhophiArea;
 cout << "phi area is: " << A0 << endl;
 
 
@@ -285,7 +292,7 @@ real curt=0.0;
 Vhfield xx=x;
 Vhfield yy=y;
 
-int maxcount = 1;
+int maxcount = 5;
 int counter = 0;
 int OutPutCounter=0;
 matrix Vphi;
@@ -312,10 +319,7 @@ while(OutPutCounter < maxcount)//(maxCFL > 1e-4)
 
     if (curt > equilibraterho)
     {
-        kP = truekP;
-        aP = trueaP;
-
-        if (counter % 1000 == 0)
+        if (counter % 100 == 0)
         {
             cout << curt << endl;
             Vhfield diffregion = ((phi > 0.6) * (rhoold < 0.4) * sqrt(dx(rho)^2));

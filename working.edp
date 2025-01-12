@@ -286,8 +286,6 @@ if (ARGV.n > 3)
 }
 
 
-
-
 // real aP = initaP;               // Coefficient a (increased need to be at 1 or 0, increase causes decreases interface length)
 // real kP = initkP;               // smoothness of interface transition, decrease causes decrease in interface length
 real A0P = 3.143;              // Target value for A
