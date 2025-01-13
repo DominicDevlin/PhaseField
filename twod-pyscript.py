@@ -14,7 +14,7 @@ if (len(sys.argv) > 1):
 tauphi = 2.
 
 eps=0.001
-sigma12s = [0.12, 0.18, 0.24, 0.3, 0.36]  # <-- desired sigma_12 value
+sigma12s = [0.12, 0.24]  # <-- desired sigma_12 value
 
 
 pairs = []

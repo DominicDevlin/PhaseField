@@ -270,7 +270,7 @@ real epseps = 1e-9;           // small prefactor for 1/sqrt
 real dt = 0.01;
 
 real phitension=2;
-real rhophitension=8;
+real rhophitension=22;
 real rhotension=1;
 real rhotwotension=1; // rhotwo params
 real rhotwophitension=0;
@@ -636,7 +636,6 @@ while(curt < endsim)//(maxCFL > 1e-4)
 
     MakeRhoPhiMesh
 
-    RhoPhiPlot = phi - rho;
 
     if (counter % screenStep == 0 && printScreen)
     {
