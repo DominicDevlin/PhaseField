@@ -12,7 +12,7 @@ real endrelaxation=10;
 bool printScreen=true;
 int screenStep = 100;
 // use lower surface tension at the beginning of simulation
-int equilibraterho=0.002;
+real equilibraterho=1;
 
 for(int i=0;i<ARGV.n;++i)
 {
@@ -124,8 +124,7 @@ macro solvePhase()
         phimoved = 0;
 
     thismoving = (phiold - phi) ;
-    sdown = 0; int1d(Th)(thismoving * (phi > (rho + 0.3)) * (rho)^2 * (3 - 2*(rho)));
-    cout << "sdown is: " << sdown << endl;  
+    sdown = int1d(Th)((phi > rho) * thismoving * rho^2 * (3-2*rho));
     
     if (dynamicdiff)
     {
@@ -149,6 +148,7 @@ macro solvePhase()
     }
 }
 // EOM
+// int1d(Th)(thismoving * (phi > (rho + 0.3)) * (rho)^2 * (3 - 2*(rho)));
 
 macro BalanceDifferentiation()
 {
@@ -166,7 +166,7 @@ real rhophiArea=0.;
 macro GetArea()
     phiArea = int1d(Th)(phi^2 * (3 - 2*phi));
     rhophiArea = int1d(Th)(phi * (rho)^2 * (3 - 2*(rho)));
-    phiArea = int1d(Th)(phi^2 * (3 - 2*phi));
+    rhoArea = int1d(Th)(rho^2 * (3 - 2*rho));
 // EOM
 
 
@@ -178,7 +178,7 @@ real k = 0.001;               // phase width coefficient k
 real lmda = 10;               // concentration constraint
 real A0 = 3.143;              // Target value for A
 real epseps = 1e-9;           // small prefactor for 1/sqrt
-real dt = 0.01;
+real dt = 0.002;
 
 real upperdifflimit=0.6;
 real lowerdifflimit=0.4;
@@ -237,13 +237,13 @@ problem relaxphasefield(phi, v, master=0, solver=sparsesolver) // ,
 
 problem phasefield(phi, v, master=0, solver=sparsesolver) // , 
     = int1d(Th) (  v * (phi)/dt  )
-    + int1d(Th) (1/eta * phitension * a * (v* 0.5 * phi - v*1.5*phi*phiold + v*phi*phiold^2))
+    + int1d(Th) (1/eta * phitension * a * phi * (v* 0.5 - v*1.5*phiold + v*phiold^2))
     + int1d(Th) (1/eta *  phitension * (k * (dx(v) *dx(phi) + dy(v) * dy(phi))))
     + int1d(Th) (1/eta * ( v * (12 * lmda *(phiArea-A0)*phi*(1-phiold))))
     - int1d(Th) (  v * (phiold)/dt  )
-    + int1d(Th) (1/eta * phi * rhophitension * a * (v * 0.5 * rho - 1.5*v*rho*rho + v*rho * rho^2))
-    + int1d(Th) (1/eta * phi * rhophitension * (k * (dx(rho) * dx(v) + dy(rho) * dy(v))))
-    + int1d(Th) (1/eta * ( v * (12 * lmda *(rhophiArea-A0RP)*rho*phi*(1-rhoold))));
+    // + int1d(Th) (1/eta * phi * rhophitension * a * rho * (v * 0.5 - 1.5*v*rho + v*rho^2))
+    // + int1d(Th) (1/eta * phi * rhophitension * (k * (dx(rho) * dx(v) + dy(rho) * dy(v))))
+    + int1d(Th) (1/eta * ( v * (12 * lmda *(rhophiArea-A0RP)*phi*rho*(1-rho))));
 
 
 problem RhoField(rho, w, master=0, solver=sparsesolver)
@@ -253,7 +253,7 @@ problem RhoField(rho, w, master=0, solver=sparsesolver)
     + int1d(Th) (1/eta * phi * rho * rhophitension * a * (0.5 * w - 1.5*w*rhoold + w*rhoold^2))
     + int1d(Th) (1/eta * phi * rhophitension * (k * (dx(w) *dx(rho) + dy(w) * dy(rho))))
     + int1d(Th) (1/eta * ( w * (12 * lmda *(rhoArea-A0P)*rho*(1-rhoold))))
-    + int1d(Th) (1/eta * ( w * (12 * lmda *(rhophiArea-A0RP)*rho*phi*(1-rhoold))))
+    + int1d(Th) (1/eta * ( w * (12 * lmda *(rhophiArea-A0RP)*phi*rho*(1-rhoold))))
     + int1d(Th) ((phi > upperdifflimit) * (rhoold < lowerdifflimit) * diffparam * w * sqrt(dx(rhoold)^2 + dy(rhoold)^2))
     - int1d(Th) ( w * (rhoold)/dt  );
 
@@ -283,7 +283,7 @@ rhoold=rho;
 GetArea
 A0 = phiArea;
 A0P = rhoArea;
-A0RP = rhophiArea;
+A0RP = int1d(Th)(phi * (rho)^2 * (3 - 2*(rho)));
 cout << "phi area is: " << A0 << endl;
 
 
@@ -315,6 +315,15 @@ while(OutPutCounter < maxcount)//(maxCFL > 1e-4)
     // Prepare for the next time step
     rhoold = rho;
     phiold = phi;
+
+    if (curt < equilibraterho)
+    {
+        cout << "inside: " << curt << endl;
+        A0P = rhoArea;
+        cout << rhoArea << endl;
+        A0RP = rhophiArea;
+        A0 = phiArea;
+    }
       
 
     if (curt > equilibraterho)
@@ -340,6 +349,20 @@ while(OutPutCounter < maxcount)//(maxCFL > 1e-4)
     if (counter % screenStep == 0 && printScreen)
     {
         plot(phi,fill=1,value=1,wait=false);
+    }
+
+    if (counter % 100 == 0)
+    {
+        cout << "ct = " << curt << ", ";
+        cout << "phi area: " << phiArea << "  with constraint: " << A0 << endl;
+        cout << "rho area: " << rhoArea << "  with constraint: " << A0P << endl;
+        cout << "rhophi area: " << rhophiArea << " with constraint: " << A0RP << endl;
+        cout << "minimum rhophi area should be: " << int1d(Th)(rho * rho^2 * (3-2*rho)) << endl;
+        real minrhophi = int1d(Th)(rho * rho^2 * (3-2*rho));
+        if (A0RP < minrhophi)
+        {
+            A0RP = minrhophi;  
+        }
     }
 
 }
