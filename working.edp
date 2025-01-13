@@ -9,7 +9,7 @@ bool addstem=true;
 real endrelaxation=10; // n steps before swapping to phase field main
 bool printScreen=true;
 int screenStep = 5;
-real equilibraterho=1.00; // use lower rho surface tension at the beginning of simulation
+real equilibraterho=1; // use lower rho surface tension at the beginning of simulation
 
 string parstr = "";
 string dirstr = "";
@@ -250,7 +250,7 @@ real rhophiArea=0.;
 
 
 macro GetArea()
-    rhoArea = int2d(Th)(rho^2 * (3 - 2*rho));
+    rhoArea = int2d(Th)((1-phi)*rho^2 * (3 - 2*rho));
     rhophiArea = int2d(Th)(phi * (rho)^2 * (3 - 2*(rho)));
     phiArea = int2d(Th)(phi^2 * (3 - 2*phi));
 // EOM
@@ -270,8 +270,8 @@ real epseps = 1e-9;           // small prefactor for 1/sqrt
 real dt = 0.01;
 
 real phitension=2;
-real rhophitension=22;
-real rhotension=1;
+real rhophitension=2;
+real rhotension=20;
 real rhotwotension=1; // rhotwo params
 real rhotwophitension=0;
 
@@ -350,14 +350,20 @@ problem phasefield(phi, v, master=0, solver=sparsesolver) // ,
     + int2d(Th) (1/eta * ( v * (12. * lmda *(phiArea-A0)*phi*(1-phiold))))
     - int2d(Th) (  v * (phiold)/dt  )
 
-    + int2d(Th) (1/eta * phi * rhophitension * a * (v * 0.5 * rho - 1.5*v*rho*rho + v*rho * rho^2) * (phiold > rho))
-    - int2d(Th) (1/eta * rho * rhophitension * a * (v * 0.5 * rho - 1.5*v*rho*rho + v*rho * rho^2) * (phiold > rho))
+    + int2d(Th) (1/eta * phi * rhophitension * a * (v * 0.5 * rho - 1.5*v*rho*rho + v*rho * rho^2))
+    + int2d(Th) (1/eta * phi * rhophitension * (eps * (dx(rho) * dx(v) + dy(rho) * dy(v))))
+    + int2d(Th) (1/eta * ( v * (12 * lmdarhophi *(rhophiArea-A0RP)*rho*phi*(1-rho))))
 
-    + int2d(Th) (1/eta * phi * rhophitension * (phiold > rho) * (eps * (dx(rho) * dx(v) + dy(rho) * dy(v))))
-    - int2d(Th) (1/eta * rho * rhophitension * (phiold > rho) * (eps * (dx(rho) * dx(v) + dy(rho) * dy(v))))
+    + int2d(Th) (1/eta * (1) * rhotension * a * (v * 0.5 * rho - 1.5*v*rho*rho + v*rho * rho^2))
+    + int2d(Th) (1/eta * (-phi) * rhotension * a * (v * 0.5 * rho - 1.5*v*rho*rho + v*rho * rho^2))
+    + int2d(Th) (1/eta * (1) * rhotension * (eps * (dx(rho) * dx(v) + dy(rho) * dy(v))))
+    + int2d(Th) (1/eta * (-phi) * rhotension * (eps * (dx(rho) * dx(v) + dy(rho) * dy(v))))
+
+    + int2d(Th) (1/eta * ( v * (12 * lmdarho *(rhoArea-A0P)*(1)*rho*(1-rhoold))))
+    + int2d(Th) (1/eta * ( v * (12 * lmdarho *(rhoArea-A0P)*(-phi)*rho*(1-rhoold))));
     // + int2d(Th) (1/eta * ( v * (12 * lmdarho *(rhoArea-A0P)*rho*(1-rho))))
     // - int2d(Th) ((phiold > upperdifflimit) * (rho < lowerdifflimit) * phi * diffparam * v * sqrt(dx(rho)^2 + dy(rho)^2))
-    + int2d(Th) (1/eta * ( v * (12 * lmdarhophi *(rhophiArea-A0RP)*rho*phi*(1-rho))));
+    
     // - int2d(Th) (1/eta * 100 * v * rho * (rhoold - phiold) * (phiold < rho));
     // + int2d(Th) (1/eta * phi * rhotwo * a * rhotwophitension * (0.5 * v - 1.5*v*rhotwoold + v*rhotwoold^2))
     // + int2d(Th) (1/eta * phi * rhotwophitension * (k * (dx(v) *dx(rhotwo) + dy(v) * dy(rhotwo))))
@@ -370,17 +376,12 @@ func RhoDifferentiate = int2d(Th) (dt * (phi > upperdifflimit) * (rho < lowerdif
 
 problem RhoField(rho, w, master=0, solver=sparsesolver)
     = int2d(Th) (w * (rho)/dt )
-    + int2d(Th) (1/eta * rhotension * rho * (0.5 * w * a - 1.5*w*a*rhoold + w*a*rhoold^2))
-    + int2d(Th) (1/eta * rhotension * (eps * (dx(w) *dx(rho) + dy(w) * dy(rho))))
+    + int2d(Th) (1/eta * (1-phi) * rhotension * rho * (0.5 * w * a - 1.5*w*a*rhoold + w*a*rhoold^2))
+    + int2d(Th) (1/eta * (1-phi) * rhotension * (eps * (dx(w) *dx(rho) + dy(w) * dy(rho))))
+    + int2d(Th) (1/eta * ( w * (12 * lmdarho *(rhoArea-A0P)*(1-phi)*rho*(1-rhoold))))
+
     + int2d(Th) (1/eta * phi * rho *  rhophitension * (0.5 * w * a - 1.5*w*a*rhoold + w*a*rhoold^2))
-    - int2d(Th) (1/eta * rhoold * rho *  rhophitension * (0.5 * w * a - 1.5*w*a*rhoold + w*a*rhoold^2))
-
-    + int2d(Th) (1/eta * phi * rhophitension * (phi > rhoold) * (eps * (dx(w) *dx(rho) + dy(w) * dy(rho))))
-    - int2d(Th) (1/eta * rhoold * rhophitension * (phi > rhoold) * (eps * (dx(w) *dx(rho) + dy(w) * dy(rho))))
-
-
-
-    + int2d(Th) (1/eta * ( w * (12 * lmdarho *(rhoArea-A0P)*rho*(1-rhoold))))
+    + int2d(Th) (1/eta * phi * rhophitension * (eps * (dx(w) *dx(rho) + dy(w) * dy(rho))))    
     + int2d(Th) (1/eta * ( w * (12 * lmdarhophi *(rhophiArea-A0RP)*rho*phi*(1-rhoold))))
     // + int2d(Th) (1/eta * ( w * (12 * lmdarhophi *rho*(1-rhoold)*(rhoold > phi))))
     // + int2d(Th) ( (1/eta * rhointerface * ((k) * w * Rcurvature)))
@@ -544,18 +545,39 @@ while(curt < endsim)//(maxCFL > 1e-4)
     }
     ++counter;
 
+    real ub1 = int2d(Th)(rho^2 * (3 - 2*rho));
+    real lb1 = int2d(Th)(rho^3 * (3 - 2*rho));
+    real bratio1=(rhophiArea-lb1) / (ub1 - lb1);
+    cout << "Area bratio 1: " << bratio1 << endl;
+
+    real ub2 = int2d(Th)(rho^2 * (1 - rho) * (3 - 2*rho));
+    real lb2 = 0;
+    real bratio2=(rhoArea-lb2) / (ub2 - lb2);
+    cout << "Area bratio 2: " << bratio2 << endl;
+
+
     // solve equations
     curt = curt+dt;
     GetArea
     solvePhase
+
+    ub1 = int2d(Th)(rho^2 * (3 - 2*rho));
+    lb1 = int2d(Th)(rho^3 * (3 - 2*rho));
+    real aratio1=(rhophiArea-lb1) / (ub1 - lb1);
+    cout << "Area aratio 1: " << aratio1 << endl;
+
+    ub2 = int2d(Th)(rho^2 * (1 - rho) * (3 - 2*rho));
+    lb2 = 0;
+    real aratio2=(rhoArea-lb2) / (ub2 - lb2);
+    cout << "Area aratio 2: " << aratio2 << endl;
+
+
     if (counter % 1 == 0)
     {
         cout << "ct = " << curt << ", ";
         cout << "phi area: " << phiArea << "  with constraint: " << A0 << endl;
         cout << "rho area: " << rhoArea << "  with constraint: " << A0P << endl;
         cout << "rhophi area: " << rhophiArea << " with constraint: " << A0RP << endl;
-        cout << "rhotwo area: " << rhotwoArea << " with constraint: " << A0Ptwo << endl;
-        cout << "rhotwophi area: " << rhotwophiArea << " with constraint: " << A0RPtwo << endl;
         // cout << "Value of addition param: " << addrate << endl;
     }
 
@@ -603,7 +625,9 @@ while(curt < endsim)//(maxCFL > 1e-4)
     if (curt < equilibraterho)
     {
         GetArea;
-        A0RP = rhophiArea;
+        rhophiArea = (ub1-lb1)*aratio1 + lb1;
+        A0P = (ub2-lb2)*aratio2 + lb2;
+
     }
 
     if (counter % 8 == 0)
