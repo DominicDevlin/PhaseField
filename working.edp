@@ -355,6 +355,7 @@ problem phasefield(phi, v, master=0, solver=sparsesolver) // ,
     + int2d(Th) (1/eta * ( v * (12 * lmdarhophi *(rhophiArea-A0RP)*rho*phi*(1-rho))))
 
     + int2d(Th) (1/eta * (1) * rhotension * a * (v * 0.5 * rho - 1.5*v*rho*rho + v*rho * rho^2))
+    // if phi is greater than 1 doesn't this fuck out? Should maybe set to 0 in that case??
     + int2d(Th) (1/eta * (-phi) * rhotension * a * (v * 0.5 * rho - 1.5*v*rho*rho + v*rho * rho^2))
     + int2d(Th) (1/eta * (1) * rhotension * (eps * (dx(rho) * dx(v) + dy(rho) * dy(v))))
     + int2d(Th) (1/eta * (-phi) * rhotension * (eps * (dx(rho) * dx(v) + dy(rho) * dy(v))))
