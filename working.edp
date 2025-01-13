@@ -271,7 +271,7 @@ real dt = 0.01;
 
 real phitension=2;
 real rhophitension=2;
-real rhotension=20;
+real rhotension=45;
 real rhotwotension=1; // rhotwo params
 real rhotwophitension=0;
 
@@ -358,7 +358,7 @@ problem phasefield(phi, v, master=0, solver=sparsesolver) // ,
     // if phi is greater than 1 doesn't this fuck out? Should maybe set to 0 in that case??
     + int2d(Th) (1/eta * (-phi) * rhotension * a * (v * 0.5 * rho - 1.5*v*rho*rho + v*rho * rho^2))
     + int2d(Th) (1/eta * (1) * rhotension * (eps * (dx(rho) * dx(v) + dy(rho) * dy(v))))
-    + int2d(Th) (1/eta * (-phi) * rhotension * (eps * (dx(rho) * dx(v) + dy(rho) * dy(v))))
+    + int2d(Th) (1/eta * (-phi) *rhotension * (eps * (dx(rho) * dx(v) + dy(rho) * dy(v))))
 
     + int2d(Th) (1/eta * ( v * (12 * lmdarho *(rhoArea-A0P)*(1)*rho*(1-rhoold))))
     + int2d(Th) (1/eta * ( v * (12 * lmdarho *(rhoArea-A0P)*(-phi)*rho*(1-rhoold))));
@@ -378,8 +378,8 @@ func RhoDifferentiate = int2d(Th) (dt * (phi > upperdifflimit) * (rho < lowerdif
 problem RhoField(rho, w, master=0, solver=sparsesolver)
     = int2d(Th) (w * (rho)/dt )
     + int2d(Th) (1/eta * (1-phi) * rhotension * rho * (0.5 * w * a - 1.5*w*a*rhoold + w*a*rhoold^2))
-    + int2d(Th) (1/eta * (1-phi) * rhotension * (eps * (dx(w) *dx(rho) + dy(w) * dy(rho))))
-    + int2d(Th) (1/eta * ( w * (12 * lmdarho *(rhoArea-A0P)*(1-phi)*rho*(1-rhoold))))
+    + int2d(Th) (1/eta * (1-phi) *  rhotension * (eps * (dx(w) *dx(rho) + dy(w) * dy(rho))))
+    + int2d(Th) (1/eta * ( w * (12 *  lmdarho *(rhoArea-A0P)*(1-phi)*rho*(1-rhoold))))
 
     + int2d(Th) (1/eta * phi * rho *  rhophitension * (0.5 * w * a - 1.5*w*a*rhoold + w*a*rhoold^2))
     + int2d(Th) (1/eta * phi * rhophitension * (eps * (dx(w) *dx(rho) + dy(w) * dy(rho))))    
@@ -623,12 +623,33 @@ while(curt < endsim)//(maxCFL > 1e-4)
         // A0RPtwo = rhotwophiArea;
         // cout << A0 << "\t" << A0P << "\t" << A0R << endl;
     }
-    if (curt < equilibraterho)
+    if (curt < 100)
     {
+        // rho^2 * (3 - 2*rho) HAS TO BE A CONSTANT. THE OTHER TWO MUST SUM TO THIS CONSTANT. How to deal with case phi > 1 I don't know. 
         GetArea;
-        rhophiArea = (ub1-lb1)*aratio1 + lb1;
+        A0RP = (ub1-lb1)*aratio1 + lb1;
         A0P = (ub2-lb2)*aratio2 + lb2;
 
+        if (A0RP < lb1)
+        {
+            cout << "hit lower bound" << endl;
+            A0RP = lb1;
+        }
+        if (A0RP > ub1)
+        {
+            cout << "hit upper bound" << endl;
+            A0RP = ub1;
+        }
+        if (A0P < lb2)
+        {
+            cout << "hit lower bound" << endl;
+            A0P = lb2;
+        }
+        if (A0P > ub2)
+        {
+            cout << "hit upper bound" << endl;
+            A0P = ub2;
+        }
     }
 
     if (counter % 8 == 0)
