@@ -127,3 +127,28 @@
 // Vhfield Erho;
 // Vhfield ew;
 // real energyA0RP=0;
+
+    // first test.
+    // if (counter % 10 == 0)
+    // {
+    //     Erho = rhoold;
+    //     Ephi = phiold;
+    //     // do test with lower lambdarhophi?
+    //     energyA0RP = A0RP - 0.5;
+    //     EnergyRhoField;
+    //     EnergyPhiField;
+    //     real te1 = GinzburgLaundaus;
+    //     energyA0RP = A0RP + 0.5;
+    //     Erho = rhoold;
+    //     Ephi = phiold;
+    //     EnergyRhoField;
+    //     EnergyPhiField;
+    //     real te2 = GinzburgLaundaus;
+    //     cout << "Energy difference is: " << te1 << " and: " << te2 << endl;
+    //     real arealoss = (eta * dt) * (te1 - te2) * 10;
+    //     cout << "area loss is: " << arealoss << endl;
+    //     A0RP = A0RP + arealoss;
+    // }
+
+        // thismoving = (phiold - phi) ;
+        // sdown = int2d(Th)(thismoving * (phi > rho) * (rho)^2 * (3 - 2*(rho)));
