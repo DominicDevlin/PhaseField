@@ -1,0 +1,325 @@
+load "gmsh";
+load "iovtk";
+load "UMFPACK64";
+load "isoline";
+load "Element_P3";
+
+real endsim=52;
+real endrelaxation=0.2; // n steps before swapping to phase field main
+bool printScreen=true;
+int screenStep = 5;
+real equilibraterho=1; // use lower rho surface tension at the beginning of simulation
+
+string parstr = "";
+string dirstr = "";
+if (ARGV.n > 3)
+{
+    parstr = "-" + ARGV[2] + "-" + ARGV[3] + "-" + ARGV[4];
+    dirstr =  ARGV[2] + "-" + ARGV[3] + "-" + ARGV[4] + "/";
+    printScreen = false;
+}
+
+verbosity=0;
+int PrintStep=50;
+bool doPrint=true;
+bool doTimespan=false;
+int timePrint=100;
+bool printinterface=false;
+bool PrintEnergy=true;
+string foldern = "images/" + dirstr + "phirho-images/";
+string folderint1 = "images/" + dirstr + "interface1/";
+string folderint2 = "images/" + dirstr + "interface2/";
+string folderphi = "images/" + dirstr + "phi-images/";
+string folderrho = "images/" + dirstr + "rho-images/";
+// string folderrhotwo = "images/" + dirstr + "rhotwo-images/";
+string commandstart = "mkdir images";
+string command0 = "mkdir images/" + dirstr;
+string command1 = "mkdir images/" + dirstr + "phirho-images";
+string command2 = "mkdir images/" + dirstr + "interface1";
+string command3 = "mkdir images/" + dirstr + "interface2";
+string command4 = "mkdir images/" + dirstr + "phi-images";
+string command5 = "mkdir images/" + dirstr + "rho-images";
+// string command6 = "mkdir images/" + dirstr + "rhotwo-images";
+
+bool makeData = true;
+
+if (dirstr == "")
+{
+    dirstr = "data/";
+}
+
+string datafolder = "model-output/" + dirstr;
+string datacommand1 = "mkdir model-output";
+string datacommand2 = "mkdir model-output/" + dirstr;
+
+if (makeData)
+{
+    system(datacommand1);
+    system(datacommand2);
+}
+
+
+if (doPrint)
+{
+    system(commandstart);
+    system(command0);
+    if (printinterface)
+    {
+        system(command2);
+        system(command3);
+    }
+    system(command1);
+    system(command4);
+    system(command5);
+    // system(command6);
+}
+   
+
+// -------------------------------------------------------------------------------------------------------------------------------------
+// Mesh and grid
+
+real xmin =  -2;
+real xmax =  2;
+real ymin =  0;
+real ymax =  6;
+
+// Mesh resolution
+int  n     = 2; // Number of segments per unit length
+real refI  = 12.0; // Refinement factor for the interface
+real mGrw  = 1.2;  // Growth rate of the mesh elements
+int  dref  = 10; // Number of time-steps between mesh adaption
+
+
+mesh Th = square((xmax-xmin)*n,(ymax-ymin)*n,[xmin+(xmax-xmin)*x,ymin+(ymax-ymin)*y]);
+
+// -------------------------------------------------------------------------------------------------------------------------------------
+// Fields
+fespace Vhfield (Th,P2,periodic=[[2,y],[4,y],[1,x],[3,x]]);
+// -------------------------------------------------------------------------------------------------------------------------------------
+// Compilation of macros
+
+// Mesh adaptation and destruction of the old mesh
+
+
+bool dynamicdiff = false;
+
+// dynamic
+real diffrate =0;//1e-4;// 1e-4;//1e-4;//1e-4;
+real addproportion = 0.; // between 0 and 1
+real addrate=addproportion * diffrate;//0.25e-4;//0.5e-4;
+real netrate=1;
+if (addrate > 0)
+    netrate=(diffrate-addrate)/diffrate;
+
+// non dynamic
+real diffparam = 0.; // this is being treated dynamically if dynamic param is true.
+real absgrowth = 0;
+
+real diffamount=0;
+
+real upperdifflimit=0.6;
+real lowerdifflimit=0.4;
+
+
+Vhfield c1;
+Vhfield c2;
+Vhfield c1old;
+Vhfield c2old;
+Vhfield v;
+Vhfield w;
+Vhfield u;
+
+real M = 60;
+real dt = 0.00001;
+real sig12=1;
+real sig23=1;
+real sig13=1;
+real k1 = sig12 + sig13 - sig23;
+real k2 = sig12 + sig23 - sig13;
+real k3 = sig13 + sig23 - sig12;
+real epssq = 0.002;
+
+
+problem SolveOne(c1, v, master=0, solver=sparsesolver)
+    =int2d(Th)(v * (c1)/dt)
+
+
+
+    -int2d(Th)( 6 * M * v * c1old * (dx(c1old) * dx(c1) + dy(c1old) * dy(c1)))
+    +int2d(Th)( 3 * M * c1old *c1old * ((dx(c1)*dx(v) +dy(c1)*dy(v)))) 
+    - int2d(Th)( 2 * M * (dx(c1) * dx(v) + dy(c1) * dy(v)))
+    /* gradient energy */
+    -int2d(Th)(epssq * M * (dxx(c1) * dxx(v) + 2.*dxy(c1)*dxy(v) + dyy(c1) * dyy(v)))
+
+
+    /* 4c1c2^2*/
+    // -int2d(Th)(sig12 * 4 * M * (c2old^2) * (dx(c1) * dx(v) + dy(c1) * dy(v)))
+    // -int2d(Th)(sig12 * 8 * M * v * c1 * (c2old * (dxx(c2old) + dyy(c2old)) + (dx(c2old)^2 + dy(c2old)^2)))
+    // -int2d(Th)(sig12 * 16 * M * v * (c2old * (dx(c2old) * dx(c1) + dy(c2old) * dy(c1))))
+    /* 4c1^2c2*/
+    // -int2d(Th)(sig13 * 4 * M * c1*c1old * (dx(c2old) * dx(v) + dy(c2old) * dy(v)))
+    // -int2d(Th)(sig13 * 8 * M * (-1) * c2old * (c1old * (dx(c1) *dy(v) + dx(c1) *dy(v)))) // variational changes sign!!
+    // -int2d(Th)(sig13 * 8 * M * c2old * v * (dx(c1)*dx(c1old) + dy(c1)*dy(c1old)))
+    // -int2d(Th)(sig13 * 16 * M * v * (c1old * (dx(c2old) * dx(c1) + dy(c2old) * dy(c1))))
+    /* 2c1*/  
+    // -int2d(Th)(sig13 * 2 * M * (-1) * (dx(c1) * dx(v) + dy(c1) * dy(v)))  // note that turning into weak form changes the sign!!
+    /* -4c1^2*/   // awkward swapping of signs
+    // +int2d(Th)(sig13 * 12 * M * v *(c1 * (dxx(c1old) + dyy(c1old))))
+    // +int2d(Th)(sig13 * 12 * M * v * (dx(c1old) * dx(c1) + dy(c1old) * dy(c1)))
+
+    /* -4c_1c_2*/
+    // +int2d(Th)(sig13 * 8 * M * v * (dx(c1) * dx(c2old) + dy(c1) * dy(c2old)))
+    // +int2d(Th)(sig13 * 4 * M * c2old * (-1) * (dx(c1) * dx(v) + dy(c1) * dy(v))) //laplacian swaps signs
+    // +int2d(Th)(sig13 * 4 * M * c1 * v * (dxx(c2old) + dyy(c2old))) 
+    /* 2c_1^3*/
+    // -int2d(Th)(sig13 * 24 * M * v * (dx(c1old) * dx(c1) + dy(c1old) * dy(c1)))
+    // -int2d(Th)(sig13 * 12 * M * c1 *c1old * v * ((dxx(c1old) +dyy(c1old)))) //laplacian swaps signs
+
+
+
+    -int2d(Th)(v * c1old/dt);
+    // -int1d(Th,1,2,3,4)(c1*v);
+
+problem SolveTwo(c2, w, master=0, solver=sparsesolver)
+    =int2d(Th)(w * (c2)/dt)
+
+    /* 4c1c2^2*/
+    -int2d(Th)(sig12 * 4 * M * (c1old^2) * (dx(c2) * dx(w) + dy(c2) * dy(w)))
+    -int2d(Th)(sig12 * 8 * M * w * c2 * (c1old * (dxx(c1old) + dyy(c1old)) + (dx(c1old)^2 + dy(c1old)^2)))
+    -int2d(Th)(sig12 * 16 * M * w * (c1old * (dx(c1old) * dx(c2) + dy(c1old) * dy(c2))))
+    /* 4c1^2c2*/
+    -int2d(Th)(sig13 * 4 * M * c2*c2old * (dx(c1old) * dx(w) + dy(c1old) * dy(w)))
+    -int2d(Th)(sig13 * 8 * M * (-1) * c1old * (c2old * (dx(c2) *dy(w) + dx(c2) *dy(w)))) // variational changes sign!!
+    -int2d(Th)(sig13 * 8 * M * c1old * w * (dx(c2)*dx(c2old) + dy(c2)*dy(c2old)))
+    -int2d(Th)(sig13 * 16 * M * w * (c2old * (dx(c1old) * dx(c2) + dy(c1old) * dy(c2))))
+    /* 2c1*/  
+    -int2d(Th)(sig13 * 2 * M * (-1) * (dx(c2) * dx(w) + dy(c2) * dy(w)))  // note that turning into weak form changes the sign!!
+    /* -4c1^2*/   // awkward swapping of signs
+    +int2d(Th)(sig13 * 8 * M * (-1) * (c2old * (dx(c2) *dy(w) + dx(c2) *dy(w))))
+    +int2d(Th)(sig13 * 8 * M * w * (dx(c2old) * dx(c2) + dy(c2old) * dy(c2)))
+
+    /* -4c_1c_2*/
+    +int2d(Th)(sig13 * 8 * M * w * (dx(c2) * dx(c1old) + dy(c2) * dy(c1old)))
+    +int2d(Th)(sig13 * 4 * M * c1old * (-1) * (dx(c2) * dx(w) + dy(c2) * dy(w))) //laplacian swaps signs
+    +int2d(Th)(sig13 * 4 * M * c2 * w * (dxx(c1old) + dyy(c1old))) 
+    /* 2c_1^3*/
+    -int2d(Th)(sig13 * 12 * M * w * (dx(c2old) * dx(c2) + dy(c2old) * dy(c2)))
+    -int2d(Th)(sig13 * 6 * M * (-1) * c2old^2 * ((dx(c2) * dx(w) + dy(c2) * dy(w)))) //laplacian swaps signs
+
+    /* gradient energy */
+    +int2d(Th)(epssq * k1 * M * (dxx(c2) * dxx(w) + 2.*dxy(c2)*dxy(w) + dyy(c2) * dyy(w)))
+
+    -int2d(Th)(w * c2old/dt);
+
+
+
+
+
+
+
+
+macro getAdaptMesh()
+Th = adaptmesh(Th,interfacemesh,hmin=1.0/(n*refI),hmax=1.0/n,iso=true,ratio=mGrw,err=0.01,nbvx=5e4,periodic=[[2,y],[4,y],[1,x],[3,x]]);
+v = 0;
+w=0;
+u = 0;
+// EOM
+
+Vhfield interfacemesh;
+macro MakeMesh()
+interfacemesh = c1 * (1-c1) + c2*(1-c2);
+// EOM
+
+
+
+
+real dR = 0.6;  // Radius
+real dRrho = 0.4;  // Radius
+real dxc= 0.0;  // x coordinate
+real dyc= 0.8;  // y coordinate, 0.2 is start above gorund
+real DropTh = 0.5;  // Drop thickness
+real Lx = 1.0 * dR;  // x half-extent
+real Ly = 1.0 * dR;  // y half-extent
+
+func initc1 = -tanh(( max(abs((x - dxc) / Lx), abs((y - dyc) / Ly)) - 1.0 )/ DropTh);
+// func initc2 = 0.5 * (1.0- tanh(( max(abs((x - 0) / Lx), abs((y - 3) / Ly)) - 1.0 )/ DropTh));
+
+// func initc1 = 0.5 * (1.0- tanh((sqrt(x^2+(y-2)^2)-1)/DropTh));
+// func initc1 = 0.5 * (1.0- tanh((abs(y-3)-1)/ DropTh));
+c1 = initc1;
+c2 = 0;
+
+
+MakeMesh
+getAdaptMesh
+c1 = initc1;
+c2 = 0;
+
+
+
+
+MakeMesh
+getAdaptMesh
+c1 = initc1;
+c2 = 0;
+
+
+
+MakeMesh
+getAdaptMesh
+c1 = initc1;
+c2 = 0;
+
+
+c1old = c1;
+c2old = c2;
+
+
+
+
+int nAdapt=0;
+real curt=0.0;
+// // Time stepping
+int counter = 0;
+bool recorded;
+while(curt < endsim)//(maxCFL > 1e-4)
+{
+    // If needed, carry out mesh adaptation, solve again, adapt again
+    if( nAdapt == dref)
+    {
+        // if (counter < 150)
+        //     ElongateMesh(curt)
+        cout << "    Mesh adpt 1, ";
+        getAdaptMesh
+        cout << endl;
+        nAdapt++;
+        nAdapt = 0;
+    }
+    ++counter;
+
+    cout << "Time: " << curt << endl;
+    // solve equations
+    curt = curt+dt;
+    real c1mass = int2d(Th)(c1);
+    cout << "C1 mass: " << c1mass << endl;
+
+    real c2mass = int2d(Th)(c2);
+    cout << "C2 mass: " << c2mass << endl;
+
+    SolveOne;
+    // SolveTwo;
+
+    Vhfield tmp = c1;
+    
+    plot(tmp, wait=false, fill=true, value=1);
+
+
+    // Prepare for the next time step
+    c1old=c1;
+    // c2=1-c1;
+    c2old=c2;
+    // rhotwoold = rhotwo;
+
+    // plot(c1, wait=true, fill=true, value=1);
+    nAdapt++;
+}
