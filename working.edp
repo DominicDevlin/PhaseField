@@ -85,8 +85,8 @@ real ymax =  6;
 
 // Mesh resolution
 int  n     = 2; // Number of segments per unit length
-real refI  = 12.0; // Refinement factor for the interface
-real mGrw  = 1.2;  // Growth rate of the mesh elements
+real refI  = 14.0; // Refinement factor for the interface
+real mGrw  = 1.8;  // Growth rate of the mesh elements
 int  dref  = 10; // Number of time-steps between mesh adaption
 
 
@@ -254,7 +254,7 @@ real gammaphi=0.;     // surface tension of phi
 real eta = 1;             // viscosity type1
 real eta2 = 1;             // viscocity type2
 real a = 1;               // Coefficient a 
-real eps = 0.001;               // phase width coefficient k
+real eps = 0.0002;               // phase width coefficient k
 real lmda = 10;               // concentration constraint
 real lmdarho = 10;               // concentration constraint
 real lmdarhophi = 10;               // concentration constraint
@@ -362,7 +362,7 @@ problem phasefield(phi, v, master=0, solver=sparsesolver) // ,
     // + int2d(Th) (1/eta * ( v * (12 * lmda *(rhotwophiArea-A0RPtwo)*rhotwo*phi*(1-rhotwoold))));
 
 
-func RhoDifferentiate = int2d(Th) (dt * (phi > upperdifflimit) * (rho < lowerdifflimit) * phi * diffparam * sqrt(dx(rho)^2 + dy(rho)^2));
+func RhoDifferentiate = int2d(Th) (dt * (phi > upperdifflimit) * (rho < lowerdifflimit) * diffparam * sqrt(dx(rho)^2 + dy(rho)^2));
 
 
 
@@ -380,8 +380,8 @@ problem RhoField(rho, w, master=0, solver=sparsesolver)
     // + int2d(Th) ( (1/eta * rhointerface * ((k) * w * Rcurvature)))
     // in strong form (slightly in correc)
     // + int2d(Th) (rhointerface * diffparam * w ) // slightly incorrect ues of diffparam as constant,
-    // in weak form 
-    + int2d(Th) ((phi > upperdifflimit) * (rhoold < lowerdifflimit) * phi * diffparam * w * sqrt(dx(rhoold)^2 + dy(rhoold)^2))
+    // in weak form . Trying without a phi in here
+    + int2d(Th) ((phi > upperdifflimit) * (rhoold < lowerdifflimit) * diffparam * w * sqrt(dx(rhoold)^2 + dy(rhoold)^2))
     - int2d(Th) ( w * (rhoold)/dt  );
 
 
@@ -541,6 +541,7 @@ while(curt < endsim)//(maxCFL > 1e-4)
         nAdapt++;
         // plot(Th, wait=true);
         nAdapt = 0;
+        plot(Th, wait = true);
     }
     ++counter;
 
