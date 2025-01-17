@@ -14,20 +14,21 @@ if (len(sys.argv) > 1):
 tauphi = 2.
 
 eps=0.001
-taurhos = [2, 4]  # <-- desired sigma_12 value
+tauphi = 1  # <-- desired sigma_12 value
 
 
 pairs = []
 results = []
 
-
-for tr in taurhos:
-    tauphirho_values =  [1, 2, 4, 6, 9, 13, 16, 21, 25, 29]
-
-    taurho_values = []
-
-    for tpr in tauphirho_values:
+tauphirho_values =  [1, 2, 4, 9, 16]
+for tr in tauphirho_values:
+    
+    taurho_values = np.linspace(0.2, 2, 10) * tr
+    taurho_values = list(taurho_values)
+        
+    for tpr in taurho_values:
         pairs.append((tpr, tr))
+        print(tpr, tr)
 
 # Select the pair at the given index
 # (Make sure index is valid for pairs; you may want to add a check if needed)

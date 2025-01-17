@@ -4,7 +4,7 @@
 #SBATCH --mem=500MB 
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
-#SBATCH --array=0-19 
+#SBATCH --array=0-49 
 #SBATCH --account=uoa02799         
 #SBATCH --partition=milan
 

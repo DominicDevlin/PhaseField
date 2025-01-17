@@ -20,7 +20,7 @@ if (ARGV.n > 3)
 }
 
 verbosity=0;
-int PrintStep=50;
+int PrintStep=2500;
 bool doPrint=true;
 bool doTimespan=false;
 int timePrint=100;
@@ -195,8 +195,8 @@ macro solvePhase()
     if (dynamicdiff) 
     {
         real loss = netrate * diffamount;
-        A0RP = A0RP - loss;
-        A0P = A0P - loss;
+        rhoArea = rhoArea - loss;
+        rhoArealb = rhoArealb - loss;
 
         
         real maxadd = addproportion * diffamount;
@@ -207,8 +207,9 @@ macro solvePhase()
     else
     {
         real gain = absgrowth - diffamount;
-        A0RP = A0RP + gain;
-        A0P = A0P + gain;
+        rhoArea = rhoArea + gain;
+        rhoArealb = rhoArealb + gain;
+
         if (phimoved > absgrowth)
             phimoved = absgrowth;
         A0 = A0 + phimoved;
@@ -261,7 +262,7 @@ real A0 = 3.143;              // Target value for A
 real epseps = 1e-9;           // small prefactor for 1/sqrt
 real dt = 0.01;
 
-real phitension=4;
+real phitension=1;
 real rhophitension=1;
 real rhotension=1;
 real rhotwotension=1; // rhotwo params
@@ -335,9 +336,9 @@ problem relaxphasefield(phi, v, master=0, solver=sparsesolver) // ,
 /* the below equation has the curvature term removed*/
 problem phasefield(phi, v, master=0, solver=sparsesolver) // , 
     = int2d(Th) (  v * (phi)/dt  )
-    + int2d(Th) (1/eta * phitension * (1-rho) * (rho < 1) * a * (v* 0.5 * phi - v*1.5*phi*phiold + v*phi*phiold^2))
-    + int2d(Th) (1/eta *  phitension * (1-rho) * (rho < 1) * (eps * (dx(v) *dx(phi) + dy(v) * dy(phi))))
-    + int2d(Th) ( (1/eta * phitension * (1-rho) * (rho < 1) * phiinterface * ((eps) * v * curvature )))
+    + int2d(Th) (1/eta * phitension * a * (v* 0.5 * phi - v*1.5*phi*phiold + v*phi*phiold^2))
+    + int2d(Th) (1/eta *  phitension  * (eps * (dx(v) *dx(phi) + dy(v) * dy(phi))))
+    + int2d(Th) ( (1/eta * phitension * phiinterface * ((eps) * v * curvature )))
     + int2d(Th) (1/eta * ( v * (12. * lmda *(phiArea-A0)*phi*(1-phiold))))
     - int2d(Th) (  v * (phiold)/dt  )
 
@@ -409,12 +410,12 @@ Vhfield dummyrho;
 Vhfield dummyrhoold;
 Vhfield dummyw;
 
-problem DummyRhoField(dummyrho, dummyw, master=0, solver=sparsesolver) // , 
-    = int2d(Th) (  dummyw * (dummyrho)/dtau  )
-    + int2d(Th) (1/eta * a * (0.5 * dummyw * dummyrho - 1.5*dummyw*dummyrho*dummyrhoold + dummyw*dummyrho*phiold^2))
-    + int2d(Th) (1/eta * (eps * (dx(dummyw) *dx(dummyrho) + dy(dummyw) * dy(dummyrho))))
-    + int2d(Th) (1/eta * ( dummyw * (12 * lmda *(rhoArea-A0P)*dummyrho*(1-dummyrhoold))))
-    - int2d(Th) (  dummyw * (dummyrhoold)/dtau  );
+// problem DummyRhoField(dummyrho, dummyw, master=0, solver=sparsesolver) // , 
+//     = int2d(Th) (  dummyw * (dummyrho)/dtau  )
+//     + int2d(Th) (1/eta * a * (0.5 * dummyw * dummyrho - 1.5*dummyw*dummyrho*dummyrhoold + dummyw*dummyrho*phiold^2))
+//     + int2d(Th) (1/eta * (eps * (dx(dummyw) *dx(dummyrho) + dy(dummyw) * dy(dummyrho))))
+//     + int2d(Th) (1/eta * ( dummyw * (12 * lmda *(rhoArea-A0P)*dummyrho*(1-dummyrhoold))))
+//     - int2d(Th) (  dummyw * (dummyrhoold)/dtau  );
 
 Vhfield drhotwo;
 Vhfield drhotwoold;
@@ -429,12 +430,12 @@ problem DRhoTwoField(drhotwo, dwt, master=0, solver=sparsesolver) // ,
 
 
 // currently do not know if curvature removal energy is correct?? Can I just integrate??
-func TotalEnergy = int2d(Th)((a*phitension)*0.25 * phi^2 * (1-phi)^2 + (phitension * eps) * 0.5 * abs(dx(phi) + dy(phi))^2)
-                    + lmda * (phiArea-A0)^2
-                    + int2d(Th)(phi * rhophitension * ((a)*0.25 * rho^2 * (1-rho)^2 + (eps) * 0.5 * abs(dx(rho) + dy(rho))^2))
-                    + lmdarho * (rhoArea - A0P)^2
-                    + lmdarhophi * (rhophiArea - A0RP)^2
-                    - int2d(Th) ( (phitension * phiinterface * ((eps) * curvature)));
+// func TotalEnergy = int2d(Th)((a*phitension)*0.25 * phi^2 * (1-phi)^2 + (phitension * eps) * 0.5 * abs(dx(phi) + dy(phi))^2)
+//                     + lmda * (phiArea-A0)^2
+//                     + int2d(Th)(phi * rhophitension * ((a)*0.25 * rho^2 * (1-rho)^2 + (eps) * 0.5 * abs(dx(rho) + dy(rho))^2))
+//                     + lmdarho * (rhoArea - A0P)^2
+//                     + lmdarhophi * (rhophiArea - A0RP)^2
+//                     - int2d(Th) ( (phitension * phiinterface * ((eps) * curvature)));
 
 
 // Initialisation
@@ -759,9 +760,9 @@ while(curt < endsim)//(maxCFL > 1e-4)
         real t3 = lmda * (phiArea-A0)^2;
         real t4 = int2d(Th) ( (phitension * phiinterface * ((eps) * curvature)));
 
-        real t5 = int2d(Th)((rhotension * (a)*0.25 * rho^2 * (1-rho)^2));
-        real t6 = int2d(Th)((rhotension * (eps) * 0.5 * abs(dx(rho) + dy(rho))^2));
-        real t7 = lmdarho * (rhoArea - A0P)^2;
+        real t5 = int2d(Th)((rhotension * (1-phi) * (a)*0.25 * rho^2 * (1-rho)^2));
+        real t6 = int2d(Th)((rhotension * (1-phi) * (eps) * 0.5 * abs(dx(rho) + dy(rho))^2));
+        real t7 = lmdarho * (rhononphiArea - A0P)^2;
         // currently not removing curvature from rho.
         // real t8 = int2d(Th) ( (rhotwointerface * ((eps) * Rcurvature)));
 
