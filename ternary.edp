@@ -85,16 +85,18 @@ real ymax =  6;
 
 // Mesh resolution
 int  n     = 2; // Number of segments per unit length
-real refI  = 12.0; // Refinement factor for the interface
-real mGrw  = 1.2;  // Growth rate of the mesh elements
+real refI  = 1; // Refinement factor for the interface
+real mGrw  = 1;  // Growth rate of the mesh elements
 int  dref  = 10; // Number of time-steps between mesh adaption
 
 
+int sz=72*6/4;
+//mesh Th=square(sz,sz,[.15+x*.5,.4+y*.5]);
 mesh Th = square((xmax-xmin)*n,(ymax-ymin)*n,[xmin+(xmax-xmin)*x,ymin+(ymax-ymin)*y]);
 
 // -------------------------------------------------------------------------------------------------------------------------------------
 // Fields
-fespace Vhfield (Th,P2,periodic=[[2,y],[4,y],[1,x],[3,x]]);
+fespace Vhfield (Th,P3,periodic=[[2,y],[4,y],[1,x],[3,x]]);
 // -------------------------------------------------------------------------------------------------------------------------------------
 // Compilation of macros
 
@@ -129,85 +131,101 @@ Vhfield v;
 Vhfield w;
 Vhfield u;
 
-real M = 60;
-real dt = 0.00001;
+real M = 0.1;
+real dt = 0.0001;
 real sig12=1;
 real sig23=1;
 real sig13=1;
 real k1 = sig12 + sig13 - sig23;
 real k2 = sig12 + sig23 - sig13;
 real k3 = sig13 + sig23 - sig12;
-real epssq = 0.002;
-
+real epssq =0.1;
 
 problem SolveOne(c1, v, master=0, solver=sparsesolver)
     =int2d(Th)(v * (c1)/dt)
 
 
-
-    -int2d(Th)( 6 * M * v * c1old * (dx(c1old) * dx(c1) + dy(c1old) * dy(c1)))
-    +int2d(Th)( 3 * M * c1old *c1old * ((dx(c1)*dx(v) +dy(c1)*dy(v)))) 
-    - int2d(Th)( 2 * M * (dx(c1) * dx(v) + dy(c1) * dy(v)))
+    /* INIT CAHN HILLARD! */
+    +int2d(Th)( 6 * sig12 * M * c1old * (dx(c1) * dx(v) + dy(c1) * dy(v)))
+    //-int2d(Th)( 6 * sig12 * M * v * (dx(c1) * dx(c1old) + dy(c1) * dy(c1old)))
+    +int2d(Th)( 3 * sig12 * M * c1old * v * ((dx(c1)*dx(c1old) +dy(c1)*dy(c1old)))) 
+    +int2d(Th)( 3 * sig12 * M * c1old * c1old * ((dx(c1)*dx(v) +dy(c1)*dy(v)))) 
+    -int2d(Th)( sig12 * M * (dx(c1) * dx(v) + dy(c1) * dy(v)))
     /* gradient energy */
-    -int2d(Th)(epssq * M * (dxx(c1) * dxx(v) + 2.*dxy(c1)*dxy(v) + dyy(c1) * dyy(v)))
-
-
-    /* 4c1c2^2*/
-    // -int2d(Th)(sig12 * 4 * M * (c2old^2) * (dx(c1) * dx(v) + dy(c1) * dy(v)))
-    // -int2d(Th)(sig12 * 8 * M * v * c1 * (c2old * (dxx(c2old) + dyy(c2old)) + (dx(c2old)^2 + dy(c2old)^2)))
-    // -int2d(Th)(sig12 * 16 * M * v * (c2old * (dx(c2old) * dx(c1) + dy(c2old) * dy(c1))))
-    /* 4c1^2c2*/
-    // -int2d(Th)(sig13 * 4 * M * c1*c1old * (dx(c2old) * dx(v) + dy(c2old) * dy(v)))
-    // -int2d(Th)(sig13 * 8 * M * (-1) * c2old * (c1old * (dx(c1) *dy(v) + dx(c1) *dy(v)))) // variational changes sign!!
-    // -int2d(Th)(sig13 * 8 * M * c2old * v * (dx(c1)*dx(c1old) + dy(c1)*dy(c1old)))
-    // -int2d(Th)(sig13 * 16 * M * v * (c1old * (dx(c2old) * dx(c1) + dy(c2old) * dy(c1))))
-    /* 2c1*/  
-    // -int2d(Th)(sig13 * 2 * M * (-1) * (dx(c1) * dx(v) + dy(c1) * dy(v)))  // note that turning into weak form changes the sign!!
-    /* -4c1^2*/   // awkward swapping of signs
-    // +int2d(Th)(sig13 * 12 * M * v *(c1 * (dxx(c1old) + dyy(c1old))))
-    // +int2d(Th)(sig13 * 12 * M * v * (dx(c1old) * dx(c1) + dy(c1old) * dy(c1)))
-
-    /* -4c_1c_2*/
-    // +int2d(Th)(sig13 * 8 * M * v * (dx(c1) * dx(c2old) + dy(c1) * dy(c2old)))
-    // +int2d(Th)(sig13 * 4 * M * c2old * (-1) * (dx(c1) * dx(v) + dy(c1) * dy(v))) //laplacian swaps signs
-    // +int2d(Th)(sig13 * 4 * M * c1 * v * (dxx(c2old) + dyy(c2old))) 
-    /* 2c_1^3*/
-    // -int2d(Th)(sig13 * 24 * M * v * (dx(c1old) * dx(c1) + dy(c1old) * dy(c1)))
-    // -int2d(Th)(sig13 * 12 * M * c1 *c1old * v * ((dxx(c1old) +dyy(c1old)))) //laplacian swaps signs
-
-
-
+    +int2d(Th)(epssq * M * (dxx(c1) * dxx(v) + 2.*dxy(c1)*dxy(v) + dyy(c1) * dyy(v)))
     -int2d(Th)(v * c1old/dt);
-    // -int1d(Th,1,2,3,4)(c1*v);
+
+
+
+    // // /* 6c1c2^2*/
+    // // +int2d(Th)((2*sig12 + 2*sig13 + 2*sig23) * M * (c2old^2) * (-1) * (dx(c1) * dx(v) + dy(c1) * dy(v))) // invert
+    // // +int2d(Th)((2*sig12 + 2*sig13 + 2*sig23) * 2 * M * v * c1 * (c2old * (dxx(c2old) + dyy(c2old)) + (dx(c2old)^2 + dy(c2old)^2)))
+    // // +int2d(Th)((2*sig12 + 2*sig13 + 2*sig23) * 4 * M * v * (c2old * (dx(c2old) * dx(c1) + dy(c2old) * dy(c1))))
+    // // /* 6c1^2c2*/
+    // // +int2d(Th)(sig13 * 6 * M * v*c1*c1old * (dxx(c2old) + dyy(c2old) ))
+    // // +int2d(Th)(sig13 * 12 * M * (-1) * c2old * (c1old * (dx(c1) *dy(v) + dx(c1) *dy(v)))) // invert
+    // // +int2d(Th)(sig13 * 12 * M * c2old * v * (dx(c1)*dx(c1old) + dy(c1)*dy(c1old)))
+    // // +int2d(Th)(sig13 * 24 * M * v * (c1old * (dx(c2old) * dx(c1) + dy(c2old) * dy(c1))))
+    // /* 2c1*/  
+    // -int2d(Th)(sig13 * 2 * M * (-1) * (dx(c1) * dx(v) + dy(c1) * dy(v)))  // invert
+    // /* -6c1^2*/   // awkward swapping of signs
+    // -int2d(Th)( (-1) * 12 * sig13 * M * v * ((dx(c1)*dx(c1old) +dy(c1)*dy(c1old)))) 
+    // -int2d(Th)( (-1) * 12 * sig13 * M * c1old * ((dx(c1)*dx(v) +dy(c1)*dy(v)))) 
+    // -int2d(Th)(sig13 * 12 * M * v * (dx(c1old) * dx(c1) + dy(c1old) * dy(c1)))
+    // /* -4c_1c_2*/
+    // // -int2d(Th)(sig13 * 8 * M * v * (dx(c1) * dx(c2old) + dy(c1) * dy(c2old)))
+    // // -int2d(Th)(sig13 * 4 * M * c2old * (-1) * (dx(c1) * dx(v) + dy(c1) * dy(v))) //laplacian swaps signs
+    // // -int2d(Th)(sig13 * 4 * M * c1 * v * (dxx(c2old) + dyy(c2old))) 
+    // /* 4c_1^3*/
+    // +int2d(Th)( 24 * sig13 * M * v * c1old * (dx(c1old) * dx(c1) + dy(c1old) * dy(c1)))
+    // +int2d(Th)((-1) * 12 * sig13 * M * c1old * v * ((dx(c1)*dx(c1old) +dy(c1)*dy(c1old)))) 
+    // +int2d(Th)((-1) * 12 * sig13 * M * c1old * c1old * ((dx(c1)*dx(v) +dy(c1)*dy(v)))) 
+    // // /* 2c_2^3*/
+    // // +int2d(Th)( 24 * sig23 * M * v * (dx(c2old) * dx(c2old) + dy(c2old) * dy(c2old)))
+    // // +int2d(Th)((-1) * 12 * sig23 * M * c2old^2 * v * ((dxx(c2old) + dyy(c2old)))) 
+    // // /* -2c_2^2*/
+    // // -int2d(Th)(sig13 * 4 * M * v * c2old * (dxx(c2old) + dyy(c2old)))
+    // // -int2d(Th)( 4 * sig13 * M * v * ((dx(c2old)*dx(c2old) +dy(c2old)*dy(c2old)))) 
+    // /* gradient energy */
+    // +int2d(Th)(epssq * M * (dxx(c1) * dxx(v) + 2.*dxy(c1)*dxy(v) + dyy(c1) * dyy(v)))
+    
+    // -int2d(Th)(v * c1old/dt);
+
 
 problem SolveTwo(c2, w, master=0, solver=sparsesolver)
     =int2d(Th)(w * (c2)/dt)
 
-    /* 4c1c2^2*/
-    -int2d(Th)(sig12 * 4 * M * (c1old^2) * (dx(c2) * dx(w) + dy(c2) * dy(w)))
-    -int2d(Th)(sig12 * 8 * M * w * c2 * (c1old * (dxx(c1old) + dyy(c1old)) + (dx(c1old)^2 + dy(c1old)^2)))
-    -int2d(Th)(sig12 * 16 * M * w * (c1old * (dx(c1old) * dx(c2) + dy(c1old) * dy(c2))))
-    /* 4c1^2c2*/
-    -int2d(Th)(sig13 * 4 * M * c2*c2old * (dx(c1old) * dx(w) + dy(c1old) * dy(w)))
-    -int2d(Th)(sig13 * 8 * M * (-1) * c1old * (c2old * (dx(c2) *dy(w) + dx(c2) *dy(w)))) // variational changes sign!!
-    -int2d(Th)(sig13 * 8 * M * c1old * w * (dx(c2)*dx(c2old) + dy(c2)*dy(c2old)))
-    -int2d(Th)(sig13 * 16 * M * w * (c2old * (dx(c1old) * dx(c2) + dy(c1old) * dy(c2))))
-    /* 2c1*/  
-    -int2d(Th)(sig13 * 2 * M * (-1) * (dx(c2) * dx(w) + dy(c2) * dy(w)))  // note that turning into weak form changes the sign!!
-    /* -4c1^2*/   // awkward swapping of signs
-    +int2d(Th)(sig13 * 8 * M * (-1) * (c2old * (dx(c2) *dy(w) + dx(c2) *dy(w))))
-    +int2d(Th)(sig13 * 8 * M * w * (dx(c2old) * dx(c2) + dy(c2old) * dy(c2)))
-
+    /* 6c2c2^2*/
+    -int2d(Th)((2*sig12 + 2*sig23 + 2*sig13) * M * (c1old^2) * (-1) * (dx(c2) * dx(w) + dy(c2) * dy(w))) // inwert
+    -int2d(Th)((2*sig12 + 2*sig23 + 2*sig13) * 2 * M * w * c2 * (c1old * (dxx(c1old) + dyy(c1old)) + (dx(c1old)^2 + dy(c1old)^2)))
+    -int2d(Th)((2*sig12 + 2*sig23 + 2*sig13) * 4 * M * w * (c1old * (dx(c1old) * dx(c2) + dy(c1old) * dy(c2))))
+    /* 6c2^2c2*/
+    -int2d(Th)(sig23 * 6 * M * w*c2*c2old * (dxx(c1old) + dyy(c1old) ))
+    -int2d(Th)(sig23 * 12 * M * (-1) * c1old * (c2old * (dx(c2) *dy(w) + dx(c2) *dy(w)))) // inwert
+    -int2d(Th)(sig23 * 12 * M * c1old * w * (dx(c2)*dx(c2old) + dy(c2)*dy(c2old)))
+    -int2d(Th)(sig23 * 24 * M * w * (c2old * (dx(c1old) * dx(c2) + dy(c1old) * dy(c2))))
+    /* 2c2*/  
+    -int2d(Th)(sig23 * 2 * M * (-1) * (dx(c2) * dx(w) + dy(c2) * dy(w)))  // inwert
+    /* -6c2^2*/   // awkward swapping of signs
+    +int2d(Th)( (-1) * 12 * sig23 * M * w * ((dx(c2)*dx(c2old) +dy(c2)*dy(c2old)))) 
+    +int2d(Th)( (-1) * 12 * sig23 * M * c2old * ((dx(c2)*dx(w) +dy(c2)*dy(w)))) 
+    +int2d(Th)(sig23 * 12 * M * w * (dx(c2old) * dx(c2) + dy(c2old) * dy(c2)))
     /* -4c_1c_2*/
-    +int2d(Th)(sig13 * 8 * M * w * (dx(c2) * dx(c1old) + dy(c2) * dy(c1old)))
-    +int2d(Th)(sig13 * 4 * M * c1old * (-1) * (dx(c2) * dx(w) + dy(c2) * dy(w))) //laplacian swaps signs
-    +int2d(Th)(sig13 * 4 * M * c2 * w * (dxx(c1old) + dyy(c1old))) 
-    /* 2c_1^3*/
-    -int2d(Th)(sig13 * 12 * M * w * (dx(c2old) * dx(c2) + dy(c2old) * dy(c2)))
-    -int2d(Th)(sig13 * 6 * M * (-1) * c2old^2 * ((dx(c2) * dx(w) + dy(c2) * dy(w)))) //laplacian swaps signs
-
+    +int2d(Th)(sig23 * 8 * M * w * (dx(c2) * dx(c1old) + dy(c2) * dy(c1old)))
+    +int2d(Th)(sig23 * 4 * M * c1old * (-1) * (dx(c2) * dx(w) + dy(c2) * dy(w))) //laplacian swaps signs
+    +int2d(Th)(sig23 * 4 * M * c2 * w * (dxx(c1old) + dyy(c1old))) 
+    /* 4c_1^3*/
+    -int2d(Th)( 24 * sig23 * M * w * c2old * (dx(c2old) * dx(c2) + dy(c2old) * dy(c2)))
+    -int2d(Th)((-1) * 12 * sig23 * M * c2old * w * ((dx(c2)*dx(c2old) +dy(c2)*dy(c2old)))) 
+    -int2d(Th)((-1) * 12 * sig23 * M * c2old * c2old * ((dx(c2)*dx(w) +dy(c2)*dy(w)))) 
+    /* 2c_2^3*/
+    +int2d(Th)( 24 * sig13 * M * w * (dx(c1old) * dx(c1old) + dy(c1old) * dy(c1old)))
+    +int2d(Th)((-1) * 12 * sig13 * M * c1old^2 * w * ((dxx(c1old) + dyy(c1old)))) 
+    /* -2c_2^2*/
+    +int2d(Th)(sig13 * 4 * M * w * c1old * (dxx(c1old) + dyy(c1old)))
+    +int2d(Th)( 4 * sig13 * M * w * ((dx(c1old)*dx(c1old) +dy(c1old)*dy(c1old)))) 
     /* gradient energy */
-    +int2d(Th)(epssq * k1 * M * (dxx(c2) * dxx(w) + 2.*dxy(c2)*dxy(w) + dyy(c2) * dyy(w)))
+    +int2d(Th)(epssq * M * (dxx(c2) * dxx(w) + 2.*dxy(c2)*dxy(w) + dyy(c2) * dyy(w)))
 
     -int2d(Th)(w * c2old/dt);
 
@@ -220,14 +238,13 @@ problem SolveTwo(c2, w, master=0, solver=sparsesolver)
 
 macro getAdaptMesh()
 Th = adaptmesh(Th,interfacemesh,hmin=1.0/(n*refI),hmax=1.0/n,iso=true,ratio=mGrw,err=0.01,nbvx=5e4,periodic=[[2,y],[4,y],[1,x],[3,x]]);
-v = 0;
 w=0;
 u = 0;
 // EOM
 
 Vhfield interfacemesh;
 macro MakeMesh()
-interfacemesh = c1 * (1-c1) + c2*(1-c2);
+interfacemesh = c1;
 // EOM
 
 
@@ -236,45 +253,64 @@ interfacemesh = c1 * (1-c1) + c2*(1-c2);
 real dR = 0.6;  // Radius
 real dRrho = 0.4;  // Radius
 real dxc= 0.0;  // x coordinate
-real dyc= 0.8;  // y coordinate, 0.2 is start above gorund
-real DropTh = 0.5;  // Drop thickness
-real Lx = 1.0 * dR;  // x half-extent
-real Ly = 1.0 * dR;  // y half-extent
+real dyc= 3;  // y coordinate, 0.2 is start above gorund
+real DropTh = 0.1;  // Drop thickness
+real Lx = dR;  // x half-extent
+real Ly = dR;  // y half-extent
+
+// func initc1 = 0.5* (1.-tanh(( max(abs((x - dxc) / Lx), abs((y - dyc) / Ly)) - 1.0 )/ DropTh));
 
 func initc1 = -tanh(( max(abs((x - dxc) / Lx), abs((y - dyc) / Ly)) - 1.0 )/ DropTh);
+
 // func initc2 = 0.5 * (1.0- tanh(( max(abs((x - 0) / Lx), abs((y - 3) / Ly)) - 1.0 )/ DropTh));
 
-// func initc1 = 0.5 * (1.0- tanh((sqrt(x^2+(y-2)^2)-1)/DropTh));
-// func initc1 = 0.5 * (1.0- tanh((abs(y-3)-1)/ DropTh));
+func initc2 = 0.5 * (1.0- tanh((sqrt(x^2+(y-1)^2)-0.5)/DropTh));
+// func initc2 = 0.5 * (1.0- tanh((abs(y-3)-1)/ DropTh));
+
+
+real radius = 0.05;
+real centerX = 0.35;
+real centerX2 = 0.5;
+real centerY = 0.5;
+real Inside =.999;
+real Outside = -.999;
+
+func real initialCondition(real x, real y)
+{
+//return randres53()*2-1;
+return randreal1()*1.8-.9;
+    if (sqrt(pow(x - centerX, 2) + pow(y - centerY, 2)) <= radius || 
+       sqrt(pow(x - centerX2, 2) + pow(y - centerY, 2)) <= radius || 
+       sqrt(pow(x - centerX, 2) + pow(y - 0.8, 2)) <= radius || 
+       sqrt(pow(x - centerX2, 2) + pow(y - 0.8, 2)) <= radius)
+    return Inside;
+  else
+    return Outside;
+}
+
+c2 = 0;
+// plot(c1, wait=true, fill=true, value=1);
+// plot(c2, wait=true, fill=true, value=1);
 c1 = initc1;
+MakeMesh
+getAdaptMesh
 c2 = 0;
 
+
+c1 = initc1;
 
 MakeMesh
 getAdaptMesh
-c1 = initc1;
 c2 = 0;
 
 
-
-
+c1 = initc1;
 MakeMesh
 getAdaptMesh
-c1 = initc1;
 c2 = 0;
-
-
-
-MakeMesh
-getAdaptMesh
 c1 = initc1;
-c2 = 0;
-
-
 c1old = c1;
 c2old = c2;
-
-
 
 
 int nAdapt=0;
@@ -290,10 +326,12 @@ while(curt < endsim)//(maxCFL > 1e-4)
         // if (counter < 150)
         //     ElongateMesh(curt)
         cout << "    Mesh adpt 1, ";
+        MakeMesh
         getAdaptMesh
         cout << endl;
         nAdapt++;
         nAdapt = 0;
+        // n=20;
     }
     ++counter;
 
@@ -309,9 +347,9 @@ while(curt < endsim)//(maxCFL > 1e-4)
     SolveOne;
     // SolveTwo;
 
-    Vhfield tmp = c1;
+    Vhfield tmp = c1 + c2;
     
-    plot(tmp, wait=false, fill=true, value=1);
+    plot(c1, wait=false, fill=true, value=1);
 
 
     // Prepare for the next time step
