@@ -1,6 +1,6 @@
 #!/bin/bash -e
 #SBATCH --job-name=fem
-#SBATCH --time=4:00:00      # Walltime (HH:MM:SS)
+#SBATCH --time=6:00:00      # Walltime (HH:MM:SS)
 #SBATCH --mem=500MB 
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2

@@ -297,7 +297,7 @@ real A0Ptwo=0;
 bool dynamicdiff = false;
 
 // dynamic
-real diffrate =0;//1e-4;// 1e-4;//1e-4;//1e-4;
+real diffrate =0.;//1e-4;// 1e-4;//1e-4;//1e-4;
 real addproportion = 0.; // between 0 and 1
 real addrate=addproportion * diffrate;//0.25e-4;//0.5e-4;
 real netrate=1;
@@ -305,7 +305,7 @@ if (addrate > 0)
     netrate=(diffrate-addrate)/diffrate;
 
 // non dynamic
-real diffparam = 0.; // this is being treated dynamically if dynamic param is true.
+real diffparam = 0.01; // this is being treated dynamically if dynamic param is true.
 real absgrowth = 0;
 
 real diffamount=0;
@@ -362,7 +362,7 @@ problem phasefield(phi, v, master=0, solver=sparsesolver) // ,
     // + int2d(Th) (1/eta * ( v * (12 * lmda *(rhotwophiArea-A0RPtwo)*rhotwo*phi*(1-rhotwoold))));
 
 
-func RhoDifferentiate = int2d(Th) (dt * (phi > upperdifflimit) * (rho < lowerdifflimit) * diffparam * sqrt(dx(rho)^2 + dy(rho)^2));
+func RhoDifferentiate = int2d(Th) (dt * (phi > upperdifflimit) * (rho < lowerdifflimit) * diffparam * phi * sqrt(dx(rho)^2 + dy(rho)^2));
 
 
 
@@ -381,7 +381,7 @@ problem RhoField(rho, w, master=0, solver=sparsesolver)
     // in strong form (slightly in correc)
     // + int2d(Th) (rhointerface * diffparam * w ) // slightly incorrect ues of diffparam as constant,
     // in weak form . Trying without a phi in here
-    + int2d(Th) ((phi > upperdifflimit) * (rhoold < lowerdifflimit) * diffparam * w * sqrt(dx(rhoold)^2 + dy(rhoold)^2))
+    + int2d(Th) ((phi > upperdifflimit) * (rhoold < lowerdifflimit) * diffparam * w * phi * sqrt(dx(rhoold)^2 + dy(rhoold)^2))
     - int2d(Th) ( w * (rhoold)/dt  );
 
 
@@ -541,7 +541,6 @@ while(curt < endsim)//(maxCFL > 1e-4)
         nAdapt++;
         // plot(Th, wait=true);
         nAdapt = 0;
-        plot(Th, wait = true);
     }
     ++counter;
 
@@ -550,6 +549,7 @@ while(curt < endsim)//(maxCFL > 1e-4)
     solvePhase
 
     GetArea
+    // probably need to change this upper bound to account for height differences?
     real ub1 = int2d(Th)(rho^2 * (3 - 2*rho));
     real lb1 = int2d(Th)((phi < rho) * phi * rho^2 * (3-2*rho) + (phi > rho) * rho^3 * (3 - 2*rho));
     real aratio1=(rhophiArea-lb1) / (ub1 - lb1);
