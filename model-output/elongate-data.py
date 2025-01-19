@@ -6,8 +6,11 @@ import matplotlib.pyplot as plt
 # The data.txt file should contain the provided rows of numbers
 # datan= '-2-42.2-1.72'
 # Get a list of all subdirectories in the 'data' directory
-data_dir = 'data/'
+data_dir = 'data/highd/'
 subdirectories = [subdir for subdir in os.listdir(data_dir) if os.path.isdir(os.path.join(data_dir, subdir))]
+
+tauphirho_values = [9, 16, 25, 36]
+
 
 # constant params.
 tauphi = 2.
@@ -91,7 +94,6 @@ for subdir in subdirectories:
 plot_x_values=[]
 plot_y_values=[]
 
-tauphirho_values = [4, 9, 16, 25, 36, 49]
 
 for tpr in tauphirho_values:
 
