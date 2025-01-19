@@ -10,8 +10,8 @@ if (len(sys.argv) > 1):
     print("INDEX IS: ", index)
     # prepend = "xvfb-run -a "
 
-
-tauphi = 1 
+# this needs to be 2 instead of 1 otherwise phi falls too fast. 
+tauphi = 2 
 
 
 pairs = []

@@ -4,7 +4,8 @@ load "UMFPACK64";
 load "isoline";
 load "Element_P3";
 
-real endsim=102;
+// time needs to increase since we made thinner boundary.
+real endsim=201;
 real endrelaxation=0.2; // n steps before swapping to phase field main
 bool printScreen=true;
 int screenStep = 5;
