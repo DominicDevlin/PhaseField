@@ -17,13 +17,13 @@ tauphi = 2
 pairs = []
 results = []
 
-tauphirho_values =  [4, 9, 16, 25, 36, 49]
+tauphirho_values =  [1, 9, 25, 49]
 for tpr in tauphirho_values:
     
-    quadratic_scaling = np.linspace(0.2, 1, 10)**2
+    quadratic_scaling = np.linspace(0.2, 1, 20)**2
     taurho_values = (2) * quadratic_scaling * tpr
     taurho_values = list(taurho_values)
-    print(taurho_values)
+    # print(taurho_values)
     for tr in taurho_values:
         pairs.append((tpr, tr))
 

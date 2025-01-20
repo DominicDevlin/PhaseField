@@ -21,7 +21,7 @@ if (ARGV.n > 3)
 }
 
 verbosity=0;
-int PrintStep=2500;
+int PrintStep=5000;
 bool doPrint=true;
 bool doTimespan=false;
 int timePrint=100;
@@ -86,8 +86,8 @@ real ymax =  6;
 
 // Mesh resolution
 int  n     = 2; // Number of segments per unit length
-real refI  = 14.0; // Refinement factor for the interface
-real mGrw  = 1.8;  // Growth rate of the mesh elements
+real refI  = 16.0; // Refinement factor for the interface
+real mGrw  = 1.6;  // Growth rate of the mesh elements
 int  dref  = 10; // Number of time-steps between mesh adaption
 
 
@@ -553,7 +553,11 @@ while(curt < endsim)//(maxCFL > 1e-4)
     // probably need to change this upper bound to account for height differences?
     real ub1 = int2d(Th)(rho^2 * (3 - 2*rho));
     real lb1 = int2d(Th)((phi < rho) * phi * rho^2 * (3-2*rho) + (phi > rho) * rho^3 * (3 - 2*rho));
-    real aratio1=(rhophiArea-lb1) / (ub1 - lb1);
+    real aratio1;
+    if (ub1 > 0 && lb1 > 0)
+        aratio1 =(rhophiArea-lb1) / (ub1 - lb1);
+    else
+        aratio1 = 0;
     real ub2 = int2d(Th)(rho^2 * (1 - rho) * (3 - 2*rho));
     real lb2 = 0;
     real aratio2=1-aratio1;//(rhononphiArea-lb2) / (ub2 - lb2);
@@ -581,7 +585,7 @@ while(curt < endsim)//(maxCFL > 1e-4)
         GetArea
         A0 = phiArea;
         rhoArea = int2d(Th)(rho^2 * (3 - 2*rho));
-        rhoArealb = int2d(Th)(rho^3 * (3 - 2*rho));
+        rhoArealb = int2d(Th)((phi < rho) * phi * rho^2 * (3-2*rho) + (phi > rho) * rho^3 * (3 - 2*rho));
 
         // A0Ptwo = rhotwoArea;
         // A0RPtwo = rhotwophiArea;
@@ -663,7 +667,10 @@ while(curt < endsim)//(maxCFL > 1e-4)
     MakeRhoPhiMesh
 
     // RhoPhiPlot = rho^2 * phi^2 * (1-phi)^2;
-    
+    if (rhophiArea < 0.01)
+    {
+        counter = PrintStep;
+    }
 
     if (counter % screenStep == 0 && printScreen)
     {
@@ -690,6 +697,11 @@ while(curt < endsim)//(maxCFL > 1e-4)
         string outputn3 = folderint2 + "image-" + curt + ".eps";
         plot(rhophiinterface, ps=outputn2, fill=1, wait=false);
         plot(rhooutside, ps=outputn3, fill=1, wait=false);
+    }
+
+    if (rhophiArea < 0.01)
+    {
+        curt = endsim;
     }
 
 
