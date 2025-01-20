@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 
 # Load the data from a text file
 # The data.txt file should contain the provided rows of numbers
-datan= ''
-dir = '' + datan[1:]
+datan= '-2-25-10.9'
+dir = 'data/diffhi/' + datan[1:]
 if (dir != ''):
     dir = dir + '/'
 
@@ -65,7 +65,7 @@ ax1.set_xlabel('X-axis Label')
 ax1.set_ylabel('Primary Y-axis Label')
 fig.set_size_inches(12, 4)
 
-plt.xlim(0, 2.5)
+plt.xlim(0, 5)
 
 plt.tight_layout()
 plt.show()
@@ -73,6 +73,6 @@ plt.show()
 fig2, ax2 = plt.subplots()
 ax2.plot(y_values, well_values, linestyle='-', color='black', label='well')
 fig2.set_size_inches(12, 4)
-plt.xlim(0, 2.5)
+plt.xlim(0, 5)
 fig2.tight_layout()
 plt.show()
