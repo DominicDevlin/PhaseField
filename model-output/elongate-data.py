@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 # The data.txt file should contain the provided rows of numbers
 # datan= '-2-42.2-1.72'
 # Get a list of all subdirectories in the 'data' directory
-data_dir = 'data/1diff/'
+data_dir = 'data/4diff/'
 subdirectories = [subdir for subdir in os.listdir(data_dir) if os.path.isdir(os.path.join(data_dir, subdir))]
 
 tauphirho_values = [1, 9, 25, 49]
@@ -60,23 +60,39 @@ for subdir in subdirectories:
     rho_values=[]
     diff_values = []
 
+    n=5
+    check_list = [round(x * 0.05, 2) for x in range(int(n * 20) + 1)]   
+    bool_list = [False] * len(check_list)
+    
+    # Find the y value for which phi_value goes below 0.x
+    threshold = 0.5
+    y_threshold = None
+
+
     for i in range(len(x)):
-        if x[i] < 0.05 and x[i] > -0.05:
-            y_values.append(y[i])
-            phi_values.append(phi[i])
+        if x[i] < 0.5 and x[i] > -0.8:
+            closest_value = min(check_list, key=lambda c: abs(c - y[i]))
+            if phi[i] > threshold:
+                bool_list[check_list.index(closest_value)] = True
+            
             # if diff[i] < 0.01:
             #     diff_values.append(np.nan)
             # else:
             #     diff_values.append(diff[i])
 
-    # Find the y value for which phi_value goes below 0.x
-    threshold = 0.5
-    y_threshold = None
-
-    for y_val, phi_val in zip(y_values, phi_values):
-        if phi_val < threshold and y_val > 0.5:
-            y_threshold = y_val
+    # print(bool_list)
+    
+    for i in range(4, len(bool_list)):
+        if bool_list[i] == False and bool_list[i-1] == True:
+            y_threshold = check_list[i]
             break
+    # print(y_threshold)
+
+
+    # for y_val, phi_val in zip(y_values, phi_values):
+    #     if phi_val < threshold and y_val > 0.5:
+    #         y_threshold = y_val
+    #         break
     
     if y_threshold is None:
         y_threshold = 6
@@ -94,6 +110,7 @@ for subdir in subdirectories:
 plot_x_values=[]
 plot_y_values=[]
 
+sigmaHLvalues=[]
 
 for tpr in tauphirho_values:
 
@@ -107,6 +124,8 @@ for tpr in tauphirho_values:
             indices.append(i)
     
             
+    sigmaHL=0.
+    
     for i in range(len(indices)):
 
 
@@ -124,13 +143,14 @@ for tpr in tauphirho_values:
         sigmaHL = np.sqrt(gammaphirho)
         sigmaLM = 0
 
-        sigratio = sigmaHM/sigmaHL
+        sigratio = sigmaHM - sigmaHL
+        
         yval = y_thresholds[indices[i]]
         plotx.append(sigratio)
         ploty.append(yval)
         
-        print(trho, tphirho, yval)
-
+        # print(trho, tphirho, yval)
+    sigmaHLvalues.append(sigmaHL)
     # Sort the plot_x_values and plot_y_values based on plot_x_values
     sorted_data = sorted(zip(plotx, ploty), key=lambda x: x[0])
 
@@ -153,13 +173,16 @@ fig, ax = plt.subplots()
 
 # Plot each line explicitly
 for i in range(len(plot_x_values)):
+    currsig = f"{sigmaHLvalues[i]:.2g}"
     ax.plot(
         plot_x_values[i],
         plot_y_values[i],
         'o-',
         color=colors[i % len(colors)],
-        label=f'sigmaHL = {tauphirho_values[i]}'
+        label=f'sigmaHL = {currsig}'
     )
+    
+ax.set_ylim([-0.05, 2])
 
 # Set tick properties explicitly
 ax.tick_params(
