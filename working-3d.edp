@@ -3,12 +3,15 @@ load "iovtk";
 load "UMFPACK64";
 load "isoline";
 load "Element_P3";
-
+load "msh3";
+load "tetgen"; 
+load "mshmet"; 
+load "medit";
 // time needs to increase since we made thinner boundary.
 real endsim=201;
-real endrelaxation=0.02; // n steps before swapping to phase field main
+real endrelaxation=0.2; // n steps before swapping to phase field main
 bool printScreen=true;
-int screenStep = 5;
+int screenStep = 1;
 real equilibraterho=1; // use lower rho surface tension at the beginning of simulation
 
 string parstr = "";
@@ -83,19 +86,23 @@ real xmin =  -2;
 real xmax =  2;
 real ymin =  0;
 real ymax =  6;
+int zmin = -2;
+int zmax = 2;
 
 // Mesh resolution
-int  n     = 2; // Number of segments per unit length
+int  n     = 20; // Number of segments per unit length
 real refI  = 16.0; // Refinement factor for the interface
 real mGrw  = 1.6;  // Growth rate of the mesh elements
 int  dref  = 10; // Number of time-steps between mesh adaption
 
 
-mesh Th = square((xmax-xmin)*n,(ymax-ymin)*n,[xmin+(xmax-xmin)*x,ymin+(ymax-ymin)*y]);
 
+mesh3 Th = cube(24,36,24,[xmin+(xmax-xmin)*x,ymin+(ymax-ymin)*y, (zmin+(zmax-zmin)*z)]);
+fespace Vhfield(Th,P2);
 // -------------------------------------------------------------------------------------------------------------------------------------
 // Fields
-fespace Vhfield (Th,P2,periodic=[[2,y],[4,y],[1,x],[3,x]]);
+// fespace Vhfield (Th,P2,periodic=[[2,y],[4,y],[1,x],[3,x]]);
+// fespace Vhfield (Th,P2);
 Vhfield phi;
 Vhfield v;
 Vhfield phiold;
@@ -109,9 +116,6 @@ Vhfield rhomesh;
 Vhfield absdelphi;
 Vhfield phiinterface;
 
-Vhfield absdelrhotwo;
-Vhfield rhotwointerface;
-
 Vhfield rhophiinterface;
 Vhfield rhooutside;
 
@@ -123,40 +127,22 @@ Vhfield precurvatureX;
 Vhfield precurvatureY;
 Vhfield divprecurvature;
 
-Vhfield beforegral;
-Vhfield postgral;
-
-Vhfield maxrho;
-Vhfield rhominusphi;
-Vhfield PreRhoCurve;
-Vhfield RhoCurve;
-Vhfield RhoOutline;
-
-Vhfield RprecurvatureX;
-Vhfield RprecurvatureY;
-Vhfield Rdivprecurvature;
-Vhfield Rcurvature;
-
-Vhfield rhotwo;
-Vhfield rhotwoold;
-Vhfield wt;
 
 // -------------------------------------------------------------------------------------------------------------------------------------
 // Compilation of macros
 
 // Mesh adaptation and destruction of the old mesh
-macro getAdaptMesh()
-Th = adaptmesh(Th,rhomesh,hmin=1.0/(n*refI),hmax=1.0/n,iso=true,ratio=mGrw,err=0.01,nbvx=4e4,periodic=[[2,y],[4,y],[1,x],[3,x]]);
-v = 0;
-w=0;
-phi = phi;
-// EOM
+// macro getAdaptMesh()
+// Th = adaptmesh(Th,rhomesh,hmin=1.0/(n*refI),hmax=1.0/n,iso=true,ratio=mGrw,err=0.01,nbvx=4e5,periodic=[[1,x,z], [2,y,z], [3,x,z], [4, y,z], [5,x,y], [6,x,y]]);
+// v = 0;
+// w=0;
+// phi = phi;
+// // EOM
 
 macro MakeRhoPhiMesh()
 RhoPhiPlot = phi * (rho * 2 - 1) ;
 rhomesh = RhoPhiPlot;
 // EOM
-// phi * (rho * 2 - 1) * (rhotwo * 2 - 1);
 
 real phimoved=0;
 
@@ -164,15 +150,7 @@ real phimoved=0;
 // Macro for non-linear solutions
 macro solvePhase()
 {
-    if (dynamicdiff)
-    {
-        rhooutside = (phi < 0.5) * (sqrt(dx(rho)^2 + dy(rho)^2));
-        rhooutside = (rhooutside > 2);
-        rhophiinterface = (phi > upperdifflimit) * (sqrt(dx(rho)^2 + dy(rho)^2)) * (rho < lowerdifflimit) * phi;
-        real overlap = int2d(Th) (rhophiinterface );
-        real funcoverlap = overlap / (overlap^2 + 0.02);
-        diffparam = diffrate/dt * funcoverlap;
-    }
+
     BalanceDifferentiation;
 
     {
@@ -181,40 +159,17 @@ macro solvePhase()
         divprecurvature = dx(precurvatureX) + dy(precurvatureY);
         curvature = sqrt(dx(phi)^2 + dy(phi)^2) * divprecurvature;
 
-        beforegral = (rho^2 * (3 - 2*rho)) * ((phi^2 * (3 - 2*rho)) - 1);
         RhoField;
-        postgral = (rho^2 * (3 - 2*rho)) * ((phi^2 * (3 - 2*rho)) - 1);
 
         phasefield;
 
-        phimoved = fmax(int2d(Th)(beforegral-postgral),0);
-        phiold = phi;
-        if (phimoved < 0)
-            phimoved = 0;
     }
 
-    if (dynamicdiff) 
-    {
-        real loss = netrate * diffamount;
-        rhoArea = rhoArea - loss;
-        rhoArealb = rhoArealb - loss;
+    real gain = absgrowth - diffamount;
+    rhoArea = rhoArea + gain;
+    rhoArealb = rhoArealb + gain;
 
-        
-        real maxadd = addproportion * diffamount;
-        if (phimoved > maxadd)
-            phimoved = maxadd;
-        A0 = A0 + phimoved;
-    }
-    else
-    {
-        real gain = absgrowth - diffamount;
-        rhoArea = rhoArea + gain;
-        rhoArealb = rhoArealb + gain;
-
-        if (phimoved > absgrowth)
-            phimoved = absgrowth;
-        A0 = A0 + phimoved;
-    }
+    A0 = A0 + absgrowth;
     
 }
 // EOM
@@ -244,9 +199,9 @@ real rhononphiArea=0.;
 
 
 macro GetArea()
-    rhononphiArea = int2d(Th)((phi < 1)*(1-phi)*rho^2 * (3 - 2*rho));
-    rhophiArea = int2d(Th)((phi < 1) * phi * (rho)^2 * (3 - 2*(rho)) + (phi>1) * (rho)^2 * (3 - 2*(rho)));
-    phiArea = int2d(Th)(phi^2 * (3 - 2*phi));
+    rhononphiArea = int3d(Th)((phi < 1)*(1-phi)*rho^2 * (3 - 2*rho));
+    rhophiArea = int3d(Th)((phi < 1) * phi * (rho)^2 * (3 - 2*(rho)) + (phi>1) * (rho)^2 * (3 - 2*(rho)));
+    phiArea = int3d(Th)(phi^2 * (3 - 2*phi));
 // EOM
 //- int2d(Th)((rho*phi)^2 * (3 - 2*(rho*phi)));
 
@@ -255,19 +210,18 @@ real gammaphi=0.;     // surface tension of phi
 real eta = 1;             // viscosity type1
 real eta2 = 1;             // viscocity type2
 real a = 1;               // Coefficient a 
-real eps = 0.0002;               // phase width coefficient k
+real eps = 0.001;               // phase width coefficient k
 real lmda = 10;               // concentration constraint
-real lmdarho = 60;               // concentration constraint
-real lmdarhophi = 60;               // concentration constraint
+real lmdarho = 10;               // concentration constraint
+real lmdarhophi = 10;               // concentration constraint
 real A0 = 3.143;              // Target value for A
 real epseps = 1e-9;           // small prefactor for 1/sqrt
 real dt = 0.01;
 
 real phitension=1;
-real rhophitension=12;
-real rhotension=1;
-real rhotwotension=1; // rhotwo params
-real rhotwophitension=0;
+real rhophitension=10;
+real rhotension=7;
+
 
 
 if (ARGV.n > 3)
@@ -290,8 +244,7 @@ real A0RP = 0.;
 
 real apt=0;
 real kpt=0;
-real rhotwoArea=0;
-real rhotwophiArea=0;
+
 real A0RPtwo=0;
 real A0Ptwo=0;
 
@@ -324,71 +277,63 @@ real gammaSL=-0.03;
 
 
 
-problem relaxphasefield(phi, v, master=0, solver=sparsesolver) // , 
-    = int2d(Th) (  v * (phi)/dt  )
-    //+ int2d(Th) (1/eta * (v * a * phi - 3*v*a*phi*phiold + 2*v*a*phi*phiold^2))
-    // + int2d(Th) (1/eta * (k * (dx(v) *dx(phi) + dy(v) * dy(phi))))
-    + int2d(Th) (1/eta * a * (0.5 * v * phi - v*1.5*phi*phiold + v*phi*phiold^2))
-    + int2d(Th) (1/eta * (eps * (dx(v) *dx(phi) + dy(v) * dy(phi))))
-    + int2d(Th) (1/eta * ( v * (12 * lmda *(phiArea-A0)*phi*(1-phiold))))
-    - int2d(Th) (  v * (phiold)/dt  );
-
-
 /* the below equation has the curvature term removed*/
 problem phasefield(phi, v, master=0, solver=sparsesolver) // , 
-    = int2d(Th) (  v * (phi)/dt  )
-    + int2d(Th) (1/eta * phitension * a * (v* 0.5 * phi - v*1.5*phi*phiold + v*phi*phiold^2))
-    + int2d(Th) (1/eta *  phitension  * (eps * (dx(v) *dx(phi) + dy(v) * dy(phi))))
-    + int2d(Th) ( (1/eta * phitension * phiinterface * ((eps) * v * curvature )))
-    + int2d(Th) (1/eta * ( v * (12. * lmda *(phiArea-A0)*phi*(1-phiold))))
-    - int2d(Th) (  v * (phiold)/dt  )
+    = int3d(Th) (  v * (phi)/dt  )
+    + int3d(Th) (1/eta * phitension * a * (v* 0.5 * phi - v*1.5*phi*phiold + v*phi*phiold^2))
+    + int3d(Th) (1/eta *  phitension  * (eps * (dx(v) *dx(phi) + dy(v) * dy(phi))))
+    + int3d(Th) ( (1/eta * phitension * phiinterface * ((eps) * v * curvature )))
+    + int3d(Th) (1/eta * ( v * (12. * lmda *(phiArea-A0)*phi*(1-phiold))))
+    - int3d(Th) (  v * (phiold)/dt  )
 
-    + int2d(Th) (1/eta * phi * rhophitension * a * (v * 0.5 * rho - 1.5*v*rho*rho + v*rho * rho^2))
-    + int2d(Th) (1/eta * phi * rhophitension * (eps * (dx(rho) * dx(v) + dy(rho) * dy(v))))
+    + int3d(Th) (1/eta * phi * rhophitension * a * (v * 0.5 * rho - 1.5*v*rho*rho + v*rho * rho^2))
+    + int3d(Th) (1/eta * phi * rhophitension * (eps * (dx(rho) * dx(v) + dy(rho) * dy(v))))
 
-    + int2d(Th) (1/eta * (phiold < 1) * (1) * rhotension * a * (v * 0.5 * rho - 1.5*v*rho*rho + v*rho * rho^2))
-    + int2d(Th) (1/eta * (phiold < 1) * (-phi) * rhotension * a * (v * 0.5 * rho - 1.5*v*rho*rho + v*rho * rho^2))
-    + int2d(Th) (1/eta * (phiold < 1) * (1) * rhotension * (eps * (dx(rho) * dx(v) + dy(rho) * dy(v))))
-    + int2d(Th) (1/eta * (phiold < 1) * (-phi) *rhotension * (eps * (dx(rho) * dx(v) + dy(rho) * dy(v))))
+    + int3d(Th) (1/eta * (phiold < 1) * (1) * rhotension * a * (v * 0.5 * rho - 1.5*v*rho*rho + v*rho * rho^2))
+    + int3d(Th) (1/eta * (phiold < 1) * (-phi) * rhotension * a * (v * 0.5 * rho - 1.5*v*rho*rho + v*rho * rho^2))
+    + int3d(Th) (1/eta * (phiold < 1) * (1) * rhotension * (eps * (dx(rho) * dx(v) + dy(rho) * dy(v))))
+    + int3d(Th) (1/eta * (phiold < 1) * (-phi) *rhotension * (eps * (dx(rho) * dx(v) + dy(rho) * dy(v))))
 
-    + int2d(Th) (1/eta * ( v * (12 * lmdarhophi *(rhophiArea-A0RP)*rho*phi*(1-rho))))
-    + int2d(Th) (1/eta * ( v * (12 * lmdarho *(rhononphiArea-A0P)*(1)*rho*(1-rhoold))))
-    + int2d(Th) (1/eta * ( v * (12 * (phiold < 1) * lmdarho *(rhononphiArea-A0P)*(-phi)*rho*(1-rhoold))));
-    // + int2d(Th) (1/eta * ( v * (12 * lmdarho *(rhoArea-A0P)*rho*(1-rho))))
-    // - int2d(Th) ((phiold > upperdifflimit) * (rho < lowerdifflimit) * phi * diffparam * v * sqrt(dx(rho)^2 + dy(rho)^2))
+    + int3d(Th) (1/eta * ( v * (12 * lmdarhophi *(rhophiArea-A0RP)*rho*phi*(1-rho))))
+    + int3d(Th) (1/eta * ( v * (12 * lmdarho *(rhononphiArea-A0P)*(1)*rho*(1-rhoold))))
+    + int3d(Th) (1/eta * ( v * (12 * (phiold < 1) * lmdarho *(rhononphiArea-A0P)*(-phi)*rho*(1-rhoold))))
+    // + int3d(Th) (1/eta * ( v * (12 * lmdarho *(rhoArea-A0P)*rho*(1-rho))))
+    // - int3d(Th) ((phiold > upperdifflimit) * (rho < lowerdifflimit) * phi * diffparam * v * sqrt(dx(rho)^2 + dy(rho)^2))
+    +on(1,2,3,4,5,6,phi=0);
     
-    // - int2d(Th) (1/eta * 100 * v * rho * (rhoold - phiold) * (phiold < rho));
-    // + int2d(Th) (1/eta * phi * rhotwo * a * rhotwophitension * (0.5 * v - 1.5*v*rhotwoold + v*rhotwoold^2))
-    // + int2d(Th) (1/eta * phi * rhotwophitension * (k * (dx(v) *dx(rhotwo) + dy(v) * dy(rhotwo))))
-    // + int2d(Th) (1/eta * ( v * (12 * lmda *(rhotwophiArea-A0RPtwo)*rhotwo*phi*(1-rhotwoold))));
 
 
-func RhoDifferentiate = int2d(Th) (dt * (phi > upperdifflimit) * (rho < lowerdifflimit) * diffparam * phi * sqrt(dx(rho)^2 + dy(rho)^2));
+
+func RhoDifferentiate = int3d(Th) (dt * (phi > upperdifflimit) * (rho < lowerdifflimit) * diffparam * phi * sqrt(dx(rho)^2 + dy(rho)^2));
 
 
 
 problem RhoField(rho, w, master=0, solver=sparsesolver)
-    = int2d(Th) (w * (rho)/dt )
-    + int2d(Th) (1/eta * (1-phi) * (phi < 1) * rhotension * rho * (0.5 * w * a - 1.5*w*a*rhoold + w*a*rhoold^2))
-    + int2d(Th) (1/eta * (1-phi) *  (phi < 1) * rhotension * (eps * (dx(w) *dx(rho) + dy(w) * dy(rho))))
-    + int2d(Th) (1/eta * ( w * (phi < 1) * (12 *  lmdarho *(rhononphiArea-A0P)*(1-phi)*rho*(1-rhoold))))
-    + int2d(Th) (1/eta * (phi)* rho *  rhophitension * (0.5 * w * a - 1.5*w*a*rhoold + w*a*rhoold^2))
-    + int2d(Th) (1/eta * (phi) * rhophitension * (eps * (dx(w) *dx(rho) + dy(w) * dy(rho))))    
-    // + int2d(Th) (1/eta * (phi-rhoold) * (phi > rhoold) * rho *  rhophitension * (0.5 * w * a - 1.5*w*a*rhoold + w*a*rhoold^2))
-    // + int2d(Th) (1/eta * (phi-rhoold) * (phi > rhoold) * rhophitension * (eps * (dx(w) *dx(rho) + dy(w) * dy(rho))))    
-    + int2d(Th) (1/eta * ( w * (12 * lmdarhophi *(rhophiArea-A0RP)*rho*phi*(1-rhoold))))
-    // + int2d(Th) (1/eta * ( w * (12 * lmdarhophi *rho*(1-rhoold)*(rhoold > phi))))
-    // + int2d(Th) ( (1/eta * rhointerface * ((k) * w * Rcurvature)))
+    = int3d(Th) (w * (rho)/dt )
+    + int3d(Th) (1/eta * (1-phi) * (phi < 1) * rhotension * rho * (0.5 * w * a - 1.5*w*a*rhoold + w*a*rhoold^2))
+    + int3d(Th) (1/eta * (1-phi) *  (phi < 1) * rhotension * (eps * (dx(w) *dx(rho) + dy(w) * dy(rho))))
+    + int3d(Th) (1/eta * ( w * (phi < 1) * (12 *  lmdarho *(rhononphiArea-A0P)*(1-phi)*rho*(1-rhoold))))
+    + int3d(Th) (1/eta * (phi)* rho *  rhophitension * (0.5 * w * a - 1.5*w*a*rhoold + w*a*rhoold^2))
+    + int3d(Th) (1/eta * (phi) * rhophitension * (eps * (dx(w) *dx(rho) + dy(w) * dy(rho))))    
+    // + int3d(Th) (1/eta * (phi-rhoold) * (phi > rhoold) * rho *  rhophitension * (0.5 * w * a - 1.5*w*a*rhoold + w*a*rhoold^2))
+    // + int3d(Th) (1/eta * (phi-rhoold) * (phi > rhoold) * rhophitension * (eps * (dx(w) *dx(rho) + dy(w) * dy(rho))))    
+    + int3d(Th) (1/eta * ( w * (12 * lmdarhophi *(rhophiArea-A0RP)*rho*phi*(1-rhoold))))
+    // + int3d(Th) (1/eta * ( w * (12 * lmdarhophi *rho*(1-rhoold)*(rhoold > phi))))
+    // + int3d(Th) ( (1/eta * rhointerface * ((k) * w * Rcurvature)))
     // in strong form (slightly in correc)
-    // + int2d(Th) (rhointerface * diffparam * w ) // slightly incorrect ues of diffparam as constant,
+    // + int3d(Th) (rhointerface * diffparam * w ) // slightly incorrect ues of diffparam as constant,
     // in weak form . Trying without a phi in here
-    + int2d(Th) ((phi > upperdifflimit) * (rhoold < lowerdifflimit) * diffparam * w * phi * sqrt(dx(rhoold)^2 + dy(rhoold)^2))
-    - int2d(Th) ( w * (rhoold)/dt  );
+    + int3d(Th) ((phi > upperdifflimit) * (rhoold < lowerdifflimit) * diffparam * w * phi * sqrt(dx(rhoold)^2 + dy(rhoold)^2))
+    - int3d(Th) ( w * (rhoold)/dt  )
+    +on(1,2,3,4,5,6,rho=0);
 
-
-// problem RelaxRhoField(rho, w, master=0, solver=sparsesolver)
-
-
+    // + int3d(Th) (1/eta * (eps * (dx(w) *dx(rho) + dy(w) * dy(rho))))
+    // - int3d(Th) (1/eta * phitension * w * phi^2 * (1-phi)^2)
+    // - int3d(Th) (1/eta * phitension * w * eps * sqrt(dx(phi)^2 + dy(phi)^2));
+    // + int3d(Th) (1/eta * (1) * w * (rhoold < 1) * phitension * a * (0.5 * phi - 1.5*phi*phiold + phi*phiold^2))
+    // + int3d(Th) (1/eta * (-rho) * w * (rhoold < 1) * phitension * a * (0.5 * phi - 1.5*phi*phiold + phi*phiold^2))
+    // + int3d(Th) (1/eta * (1) * (rhoold < 1) * phitension * (eps * (dx(w) *dx(phi) + dy(w) * dy(phi))))
+    // + int3d(Th) (1/eta * (-rho) * (rhoold < 1) * phitension * (eps * (dx(w) *dx(phi) + dy(w) * dy(phi))))
 
 Vhfield dummyphi;
 Vhfield dummyphiold;
@@ -396,43 +341,33 @@ Vhfield dummyv;
 real dtau = dt;
 
 problem DummyPhaseField(dummyphi, dummyv, master=0, solver=sparsesolver) // , 
-    = int2d(Th) (  dummyv * (dummyphi)/dtau  )
-    + int2d(Th) (1/eta * (0.5 * dummyv * dummyphi - 1.5*dummyv*dummyphi*dummyphiold + dummyv*dummyphi*phiold^2))
-    + int2d(Th) (1/eta * (eps * (dx(dummyv) *dx(dummyphi) + dy(dummyv) * dy(dummyphi))))
-    + int2d(Th) (1/eta * ( dummyv * (12 * lmda *(phiArea-A0)*dummyphi*(1-dummyphiold))))
-    - int2d(Th) (  dummyv * (dummyphiold)/dtau  );
-
+    = int3d(Th) (  dummyv * (dummyphi)/dtau  )
+    + int3d(Th) (1/eta * (0.5 * dummyv * dummyphi - 1.5*dummyv*dummyphi*dummyphiold + dummyv*dummyphi*phiold^2))
+    + int3d(Th) (1/eta * (eps * (dx(dummyv) *dx(dummyphi) + dy(dummyv) * dy(dummyphi))))
+    + int3d(Th) (1/eta * ( dummyv * (12 * lmda *(phiArea-A0)*dummyphi*(1-dummyphiold))))
+    - int3d(Th) (  dummyv * (dummyphiold)/dtau  )
+    +on(1,2,3,4,5,6,dummyphi=0);
 
 Vhfield dummyrho;
 Vhfield dummyrhoold;
 Vhfield dummyw;
 
 // problem DummyRhoField(dummyrho, dummyw, master=0, solver=sparsesolver) // , 
-//     = int2d(Th) (  dummyw * (dummyrho)/dtau  )
-//     + int2d(Th) (1/eta * a * (0.5 * dummyw * dummyrho - 1.5*dummyw*dummyrho*dummyrhoold + dummyw*dummyrho*phiold^2))
-//     + int2d(Th) (1/eta * (eps * (dx(dummyw) *dx(dummyrho) + dy(dummyw) * dy(dummyrho))))
-//     + int2d(Th) (1/eta * ( dummyw * (12 * lmda *(rhoArea-A0P)*dummyrho*(1-dummyrhoold))))
-//     - int2d(Th) (  dummyw * (dummyrhoold)/dtau  );
+//     = int3d(Th) (  dummyw * (dummyrho)/dtau  )
+//     + int3d(Th) (1/eta * a * (0.5 * dummyw * dummyrho - 1.5*dummyw*dummyrho*dummyrhoold + dummyw*dummyrho*phiold^2))
+//     + int3d(Th) (1/eta * (eps * (dx(dummyw) *dx(dummyrho) + dy(dummyw) * dy(dummyrho))))
+//     + int3d(Th) (1/eta * ( dummyw * (12 * lmda *(rhoArea-A0P)*dummyrho*(1-dummyrhoold))))
+//     - int3d(Th) (  dummyw * (dummyrhoold)/dtau  );
 
-Vhfield drhotwo;
-Vhfield drhotwoold;
-Vhfield dwt;
-
-problem DRhoTwoField(drhotwo, dwt, master=0, solver=sparsesolver) // , 
-    = int2d(Th) (  dwt * (drhotwo)/dtau  )
-    + int2d(Th) (1/eta * a * drhotwo * (0.5 * dwt - 1.5*dwt*drhotwoold + dwt*drhotwoold^2))
-    + int2d(Th) (1/eta * (eps * (dx(dwt) *dx(drhotwo) + dy(dwt) * dy(drhotwo))))
-    + int2d(Th) (1/eta * ( dwt * (12 * lmda *(rhotwoArea-A0Ptwo)*drhotwo*(1-drhotwoold))))
-    - int2d(Th) (  dwt * (drhotwoold)/dtau  );
 
 
 // currently do not know if curvature removal energy is correct?? Can I just integrate??
-// func TotalEnergy = int2d(Th)((a*phitension)*0.25 * phi^2 * (1-phi)^2 + (phitension * eps) * 0.5 * abs(dx(phi) + dy(phi))^2)
+// func TotalEnergy = int3d(Th)((a*phitension)*0.25 * phi^2 * (1-phi)^2 + (phitension * eps) * 0.5 * abs(dx(phi) + dy(phi))^2)
 //                     + lmda * (phiArea-A0)^2
-//                     + int2d(Th)(phi * rhophitension * ((a)*0.25 * rho^2 * (1-rho)^2 + (eps) * 0.5 * abs(dx(rho) + dy(rho))^2))
+//                     + int3d(Th)(phi * rhophitension * ((a)*0.25 * rho^2 * (1-rho)^2 + (eps) * 0.5 * abs(dx(rho) + dy(rho))^2))
 //                     + lmdarho * (rhoArea - A0P)^2
 //                     + lmdarhophi * (rhophiArea - A0RP)^2
-//                     - int2d(Th) ( (phitension * phiinterface * ((eps) * curvature)));
+//                     - int3d(Th) ( (phitension * phiinterface * ((eps) * curvature)));
 
 
 // Initialisation
@@ -441,19 +376,21 @@ real dR = 0.6;  // Radius
 real dRrho = 0.4;  // Radius
 real dxc= 0.0;  // x coordinate
 real dyc= 0.8;  // y coordinate, 0.2 is start above gorund
+real dzc = 0.0;
 real DropTh = sqrt((2*eps)/a);
 real rhoDropTh = sqrt((2*eps)/a);
 real dyct = 1.6; // dR + dyc will give same top point (half in half out)
+real dzct=0.0;
 
 // "Half lengths" in each direction for a 2:1 aspect ratio
 real Lx = 3.0 * dR;  // x half-extent
 real Ly = 1.0 * dR;  // y half-extent
+real Lz = 3.0 * dR;  // x half-extent
 
-func initPhi = 0.5 * (1.0- tanh(( max(abs((x - dxc) / Lx), abs((y - dyc) / Ly)) - 1.0 )/ DropTh)) //0.5 * (1-tanh((abs(y - dyc) - dR) / DropTh))// 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-0.4-dyc)^2) - dR) / (sqrt(2) * DropTh)))
- + 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-dyct)^2) - dRrho) / (sqrt(2) * rhoDropTh)));
-func initRho = 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-dyct)^2) - dRrho) / (sqrt(2) * rhoDropTh)));
+func initPhi = 0.5 * (1.0- tanh(( max(abs((x - dxc) / Lx), abs((y - dyc) / Ly), abs((z-dzc)/Lz)) - 1.0 )/ DropTh)) //0.5 * (1-tanh((abs(y - dyc) - dR) / DropTh))// 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-0.4-dyc)^2) - dR) / (sqrt(2) * DropTh)))
+ + 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-dyct)^2 + (z-dzct)^2) - dRrho) / (sqrt(2) * rhoDropTh)));
+func initRho = 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-dyct)^2 + (z-dzct)^2) - dRrho) / (sqrt(2) * rhoDropTh)));
 
-func initRhoTwo =  0;
 
 // real sxmin=-0.6;
 // real sxmax=0.6;
@@ -474,50 +411,49 @@ func initRhoTwo =  0;
 
 phi = initPhi;
 rho = initRho;
-rhotwo = initRhoTwo;
 
-MakeRhoPhiMesh
-// Initial mesh adaptation
-getAdaptMesh
-// Reinitialise the function, since it has a known value, adapt mesh again
-phi = initPhi;
-rho = initRho;
-rhotwo = initRhoTwo;
 
-MakeRhoPhiMesh
-getAdaptMesh
-// Reinitialise the function, since it has a known value, adapt mesh again
-phi = initPhi;
-rho = initRho;
-rhotwo = initRhoTwo;
 
-MakeRhoPhiMesh
-getAdaptMesh
-// Final initialisation of the function
-phi = initPhi;
-rho = initRho;
-rhotwo = initRhoTwo;
-rhotwo =  rhotwo - (rho > 0.01) * rhotwo * rho^(1./4.);
+// MakeRhoPhiMesh
+// // Initial mesh adaptation
+// getAdaptMesh
+// // Reinitialise the function, since it has a known value, adapt mesh again
+// phi = initPhi;
+// rho = initRho;
+// rhotwo = initRhoTwo;
 
-MakeRhoPhiMesh
-cout << "CURRENT AREA: " << phiArea << endl;
+// MakeRhoPhiMesh
+// getAdaptMesh
+// // Reinitialise the function, since it has a known value, adapt mesh again
+// phi = initPhi;
+// rho = initRho;
+// rhotwo = initRhoTwo;
+
+// MakeRhoPhiMesh
+// getAdaptMesh
+// // Final initialisation of the function
+// phi = initPhi;
+// rho = initRho;
+// rhotwo = initRhoTwo;
+// rhotwo =  rhotwo - (rho > 0.01) * rhotwo * rho^(1./4.);
+
+// MakeRhoPhiMesh
+// cout << "CURRENT AREA: " << phiArea << endl;
 phi = fmin(phi,1);
 phiold=phi;
 rhoold=rho;
-rhotwoold=rhotwo;
-real overlapcheck = int2d(Th)((phi>1.001) * phi);
+real overlapcheck = int3d(Th)((phi>1.001) * phi);
 GetArea
 A0 = phiArea-overlapcheck;
 A0P = rhononphiArea;
 A0RP = rhophiArea;
-A0RPtwo = rhotwophiArea;
-A0Ptwo = rhotwoArea;
 
 cout << "phi area is: " << A0 << endl;
 cout << "rho area is: " << A0P << endl;
 
-
+MakeRhoPhiMesh
 // plot(Th, wait=true);
+plot(RhoPhiPlot, wait=true, value=true, fill=true);
 
 
 int nAdapt=0;
@@ -533,7 +469,7 @@ while(curt < endsim)//(maxCFL > 1e-4)
         // if (counter < 150)
         //     ElongateMesh(curt)
         cout << "    Mesh adpt 1, ";
-        getAdaptMesh
+        // getAdaptMesh
         cout << endl;
         nAdapt++;
         // plot(Th, wait=true);
@@ -547,19 +483,19 @@ while(curt < endsim)//(maxCFL > 1e-4)
 
     GetArea
     // probably need to change this upper bound to account for height differences?
-    real ub1 = int2d(Th)(rho^2 * (3 - 2*rho));
-    real lb1 = int2d(Th)((phi < rho) * phi * rho^2 * (3-2*rho) + (phi > rho) * rho^3 * (3 - 2*rho));
+    real ub1 = int3d(Th)(rho^2 * (3 - 2*rho));
+    real lb1 = int3d(Th)((phi < rho) * phi * rho^2 * (3-2*rho) + (phi > rho) * rho^3 * (3 - 2*rho));
     real aratio1;
     if (ub1 > 0 && lb1 > 0)
         aratio1 =(rhophiArea-lb1) / (ub1 - lb1);
     else
         aratio1 = 0;
-    real ub2 = int2d(Th)(rho^2 * (1 - rho) * (3 - 2*rho));
+    real ub2 = int3d(Th)(rho^2 * (1 - rho) * (3 - 2*rho));
     real lb2 = 0;
     real aratio2=1-aratio1;//(rhononphiArea-lb2) / (ub2 - lb2);
 
 
-    if (counter % 10 == 0)
+    if (counter % 1 == 0)
     {
         cout << "Area aratio 1: " << aratio1 << endl;
         cout << "Area aratio 2: " << aratio2 << endl;
@@ -573,19 +509,16 @@ while(curt < endsim)//(maxCFL > 1e-4)
     // Prepare for the next time step
     rhoold = rho;
     phiold = phi;
-    // rhotwoold = rhotwo;
     nAdapt++;
 
     if (curt < endrelaxation)
     {
         GetArea
         A0 = phiArea;
-        rhoArea = int2d(Th)(rho^2 * (3 - 2*rho));
-        rhoArealb = int2d(Th)((phi < rho) * phi * rho^2 * (3-2*rho) + (phi > rho) * rho^3 * (3 - 2*rho));
+        rhoArea = int3d(Th)(rho^2 * (3 - 2*rho));
+        rhoArealb = int3d(Th)((phi < rho) * phi * rho^2 * (3-2*rho) + (phi > rho) * rho^3 * (3 - 2*rho));
 
-        // A0Ptwo = rhotwoArea;
-        // A0RPtwo = rhotwophiArea;
-        // cout << A0 << "\t" << A0P << "\t" << A0R << endl;
+
     }
     real diff = rhoArea - rhoArealb;
 
@@ -603,57 +536,22 @@ while(curt < endsim)//(maxCFL > 1e-4)
     A0RP = rhoArealb + diff * aratio1;
     A0P = diff * aratio2;
 
-    // if (curt < 100)
-    // {
-    //     // rho^2 * (3 - 2*rho) HAS TO BE A CONSTANT. THE OTHER TWO MUST SUM TO THIS CONSTANT. How to deal with case phi > 1 I don't know. 
-    //     GetArea;
-    //     A0RP = (ub1-lb1)*aratio1 + lb1;
-    //     A0P = (ub2-lb2)*aratio2 + lb2;
-
-    //     if (A0RP < lb1)
-    //     {
-    //         cout << "hit lower bound" << endl;
-    //         A0RP = lb1;
-    //     }
-    //     if (A0RP > ub1)
-    //     {
-    //         cout << "hit upper bound" << endl;
-    //         A0RP = ub1;
-    //     }
-    //     if (A0P < lb2)
-    //     {
-    //         cout << "hit lower bound" << endl;
-    //         A0P = lb2;
-    //     }
-    //     if (A0P > ub2)
-    //     {
-    //         cout << "hit upper bound" << endl;
-    //         A0P = ub2;
-    //     }
-    // }
-
     if (counter % 8 == 0)
     {
         dummyphi = phi;
-        dummyphiold = dummyphi;
-        // drhotwo = rhotwo;
-        // drhotwoold = rhotwoold;
-        // dummyv = v;
+
         for (int d = 0; d < 4; ++d)
         {
             DummyPhaseField;
             dummyphiold = dummyphi;     
 
-            // DRhoTwoField;
-            // drhotwoold = drhotwo;  
             
         }
 
         absdelphi = sqrt(dx(dummyphi)^2 + dy(dummyphi)^2);
         phiinterface = (absdelphi > 1);
 
-        // absdelrhotwo = sqrt(dx(drhotwo)^2 + dy(drhotwo)^2);
-        // rhotwointerface = (absdelrhotwo > 1);
+
 
     }
 
@@ -765,20 +663,20 @@ while(curt < endsim)//(maxCFL > 1e-4)
 
     if (PrintEnergy && counter % 10 == 0)
     {
-        real t1 = int2d(Th)((a*phitension) * 0.25 * phi^2 * (1-phi)^2);
-        real t2 = int2d(Th)((phitension * eps) * 0.5 * abs(dx(phi) + dy(phi))^2);
+        real t1 = int3d(Th)((a*phitension) * 0.25 * phi^2 * (1-phi)^2);
+        real t2 = int3d(Th)((phitension * eps) * 0.5 * abs(dx(phi) + dy(phi))^2);
         real t3 = lmda * (phiArea-A0)^2;
-        real t4 = int2d(Th) ( (phitension * phiinterface * ((eps) * curvature)));
+        real t4 = int3d(Th) ( (phitension * phiinterface * ((eps) * curvature)));
 
-        real t5 = int2d(Th)((rhotension * (1-phi) * (a)*0.25 * rho^2 * (1-rho)^2));
-        real t6 = int2d(Th)((rhotension * (1-phi) * (eps) * 0.5 * abs(dx(rho) + dy(rho))^2));
+        real t5 = int3d(Th)((rhotension * (1-phi) * (a)*0.25 * rho^2 * (1-rho)^2));
+        real t6 = int3d(Th)((rhotension * (1-phi) * (eps) * 0.5 * abs(dx(rho) + dy(rho))^2));
         real t7 = lmdarho * (rhononphiArea - A0P)^2;
         // currently not removing curvature from rho.
-        // real t8 = int2d(Th) ( (rhotwointerface * ((eps) * Rcurvature)));
+        // real t8 = int3d(Th) ( (rhotwointerface * ((eps) * Rcurvature)));
 
         // coupling
-        real t9 = int2d(Th)(phi * rhophitension * ((a)*0.25 * rho^2 * (1-rho)^2));
-        real t10 = int2d(Th)(phi * rhophitension * ((eps) * 0.5 * abs(dx(rho) + dy(rho))^2));
+        real t9 = int3d(Th)(phi * rhophitension * ((a)*0.25 * rho^2 * (1-rho)^2));
+        real t10 = int3d(Th)(phi * rhophitension * ((eps) * 0.5 * abs(dx(rho) + dy(rho))^2));
         real t11 = lmdarhophi * (rhophiArea - A0RP)^2;
         real teng = t1+t2+t3-t4+t5+t6+t7+t9+t10+t11;
 
