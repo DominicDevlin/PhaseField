@@ -6,7 +6,7 @@ load "Element_P3";
 
 // time needs to increase since we made thinner boundary.
 real endsim=201;
-real endrelaxation=0.02; // n steps before swapping to phase field main
+real endrelaxation=1; // n steps before swapping to phase field main
 bool printScreen=true;
 int screenStep = 5;
 real equilibraterho=1; // use lower rho surface tension at the beginning of simulation
@@ -181,14 +181,24 @@ macro solvePhase()
         divprecurvature = dx(precurvatureX) + dy(precurvatureY);
         curvature = sqrt(dx(phi)^2 + dy(phi)^2) * divprecurvature;
 
-        beforegral = (rho^2 * (3 - 2*rho)) * ((phi^2 * (3 - 2*rho)) - 1);
-        RhoField;
-        postgral = (rho^2 * (3 - 2*rho)) * ((phi^2 * (3 - 2*rho)) - 1);
+        if (curt < endrelaxation)
+        {
+            RelaxRhoField;
+            relaxphasefield;
 
-        phasefield;
+        }
+        else
+        {
+            beforegral = (rho^2 * (3 - 2*rho)) * ((phi^2 * (3 - 2*rho)) - 1);
+            RhoField;
+            postgral = (rho^2 * (3 - 2*rho)) * ((phi^2 * (3 - 2*rho)) - 1);
 
-        phimoved = fmax(int2d(Th)(beforegral-postgral),0);
-        phiold = phi;
+            phasefield;
+
+            phimoved = fmax(int2d(Th)(beforegral-postgral),0);
+        }
+
+
         if (phimoved < 0)
             phimoved = 0;
     }
@@ -257,8 +267,8 @@ real eta2 = 1;             // viscocity type2
 real a = 1;               // Coefficient a 
 real eps = 0.0002;               // phase width coefficient k
 real lmda = 10;               // concentration constraint
-real lmdarho = 60;               // concentration constraint
-real lmdarhophi = 60;               // concentration constraint
+real lmdarho = 10;               // concentration constraint
+real lmdarhophi = 10;               // concentration constraint
 real A0 = 3.143;              // Target value for A
 real epseps = 1e-9;           // small prefactor for 1/sqrt
 real dt = 0.01;
@@ -323,15 +333,11 @@ real gammaSL=-0.03;
 
 
 
+real relaxphi=2;
+real relaxrhophi=10;
+real relaxrho=8;
 
-problem relaxphasefield(phi, v, master=0, solver=sparsesolver) // , 
-    = int2d(Th) (  v * (phi)/dt  )
-    //+ int2d(Th) (1/eta * (v * a * phi - 3*v*a*phi*phiold + 2*v*a*phi*phiold^2))
-    // + int2d(Th) (1/eta * (k * (dx(v) *dx(phi) + dy(v) * dy(phi))))
-    + int2d(Th) (1/eta * a * (0.5 * v * phi - v*1.5*phi*phiold + v*phi*phiold^2))
-    + int2d(Th) (1/eta * (eps * (dx(v) *dx(phi) + dy(v) * dy(phi))))
-    + int2d(Th) (1/eta * ( v * (12 * lmda *(phiArea-A0)*phi*(1-phiold))))
-    - int2d(Th) (  v * (phiold)/dt  );
+
 
 
 /* the below equation has the curvature term removed*/
@@ -386,7 +392,33 @@ problem RhoField(rho, w, master=0, solver=sparsesolver)
     - int2d(Th) ( w * (rhoold)/dt  );
 
 
-// problem RelaxRhoField(rho, w, master=0, solver=sparsesolver)
+problem relaxphasefield(phi, v, master=0, solver=sparsesolver) // , 
+    = int2d(Th) (  v * (phi)/dt  )
+    + int2d(Th) (1/eta * relaxphi * a * (v* 0.5 * phi - v*1.5*phi*phiold + v*phi*phiold^2))
+    + int2d(Th) (1/eta *  relaxphi  * (eps * (dx(v) *dx(phi) + dy(v) * dy(phi))))
+    + int2d(Th) ( (1/eta * relaxphi * phiinterface * ((eps) * v * curvature )))
+    + int2d(Th) (1/eta * ( v * (12. * lmda *(phiArea-A0)*phi*(1-phiold))))
+    - int2d(Th) (  v * (phiold)/dt  )
+    + int2d(Th) (1/eta * phi * relaxrhophi * a * (v * 0.5 * rho - 1.5*v*rho*rho + v*rho * rho^2))
+    + int2d(Th) (1/eta * phi * relaxrhophi * (eps * (dx(rho) * dx(v) + dy(rho) * dy(v))))
+    + int2d(Th) (1/eta * (phiold < 1) * (1) * relaxrho * a * (v * 0.5 * rho - 1.5*v*rho*rho + v*rho * rho^2))
+    + int2d(Th) (1/eta * (phiold < 1) * (-phi) * relaxrho * a * (v * 0.5 * rho - 1.5*v*rho*rho + v*rho * rho^2))
+    + int2d(Th) (1/eta * (phiold < 1) * (1) * relaxrho * (eps * (dx(rho) * dx(v) + dy(rho) * dy(v))))
+    + int2d(Th) (1/eta * (phiold < 1) * (-phi) *relaxrho * (eps * (dx(rho) * dx(v) + dy(rho) * dy(v))))
+    + int2d(Th) (1/eta * ( v * (12 * lmdarhophi *(rhophiArea-A0RP)*rho*phi*(1-rho))))
+    + int2d(Th) (1/eta * ( v * (12 * lmdarho *(rhononphiArea-A0P)*(1)*rho*(1-rhoold))))
+    + int2d(Th) (1/eta * ( v * (12 * (phiold < 1) * lmdarho *(rhononphiArea-A0P)*(-phi)*rho*(1-rhoold))));
+
+
+problem RelaxRhoField(rho, w, master=0, solver=sparsesolver)
+    = int2d(Th) (w * (rho)/dt )
+    + int2d(Th) (1/eta * (1-phi) * (phi < 1) * relaxrho * rho * (0.5 * w * a - 1.5*w*a*rhoold + w*a*rhoold^2))
+    + int2d(Th) (1/eta * (1-phi) *  (phi < 1) * relaxrho * (eps * (dx(w) *dx(rho) + dy(w) * dy(rho))))
+    + int2d(Th) (1/eta * ( w * (phi < 1) * (12 *  lmdarho *(rhononphiArea-A0P)*(1-phi)*rho*(1-rhoold))))
+    + int2d(Th) (1/eta * (phi)* rho *  relaxrhophi * (0.5 * w * a - 1.5*w*a*rhoold + w*a*rhoold^2))
+    + int2d(Th) (1/eta * (phi) * relaxrhophi * (eps * (dx(w) *dx(rho) + dy(w) * dy(rho))))    
+    + int2d(Th) (1/eta * ( w * (12 * lmdarhophi *(rhophiArea-A0RP)*rho*phi*(1-rhoold))))
+    - int2d(Th) ( w * (rhoold)/dt  );
 
 
 
@@ -513,6 +545,10 @@ A0RP = rhophiArea;
 A0RPtwo = rhotwophiArea;
 A0Ptwo = rhotwoArea;
 
+rhoArea = int2d(Th)(rho^2 * (3 - 2*rho));
+rhoArealb = int2d(Th)((phi < rho) * phi * rho^2 * (3-2*rho) + (phi > rho) * rho^3 * (3 - 2*rho));
+
+
 cout << "phi area is: " << A0 << endl;
 cout << "rho area is: " << A0P << endl;
 
@@ -525,7 +561,7 @@ real curt=0.0;
 // // Time stepping
 int counter = 0;
 bool recorded;
-bool relax_ended = false;
+bool relaxended = false;
 while(curt < endsim)//(maxCFL > 1e-4)
 {
     // If needed, carry out mesh adaptation, solve again, adapt again
@@ -577,17 +613,21 @@ while(curt < endsim)//(maxCFL > 1e-4)
     // rhotwoold = rhotwo;
     nAdapt++;
 
-    if (curt > endrelaxation && relax_ended == false)
+    if (curt < endrelaxation)
     {
-        relax_ended = true;
         GetArea
         A0 = phiArea;
         rhoArea = int2d(Th)(rho^2 * (3 - 2*rho));
         rhoArealb = int2d(Th)((phi < rho) * phi * rho^2 * (3-2*rho) + (phi > rho) * rho^3 * (3 - 2*rho));
+    }
 
-        // A0Ptwo = rhotwoArea;
-        // A0RPtwo = rhotwophiArea;
-        // cout << A0 << "\t" << A0P << "\t" << A0R << endl;
+    if (curt > endrelaxation && relaxended == false)
+    {
+        relaxended = true;
+        GetArea
+        A0 = phiArea;
+        rhoArea = int2d(Th)(rho^2 * (3 - 2*rho));
+        rhoArealb = int2d(Th)((phi < rho) * phi * rho^2 * (3-2*rho) + (phi > rho) * rho^3 * (3 - 2*rho));
     }
     real diff = rhoArea - rhoArealb;
 
