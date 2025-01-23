@@ -529,6 +529,7 @@ real curt=0.0;
 // // Time stepping
 int counter = 0;
 bool recorded;
+bool relax_ended = false;
 while(curt < endsim)//(maxCFL > 1e-4)
 {
     // If needed, carry out mesh adaptation, solve again, adapt again
@@ -580,8 +581,9 @@ while(curt < endsim)//(maxCFL > 1e-4)
     // rhotwoold = rhotwo;
     nAdapt++;
 
-    if (curt < endrelaxation)
+    if (curt > endrelaxation && relax_ended == false)
     {
+        relax_ended = true;
         GetArea
         A0 = phiArea;
         rhoArea = int2d(Th)(rho^2 * (3 - 2*rho));
