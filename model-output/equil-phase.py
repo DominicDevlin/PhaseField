@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 # The data.txt file should contain the provided rows of numbers
 # datan= '-2-42.2-1.72'
 # Get a list of all subdirectories in the 'data' directory
-data_dir = 'data/4diff/'
+data_dir = 'data/nodiff/'
 subdirectories = [subdir for subdir in os.listdir(data_dir) if os.path.isdir(os.path.join(data_dir, subdir))]
 
 tauphirho_values = [1, 9, 25, 49]
@@ -60,45 +60,29 @@ for subdir in subdirectories:
     rho_values=[]
     diff_values = []
 
-    n=5
-    check_list = [round(x * 0.05, 2) for x in range(int(n * 20) + 1)]   
-    bool_list = [False] * len(check_list)
+
     
     # Find the y value for which phi_value goes below 0.x
     threshold = 0.5
-    y_threshold = None
+    y_threshold = 0.
 
+    sum_rho=0
 
     for i in range(len(x)):
-        if x[i] < 0.5 and x[i] > -0.8:
-            closest_value = min(check_list, key=lambda c: abs(c - y[i]))
-            if phi[i] > threshold:
-                bool_list[check_list.index(closest_value)] = True
-            
-            # if diff[i] < 0.01:
-            #     diff_values.append(np.nan)
-            # else:
-            #     diff_values.append(diff[i])
+        if x[i] < 0.3 and x[i] > -0.3 and y[i] < 4:
+            sum_rho = sum_rho + rho[i]
+            if rho[i] > threshold and y[i] > y_threshold:
+                y_threshold = y[i]
 
-    # print(bool_list)
-    
-    for i in range(4, len(bool_list)):
-        if bool_list[i] == False and bool_list[i-1] == True:
-            y_threshold = check_list[i]
-            break
-    # print(y_threshold)
+    print(trho, trhophi, sum_rho)
 
-
-    # for y_val, phi_val in zip(y_values, phi_values):
-    #     if phi_val < threshold and y_val > 0.5:
-    #         y_threshold = y_val
-    #         break
-    
-    if y_threshold is None:
-        y_threshold = 6
-
-    y_threshold = y_threshold - 2
+    y_threshold = (y_threshold - 1.4)/0.8
     if y_threshold < 0:
+        y_threshold = 0
+    if y_threshold > 1:
+        y_threshold = 1
+    
+    if (sum_rho < 500):
         y_threshold = 0
     
     tau_strings.append(ttt)
@@ -138,6 +122,7 @@ for tpr in tauphirho_values:
         gammaphi = (const1 * tphi)
         gammaphirho = const2 * tphirho
         gammarho = (const2 * trho)
+
         grrp = const1* tphi + const2 * trho
 
         sigmaHM = np.sqrt(np.sqrt(grrp) * np.sqrt(gammarho))
@@ -183,7 +168,6 @@ for i in range(len(plot_x_values)):
         label=f'sigmaHL = {currsig}'
     )
     
-ax.set_ylim([-0.05, 2])
 
 # Set tick properties explicitly
 ax.tick_params(
@@ -196,7 +180,7 @@ ax.tick_params(
 )
 
 # Set labels explicitly
-ax.set_xlabel('sigmaHM / sigmaHL', fontsize=16, family='Helvetica')  # Font size and family
+ax.set_xlabel('sigmaHM - sigmaHL', fontsize=16, family='Helvetica')  # Font size and family
 ax.set_ylabel('elongation', fontsize=16, family='Helvetica')
 
 ax.spines['top'].set_linewidth(1.5)
