@@ -17,13 +17,15 @@ tauphi = 2
 pairs = []
 results = []
 
-tauphirho_values =  [1, 9, 25, 49]
+tauphirho_values =  [9, 25, 49, 81]
 for tpr in tauphirho_values:
     
-    quadratic_scaling = np.linspace(0.2, 1, 20)**2
-    taurho_values = (2) * quadratic_scaling * tpr
+    quadratic_scaling = (np.linspace(0.2, 1, 20)**2)*30-15
+    taurho_values = quadratic_scaling + tpr*0.83
     taurho_values = list(taurho_values)
-    # print(taurho_values)
+    taurho_values = [tr for tr in taurho_values if tr >= 0]
+    print(taurho_values)
+
     for tr in taurho_values:
         pairs.append((tpr, tr))
 
@@ -46,4 +48,4 @@ command = ["FreeFem++", "working.edp", tauphi_str, taurhophi_str, taurho_str]
 
 print(f"Running: {' '.join(command)}")
 # Execute the command
-subprocess.run(command)
+# subprocess.run(command)
