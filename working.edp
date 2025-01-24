@@ -470,12 +470,12 @@ problem DRhoTwoField(drhotwo, dwt, master=0, solver=sparsesolver) // ,
 // Initialisation
 // Initial parameters of the drop
 real dR = 0.6;  // Radius
-real dRrho = 0.4;  // Radius
+real dRrho = 0.55;  // Radius
 real dxc= 0.0;  // x coordinate
 real dyc= 0.8;  // y coordinate, 0.2 is start above gorund
 real DropTh = sqrt((2*eps)/a);
 real rhoDropTh = sqrt((2*eps)/a);
-real dyct = 1.6; // dR + dyc will give same top point (half in half out)
+real dyct = 1.4; // dR + dyc will give same top point (half in half out)
 
 // "Half lengths" in each direction for a 2:1 aspect ratio
 real Lx = 3.0 * dR;  // x half-extent
@@ -484,6 +484,8 @@ real Ly = 1.0 * dR;  // y half-extent
 func initPhi = 0.5 * (1.0- tanh(( max(abs((x - dxc) / Lx), abs((y - dyc) / Ly)) - 1.0 )/ DropTh)) //0.5 * (1-tanh((abs(y - dyc) - dR) / DropTh))// 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-0.4-dyc)^2) - dR) / (sqrt(2) * DropTh)))
  + 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-dyct)^2) - dRrho) / (sqrt(2) * rhoDropTh)));
 func initRho = 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-dyct)^2) - dRrho) / (sqrt(2) * rhoDropTh)));
+
+func initOutofRho = 0.5 * (1.0- tanh(( max(abs((x - dxc) / Lx), abs((y - dyc) / Ly)) - 1.0 )/ DropTh));
 
 func initRhoTwo =  0;
 
@@ -503,31 +505,36 @@ func initRhoTwo =  0;
 // func initRho = 0.5 * (tanh((x - 0)/DropTh) - tanh((x - 1)/DropTh)) ;
 // cout << initRho << endl;
 
+Vhfield outofrho;
+outofrho= initOutofRho;
 
 phi = initPhi;
-rho = initRho;
+rho = initRho * (1-outofrho);
 rhotwo = initRhoTwo;
 
 MakeRhoPhiMesh
 // Initial mesh adaptation
 getAdaptMesh
 // Reinitialise the function, since it has a known value, adapt mesh again
+outofrho= initOutofRho;
 phi = initPhi;
-rho = initRho;
+rho = initRho * (1-outofrho);
 rhotwo = initRhoTwo;
 
 MakeRhoPhiMesh
 getAdaptMesh
 // Reinitialise the function, since it has a known value, adapt mesh again
+outofrho= initOutofRho;
 phi = initPhi;
-rho = initRho;
+rho = initRho * (1-outofrho);
 rhotwo = initRhoTwo;
 
 MakeRhoPhiMesh
 getAdaptMesh
 // Final initialisation of the function
+outofrho= initOutofRho;
 phi = initPhi;
-rho = initRho;
+rho = initRho * (1-outofrho);
 rhotwo = initRhoTwo;
 rhotwo =  rhotwo - (rho > 0.01) * rhotwo * rho^(1./4.);
 
@@ -551,7 +558,6 @@ rhoArealb = int2d(Th)((phi < rho) * phi * rho^2 * (3-2*rho) + (phi > rho) * rho^
 
 cout << "phi area is: " << A0 << endl;
 cout << "rho area is: " << A0P << endl;
-
 
 // plot(Th, wait=true);
 
