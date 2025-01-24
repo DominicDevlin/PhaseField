@@ -9,16 +9,38 @@ import matplotlib.pyplot as plt
 data_dir = 'data/nodiff/'
 subdirectories = [subdir for subdir in os.listdir(data_dir) if os.path.isdir(os.path.join(data_dir, subdir))]
 
-tauphirho_values = [1, 9, 25, 49]
+tauphirho_values = [9, 25, 49, 81]
 
 
 # constant params.
 tauphi = 2.
 
-eps=0.001
+eps=0.0002
 
 y_thresholds = []
 tau_strings = []
+
+overlaps = []
+
+
+
+def connectedarea(xdat, ydat, phidat, rhodat):
+    sumoverlap=0
+    for i in range(len(x)):
+        if rhodat[i] > 0.5 and phidat[i] > rhodat[i]:
+            if phidat[i] > 1:
+                sumoverlap += 1 - rhodat[i]
+            else:
+                sumoverlap += phidat[i] - rhodat[i]
+        
+        # if y[i] < 0.1 and rhodat[i] > 0.5 and rhodat[i] < 0.9:
+        #     sumoverlap += 1 - rhodat[i]
+
+        if y[i] > 5.5 and rhodat[i] > 0.5 and rhodat[i] < 0.9:
+            sumoverlap += 1 - rhodat[i]
+
+    return sumoverlap
+
 
 
 # Iterate through each subdirectory
@@ -55,6 +77,9 @@ for subdir in subdirectories:
     rho = datarho[:, 2] # concentration in the third column
     diff = datadiff[:, 2]
 
+    overlap = connectedarea(x,y, phi, rho)
+    overlaps.append(overlap)
+
     y_values=[]
     phi_values=[]
     rho_values=[]
@@ -74,13 +99,13 @@ for subdir in subdirectories:
             if rho[i] > threshold and y[i] > y_threshold:
                 y_threshold = y[i]
 
-    print(trho, trhophi, sum_rho)
+    # print(trho, trhophi, sum_rho)
 
     y_threshold = (y_threshold - 1.4)/0.8
     if y_threshold < 0:
         y_threshold = 0
-    if y_threshold > 1:
-        y_threshold = 1
+    if y_threshold > 2:
+        y_threshold = 2
     
     if (sum_rho < 500):
         y_threshold = 0
@@ -103,6 +128,8 @@ for tpr in tauphirho_values:
     plotx=[]
     ploty=[]
     
+    print(tau_strings)  
+
     for i in range(len(tau_strings)):
         if tau_strings[i][1] == tpr:
             indices.append(i)
@@ -117,21 +144,22 @@ for tpr in tauphirho_values:
         tphirho = tau_strings[indices[i]][1]
         trho = tau_strings[indices[i]][2]
         const1 = (5*np.sqrt(2)/12.) * eps
-        const2 = (5*np.sqrt(2)/12.) * eps * 0.5
+        const2 = (5*np.sqrt(2)/12.) * eps
         # Be careful to avoid negative radicand:
         gammaphi = (const1 * tphi)
         gammaphirho = const2 * tphirho
         gammarho = (const2 * trho)
 
-        grrp = const1* tphi + const2 * trho
+        # sigmaHM = np.sqrt(gammarho) + np.sqrt(gammaphi)
 
-        sigmaHM = np.sqrt(np.sqrt(grrp) * np.sqrt(gammarho))
+        sigmaHM = np.sqrt(np.sqrt(gammarho + gammaphi) * np.sqrt(gammarho ) )
         sigmaHL = np.sqrt(gammaphirho)
         sigmaLM = 0
 
         sigratio = sigmaHM - sigmaHL
         
         yval = y_thresholds[indices[i]]
+        sval = overlaps[indices[i]]
         plotx.append(sigratio)
         ploty.append(yval)
         
