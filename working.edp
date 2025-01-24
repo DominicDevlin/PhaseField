@@ -316,11 +316,7 @@ if (addrate > 0)
     netrate=(diffrate-addrate)/diffrate;
 
 // non dynamic
-<<<<<<< HEAD
 real diffparam = 0.0; // this is being treated dynamically if dynamic param is true.
-=======
-real diffparam = 0.01; // this is being treated dynamically if dynamic param is true.
->>>>>>> a4999d85c2fdb3bf3552bbe309bdc82ccd34b82e
 real absgrowth = 0;
 
 real diffamount=0;
