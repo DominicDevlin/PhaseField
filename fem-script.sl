@@ -1,10 +1,10 @@
 #!/bin/bash -e
 #SBATCH --job-name=fem
-#SBATCH --time=6:00:00      # Walltime (HH:MM:SS)
+#SBATCH --time=12:00:00      # Walltime (HH:MM:SS)
 #SBATCH --mem=500MB 
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
-#SBATCH --array=0-71 
+#SBATCH --array=0-28 
 #SBATCH --account=uoa02799         
 #SBATCH --partition=milan
 
