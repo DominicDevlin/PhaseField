@@ -11,16 +11,16 @@ if (len(sys.argv) > 1):
     # prepend = "xvfb-run -a "
 
 # this needs to be 2 instead of 1 otherwise phi falls too fast. 
-tauphi = 2 
+tauphi = 1 
 
 
 pairs = []
 results = []
 
-tauphirho_values =  [9, 25, 49]
+tauphirho_values =  [25, 36, 49, 64, 81]
 for tpr in tauphirho_values:
     
-    quadratic_scaling = (np.linspace(0.2, 1, 10)**2)*20-10
+    quadratic_scaling = (np.linspace(0.2, 1, 10)**2)*30-15
     taurho_values = quadratic_scaling + tpr
     taurho_values = list(taurho_values)
     taurho_values = [tr for tr in taurho_values if tr >= 0]
