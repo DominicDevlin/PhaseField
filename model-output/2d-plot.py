@@ -11,9 +11,9 @@ from matplotlib.cm import get_cmap
 #    If your data is whitespace-separated, use 'delim_whitespace=True'.
 # ---------------------------------------------------------------
 
-number = '2-25-12.2'
-prepend = 'data/1diff/' + number + '/'
-time = '2-25-12.2'
+number = ''
+prepend = 'data/' + number + '/'
+time = '2'
 
 
 df = pd.read_csv(prepend + 'phi_data' + '-' + time + '.dat', header=None, names=['x', 'y', 'conc'], delimiter='\t')
@@ -25,6 +25,7 @@ df2 = pd.read_csv(prepend + 'rho_data' + '-' + time + '.dat', header=None, names
 x = df['x'].values 
 y = df['y'].values
 c = df['conc'].values* (df2['conc'].values * 2 - 1)
+c = df['conc'].values #* (df2['conc'].values * 2 - 1)
 
 # ---------------------------------------------------------------
 # 3. Create triangulation for contour plotting
@@ -45,7 +46,12 @@ blue_to_white_cmap = LinearSegmentedColormap.from_list(
     "blue_to_white", bwr_cmap(np.linspace(0, 1, 256))
 )
 
-contour_f = plt.tricontourf(triang, c, levels=levels, cmap='bwr')
+# Reverse the colormap
+bwr_cmap_reversed = bwr_cmap.reversed()
+
+
+
+contour_f = plt.tricontourf(triang, c, levels=levels, cmap=bwr_cmap_reversed)
 plt.colorbar(contour_f, label="Concentration")
 # Set equal aspect ratio for x and y axes
 plt.gca().set_aspect('equal', adjustable='box')

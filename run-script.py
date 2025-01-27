@@ -17,7 +17,7 @@ tauphi = 1
 pairs = []
 results = []
 
-tauphirho_values =  [36, 49, 64, 81, 100, 144]
+tauphirho_values =  [16, 36, 49, 64, 81, 100]
 for tpr in tauphirho_values:
     scaling_factor = 30 * pow((tpr/36), 0.75)
     overtwo = scaling_factor/2
@@ -49,4 +49,4 @@ command = ["FreeFem++", "working.edp", tauphi_str, taurhophi_str, taurho_str]
 
 print(f"Running: {' '.join(command)}")
 # Execute the command
-# subprocess.run(command)
+subprocess.run(command)

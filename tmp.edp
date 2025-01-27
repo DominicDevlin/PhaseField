@@ -5,7 +5,7 @@ load "isoline";
 load "Element_P3";
 
 // time needs to increase since we made thinner boundary.
-real endsim=201;
+real endsim=151;
 real endrelaxation=1; // n steps before swapping to phase field main
 bool printScreen=true;
 int screenStep = 5;
@@ -22,7 +22,7 @@ if (ARGV.n > 3)
 verbosity=0;
 int PrintStep=5000;
 bool doPrint=true;
-bool doTimespan=true;
+bool doTimespan=false;
 int timePrint=100;
 bool printinterface=false;
 bool PrintEnergy=true;
@@ -274,9 +274,9 @@ real A0 = 3.143;              // Target value for A
 real epseps = 1e-9;           // small prefactor for 1/sqrt
 real dt = 0.01;
 
-real phitension=1;
-real rhophitension=36;
-real rhotension=36;
+real phitension=2;
+real rhophitension=25;
+real rhotension=12;
 real rhotwotension=1; // rhotwo params
 real rhotwophitension=0;
 
@@ -318,7 +318,7 @@ if (addrate > 0)
     netrate=(diffrate-addrate)/diffrate;
 
 // non dynamic
-real diffparam = 0.0; // this is being treated dynamically if dynamic param is true.
+real diffparam = 0.00; // this is being treated dynamically if dynamic param is true.
 real absgrowth = 0;
 
 real diffamount=0;
@@ -337,7 +337,7 @@ real gammaSL=-0.03;
 
 real relaxphi=2;
 real relaxrhophi=10;
-real relaxrho=9;
+real relaxrho=8;
 
 
 
@@ -377,8 +377,8 @@ problem phasefield(phi, v, master=0, solver=sparsesolver) // ,
     // + int2d(Th) (1/eta * ( v * (12 * lmda *(rhotwophiArea-A0RPtwo)*rhotwo*phi*(1-rhotwoold))));
 
 
-func smoothPhi = (phi > 0.7) * 0.5 * (1 + tanh(24*phi - 20));
-func smoothRho = (rho < 0.5) * 0.5 * (1 - tanh(24*rho - 10));
+func smoothPhi = 0.5 * (1 + tanh(16*phi - 12));
+func smoothRho = 0.5 * (1 - tanh(24*rho - 10));
 func RhoDifferentiate = int2d(Th) (dt * diffparam * smoothPhi * smoothRho * sqrt(dx(rho)^2 + dy(rho)^2));
 
 
@@ -424,6 +424,9 @@ problem relaxphasefield(phi, v, master=0, solver=sparsesolver) // ,
     + int2d(Th) (1/eta * (v * 2 * lmdarho * (newArea-A0new)*( (phiold > rho) * phi * rho * (6 - 6 * rho))))
     + int2d(Th) (1/eta * (v * 2 * lmdarho * (newArea-A0new)* (1) * (6 * rho - 6 * (rho^2))))
     + int2d(Th) (1/eta * (v * 2 * lmdarho * (newArea-A0new)* (-phi) * (6 * rho - 6 * (rho^2))));
+    // + int2d(Th) (1/eta * ( v * (12 * lmdarhophi *(rhophiArea-A0RP)*rho*phi*(1-rho))))
+    // + int2d(Th) (1/eta * ( v * (12 * lmdarho *(rhononphiArea-A0P)*(1)*rho*(1-rhoold))))
+    // + int2d(Th) (1/eta * ( v * (12 * (phiold < 1) * lmdarho *(rhononphiArea-A0P)*(-phi)*rho*(1-rhoold))));
 
 
 problem RelaxRhoField(rho, w, master=0, solver=sparsesolver)
@@ -751,7 +754,7 @@ while(curt < endsim)//(maxCFL > 1e-4)
             TheFilerho << xx[][i] << "\t" << yy[][i] << "\t" << rho[][i] << endl;
         }
 
-        Vhfield diffregion = diffparam * smoothPhi * smoothRho * sqrt(dx(rho)^2 + dy(rho)^2);
+        Vhfield diffregion = ((phi > 0.8) * (rhoold < 0.7) * diffparam * sqrt(dx(rho)+dy(rho)^2));
         filen = datafolder + "diff_data" + parstr + ".dat";
         ofstream TheFileDiff(filen);
         for(int i=0; i< Vhfield.ndof; ++i)
@@ -777,9 +780,8 @@ while(curt < endsim)//(maxCFL > 1e-4)
             TheFilerho << xx[][i] << "\t" << yy[][i] << "\t" << rho[][i] << endl;
         }
 
-
+        Vhfield diffregion = ((phi > 0.8) * (rhoold < 0.7) * diffparam * sqrt(dx(rho)+dy(rho)^2));
         filen = datafolder + "diff_data-" + curt + ".dat";
-        Vhfield diffregion = smoothPhi * smoothRho * sqrt(dx(rho)^2 + dy(rho)^2);
         ofstream TheFileDiff(filen);
         for(int i=0; i< Vhfield.ndof; ++i)
         {
@@ -798,32 +800,30 @@ while(curt < endsim)//(maxCFL > 1e-4)
 
         real t5 = int2d(Th)((rhotension * (1-phi) * (a)*0.25 * rho^2 * (1-rho)^2));
         real t6 = int2d(Th)((rhotension * (1-phi) * (eps) * 0.5 * abs(dx(rho) + dy(rho))^2));
-        real t7 = int2d(Th)(phi * rhophitension * ((a)*0.25 * rho^2 * (1-rho)^2));
-        real t8 = int2d(Th)(phi * rhophitension * ((eps) * 0.5 * abs(dx(rho) + dy(rho))^2));
-        real t9 = lmdarho * (newArea - A0new)^2;
-        real teng = t1+t2+t3-t4+t5+t6+t7+t8+t9;
-
-        // real t7 = lmdarho * (rhononphiArea - A0P)^2;
+        real t7 = lmdarho * (rhononphiArea - A0P)^2;
         // currently not removing curvature from rho.
         // real t8 = int2d(Th) ( (rhotwointerface * ((eps) * Rcurvature)));
 
         // coupling
+        real t9 = int2d(Th)(phi * rhophitension * ((a)*0.25 * rho^2 * (1-rho)^2));
+        real t10 = int2d(Th)(phi * rhophitension * ((eps) * 0.5 * abs(dx(rho) + dy(rho))^2));
+        real t11 = lmdarhophi * (rhophiArea - A0RP)^2;
+        real teng = t1+t2+t3-t4+t5+t6+t7+t9+t10+t11;
 
         if (counter == 10)
         {
             string filen = datafolder + "total_energy" + parstr + ".dat";
             ofstream TheFileEn(filen);
             TheFileEn << curt << "\t" << t1 << "\t" << t2 << "\t" << t3 << "\t" << t4 << "\t" << t5 << "\t" << t6 << "\t" << 
-                        t7 << "\t" << t8 << "\t" << t9 << "\t" << teng << endl;
+                        t7 << "\t" << t9 << "\t" << t10 << "\t" << t11 << "\t" << teng << endl;
         }
         else
         {
             string filen = datafolder + "total_energy" + parstr + ".dat";
             ofstream TheFileEn(filen, append);
             TheFileEn << curt << "\t" << t1 << "\t" << t2 << "\t" << t3 << "\t" << t4 << "\t" << t5 << "\t" << t6 << "\t" << 
-                        t7 << "\t" << t8 << "\t" << t9 << "\t" << teng << endl;
+                        t7 << "\t" << t9 << "\t" << t10 << "\t" << t11 << "\t" << teng << endl;
         }
        
     }
 }
-
