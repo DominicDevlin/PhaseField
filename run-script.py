@@ -17,9 +17,9 @@ tauphi = 1
 pairs = []
 results = []
 
-tauphirho_values =  [16, 36, 49, 64, 81, 100]
+tauphirho_values =  [16, 36, 64, 100]
 for tpr in tauphirho_values:
-    scaling_factor = 30 * pow((tpr/36), 0.75)
+    scaling_factor = 50 * pow((tpr/36), 0.75)
     overtwo = scaling_factor/2
     quadratic_scaling = (np.linspace(0.2, 1, 20)**2)*scaling_factor-overtwo
     taurho_values = quadratic_scaling + tpr

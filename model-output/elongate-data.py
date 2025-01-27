@@ -6,16 +6,16 @@ import matplotlib.pyplot as plt
 # The data.txt file should contain the provided rows of numbers
 # datan= '-2-42.2-1.72'
 # Get a list of all subdirectories in the 'data' directory
-data_dir = 'data/4diff/'
+data_dir = 'data/9-diff/'
 subdirectories = [subdir for subdir in os.listdir(data_dir) if os.path.isdir(os.path.join(data_dir, subdir))]
 
-tauphirho_values = [1, 9, 25, 49]
+tauphirho_values = [16, 36, 64, 100]
 
 
 # constant params.
-tauphi = 2.
+tauphi = 1.
 
-eps=0.001
+eps=0.0002
 
 y_thresholds = []
 tau_strings = []
@@ -70,7 +70,7 @@ for subdir in subdirectories:
 
 
     for i in range(len(x)):
-        if x[i] < 0.5 and x[i] > -0.8:
+        if x[i] < 0.8 and x[i] > -0.8:
             closest_value = min(check_list, key=lambda c: abs(c - y[i]))
             if phi[i] > threshold:
                 bool_list[check_list.index(closest_value)] = True
@@ -140,10 +140,11 @@ for tpr in tauphirho_values:
         gammarho = (const2 * trho)
         grrp = const1* tphi + const2 * trho
 
-        sigmaHM = np.sqrt(np.sqrt(grrp) * np.sqrt(gammarho))
+        # sigmaHM = np.sqrt(np.sqrt(grrp) * np.sqrt(gammarho))
+        sigmaHM = np.sqrt(gammarho)
         sigmaHL = np.sqrt(gammaphirho)
         sigmaLM = 0
-
+        print(sigmaHM, sigmaHL)
         sigratio = sigmaHM - sigmaHL
         
         yval = y_thresholds[indices[i]]

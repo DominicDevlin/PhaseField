@@ -5,7 +5,7 @@ load "isoline";
 load "Element_P3";
 
 // time needs to increase since we made thinner boundary.
-real endsim=201;
+real endsim=301;
 real endrelaxation=1; // n steps before swapping to phase field main
 bool printScreen=true;
 int screenStep = 5;
@@ -85,8 +85,8 @@ real ymax =  6;
 
 // Mesh resolution
 int  n     = 2; // Number of segments per unit length
-real refI  = 16.0; // Refinement factor for the interface
-real mGrw  = 1.6;  // Growth rate of the mesh elements
+real refI  = 14.0; // Refinement factor for the interface
+real mGrw  = 1.2;  // Growth rate of the mesh elements
 int  dref  = 10; // Number of time-steps between mesh adaption
 
 
@@ -336,8 +336,8 @@ real gammaSL=-0.03;
 
 
 real relaxphi=2;
-real relaxrhophi=10;
-real relaxrho=9;
+real relaxrhophi=5;
+real relaxrho=3;
 
 
 
@@ -603,6 +603,7 @@ while(curt < endsim)//(maxCFL > 1e-4)
         nAdapt++;
         // plot(Th, wait=true);
         nAdapt = 0;
+        plot(Th, wait =true);
     }
     ++counter;
 
