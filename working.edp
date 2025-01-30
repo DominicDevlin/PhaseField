@@ -6,7 +6,7 @@ load "Element_P3";
 
 // time needs to increase since we made thinner boundary.
 real endsim=601;
-real endrelaxation=1; // n steps before swapping to phase field main
+real endrelaxation=0.5; // n steps before swapping to phase field main
 bool printScreen=true;
 int screenStep = 5;
 
@@ -159,15 +159,12 @@ rhomesh = RhoPhiPlot;
 
 real phimoved=0;
 
-fespace VhVec(Th,[P2,P2]);
 Vhfield rhoabs;
 Vhfield rhox;
 Vhfield rhoy;
 Vhfield RhoBoolCover;
-// rhoabs = sqrt(dx(rho)^2 + dy(rho)^2 + epseps);
-// rhox = dx(rho) / rhoabs;
-// rhoy = dy(rho) / rhoabs;
 // RhoBoolCover = (rhoabs > 0.1);
+
 
 
 // Macro for non-linear solutions
@@ -190,7 +187,7 @@ macro solvePhase()
         divprecurvature = dx(precurvatureX) + dy(precurvatureY);
         curvature = sqrt(dx(phi)^2 + dy(phi)^2) * divprecurvature;
 
-
+        rhoabs = sqrt(dx(rho)^2 + dy(rho)^2 + epseps);
 
         if (curt < endrelaxation)
         {
@@ -321,7 +318,7 @@ real A0Ptwo=0;
 bool dynamicdiff = false;
 
 // dynamic
-real diffrate =0.01;//1e-4;// 1e-4;//1e-4;//1e-4;
+real diffrate =0.0;//1e-4;// 1e-4;//1e-4;//1e-4;
 real addproportion = 0.; // between 0 and 1
 real addrate=addproportion * diffrate;//0.25e-4;//0.5e-4;
 real netrate=1;
@@ -329,7 +326,7 @@ if (addrate > 0)
     netrate=(diffrate-addrate)/diffrate;
 
 // non dynamic
-real diffparam = 0.1; // this is being treated dynamically if dynamic param is true.
+real diffparam = 0.005; // this is being treated dynamically if dynamic param is true.
 real absgrowth = 0;
 
 real diffamount=0;
@@ -414,7 +411,7 @@ problem RhoField(rho, w, master=0, solver=sparsesolver)
     // in strong form (slightly in correc)
     // + int2d(Th) (rhointerface * diffparam * w ) // slightly incorrect ues of diffparam as constant,
     // in weak form . Trying without a phi in here
-    + int2d(Th) ( diffparam * w * smoothPhi * smoothRho * sqrt(dx(rhoold)^2 + dy(rhoold)^2))//(dx(rho) * dx(rhoold) + dy(rho) * dy(rhoold) ))
+    + int2d(Th) ( diffparam * smoothPhi * smoothRho * w * sqrt(dx(rhoold)^2 + dy(rhoold)^2 + epseps))//
     - int2d(Th) ( w * (rhoold)/dt  );
 
 
@@ -685,6 +682,8 @@ while(curt < endsim)//(maxCFL > 1e-4)
 
     MakeRhoPhiMesh
 
+    // Vhfield tmp = smoothPhi * smoothRho * ( dx(rhoold)/rhoabs * dx(rho) + dy(rhoold)/rhoabs * dy(rho));
+    // Vhfield tmp = smoothPhi * smoothRho * ( dx(phi)/(dx(phi)^2 + dy(phi)^2 + epseps) * dx(phi) + dy(phi)/rhoabs * dy(phi));
     // RhoPhiPlot = rho^2 * phi^2 * (1-phi)^2;
     if (rhophiArea < 0.01)
     {
