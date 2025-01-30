@@ -5,8 +5,13 @@ load "isoline";
 load "Element_P3";
 
 // time needs to increase since we made thinner boundary.
+<<<<<<< HEAD
 real endsim=601;
 real endrelaxation=0.5; // n steps before swapping to phase field main
+=======
+real endsim=501;
+real endrelaxation=1; // n steps before swapping to phase field main
+>>>>>>> c6645f858dccb674317c7081da7622a9b34e8486
 bool printScreen=true;
 int screenStep = 5;
 
@@ -20,7 +25,7 @@ if (ARGV.n > 3)
 }
 
 verbosity=0;
-int PrintStep=20000;
+int PrintStep=25000;
 bool doPrint=true;
 bool doTimespan=false;
 int timePrint=100;
@@ -326,7 +331,11 @@ if (addrate > 0)
     netrate=(diffrate-addrate)/diffrate;
 
 // non dynamic
+<<<<<<< HEAD
 real diffparam = 0.005; // this is being treated dynamically if dynamic param is true.
+=======
+real diffparam = 0.; // this is being treated dynamically if dynamic param is true.
+>>>>>>> c6645f858dccb674317c7081da7622a9b34e8486
 real absgrowth = 0;
 
 real diffamount=0;
