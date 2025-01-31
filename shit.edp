@@ -8,7 +8,7 @@ load "Element_P3";
 real endsim=501;
 real endrelaxation=1; // n steps before swapping to phase field main
 bool printScreen=true;
-int screenStep = 5;
+int screenStep = 1;
 
 string parstr = "";
 string dirstr = "";
@@ -283,8 +283,10 @@ real epseps = 1e-9;           // small prefactor for 1/sqrt
 real dt = 0.01;
 
 real phitension=1;
-real rhophitension=16;
-real rhotension=6;
+real rhophitension=3;
+real rhotension=3;
+real phicctension = 1;
+
 real rhotwotension=1; // rhotwo params
 real rhotwophitension=0;
 
@@ -353,9 +355,15 @@ real relaxrho=3;
 /* the below equation has the curvature term removed*/
 problem phasefield(phi, v, master=0, solver=sparsesolver) // , 
     = int2d(Th) (  v * (phi)/dt  )
-    + int2d(Th) (1/eta * phitension * a * (v* 0.5 * phi - v*1.5*phi*phiold + v*phi*phiold^2))
-    + int2d(Th) (1/eta *  phitension  * (eps * (dx(v) *dx(phi) + dy(v) * dy(phi))))
-    + int2d(Th) ( (1/eta * phitension * phiinterface * ((eps) * v * curvature )))
+    + int2d(Th) (1/eta * phitension * rhoold * a * (v* 0.5 * phi - v*1.5*phi*phiold + v*phi*phiold^2))
+    + int2d(Th) (1/eta *  phitension * rhoold * (eps * (dx(v) *dx(phi) + dy(v) * dy(phi))))
+
+    + int2d(Th) (1/eta * phicctension * (1-rhoold) * (rhoold < 1 ) * a * (v* 0.5 * phi - v*1.5*phi*phiold + v*phi*phiold^2))
+    + int2d(Th) (1/eta *  phicctension* (1-rhoold) * (rhoold < 1 )  * (eps * (dx(v) *dx(phi) + dy(v) * dy(phi))))
+
+
+
+    + int2d(Th) ( (1/eta * phicctension * (1-rhoold) * (rhoold < 1 )  * phiinterface * ((eps) * v * curvature )))
     + int2d(Th) (1/eta * ( v * (12. * lmda *(phiArea-A0)*phi*(1-phiold))))
     - int2d(Th) (  v * (phiold)/dt  )
 
@@ -403,6 +411,13 @@ problem RhoField(rho, w, master=0, solver=sparsesolver)
     + int2d(Th) (1/eta * (w * 2 * lmdarho * (newArea-A0new)*( (phiold > rhoold) * phiold * rho * (6 - 6 * rhoold))))
     + int2d(Th) (1/eta * (w * 2 * lmdarho * (newArea-A0new)* (1-phiold) *  rho * (6 - 6 * (rhoold))))
 
+    + int2d(Th) (1/eta * phitension * rhoold * a * (w* 0.5 * phi - w*1.5*phi*phiold + w*phi*phiold^2))
+    + int2d(Th) (1/eta *  phitension * rhoold * (eps * (dx(w) *dx(phi) + dy(w) * dy(phi))))
+
+    + int2d(Th) (1/eta * phicctension * (1-rhoold) * (rhoold < 1 ) * a * (w* 0.5 * phi - w*1.5*phi*phiold + w*phi*phiold^2))
+    + int2d(Th) (1/eta *  phicctension* (1-rhoold) * (rhoold < 1 )  * (eps * (dx(w) *dx(phi) + dy(w) * dy(phi))))
+    + int2d(Th) ( (1/eta * phicctension * (1-rhoold) * phiinterface * ((eps) * w * curvature )))
+    + int2d(Th) (1/eta * ( w * (12. * lmda *(phiArea-A0)*phi*(1-phiold))))
     // double constraint
     // + int2d(Th) (1/eta * ( w * (phi < 1) * (12 *  lmdarho *(rhononphiArea-A0P)*(1-phi)*rho*(1-rhoold)))) 
     // + int2d(Th) (1/eta * ( w * (12 * lmdarhophi *(rhophiArea-A0RP)*rho*phi*(1-rhoold))))
@@ -419,7 +434,9 @@ problem relaxphasefield(phi, v, master=0, solver=sparsesolver) // ,
     = int2d(Th) (  v * (phi)/dt  )
     + int2d(Th) (1/eta * relaxphi * a * (v* 0.5 * phi - v*1.5*phi*phiold + v*phi*phiold^2))
     + int2d(Th) (1/eta *  relaxphi  * (eps * (dx(v) *dx(phi) + dy(v) * dy(phi))))
+   
     + int2d(Th) ( (1/eta * relaxphi * phiinterface * ((eps) * v * curvature )))
+
     + int2d(Th) (1/eta * ( v * (12. * lmda *(phiArea-A0)*phi*(1-phiold))))
     - int2d(Th) (  v * (phiold)/dt  )
     + int2d(Th) (1/eta * phiold * relaxrhophi * a * (v * 0.5 * rho - 1.5*v*rho*rho + v*rho * rho^2))
