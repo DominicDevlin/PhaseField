@@ -287,7 +287,7 @@ real rhophitension=16;
 real rhotension=5;
 
 real phitension=0.25;
-real phicctension = 1;
+real phicctension = 5;
 
 real rhotwotension=1; // rhotwo params
 real rhotwophitension=0;
@@ -416,6 +416,13 @@ problem RhoField(rho, w, master=0, solver=sparsesolver)
     + int2d(Th) (1/eta * phicctension * (1-rhoold) * (rhoold < 1 ) * a * (w* 0.5 * phi - w*1.5*phi*phi + w*phi*phi^2))
     + int2d(Th) (1/eta *  phicctension* (1-rhoold) * (rhoold < 1 )  * (eps * (dx(w) *dx(phi) + dy(w) * dy(phi))))
     + int2d(Th) ( (1/eta * phicctension * (1-rhoold) * (rhoold < 1 )  * phiinterface * ((eps) * w * curvature )))
+
+
+    + int2d(Th) (1/eta * phitension * a * (w* 0.5 * phi - w*1.5*phi*phiold + w*phi*phiold^2))
+    + int2d(Th) (1/eta *  phitension* (eps * (dx(w) *dx(phi) + dy(w) * dy(phi))))
+    + int2d(Th) ( (1/eta * phitension * phiinterface * ((eps) * w * curvature )))
+    + int2d(Th) (1/eta * ( w * (12. * lmda *(phiArea-A0)*phi*(1-phiold))))
+
     // double constraint
     // + int2d(Th) (1/eta * ( w * (phi < 1) * (12 *  lmdarho *(rhononphiArea-A0P)*(1-phi)*rho*(1-rhoold)))) 
     // + int2d(Th) (1/eta * ( w * (12 * lmdarhophi *(rhophiArea-A0RP)*rho*phi*(1-rhoold))))
