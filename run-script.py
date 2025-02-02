@@ -34,6 +34,8 @@ for tpr in tauphirho_values:
 # (Make sure index is valid for pairs; you may want to add a check if needed)
 taurhophi, taurho = pairs[index]
 
+tauphi = (taurhophi/tauphirho_values[0])*0.5#miminma at 0.5, 16
+
 tauphi_str = f"{tauphi:.3g}"
 taurhophi_str = f"{taurhophi:.3g}"
 taurho_str = f"{taurho:.3g}"
