@@ -11,7 +11,7 @@ if (len(sys.argv) > 1):
     # prepend = "xvfb-run -a "
 
 # this needs to be 2 instead of 1 otherwise phi falls too fast. 
-tauphi = 1 
+tauphi = 0.5
 
 
 pairs = []
@@ -34,7 +34,7 @@ for tpr in tauphirho_values:
 # (Make sure index is valid for pairs; you may want to add a check if needed)
 taurhophi, taurho = pairs[index]
 
-tauphi = (taurhophi/tauphirho_values[0])*0.5#miminma at 0.5, 16
+tauphi = (taurhophi/tauphirho_values[1])*0.5#miminma at 0.5, 16
 
 tauphi_str = f"{tauphi:.3g}"
 taurhophi_str = f"{taurhophi:.3g}"
