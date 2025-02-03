@@ -326,7 +326,7 @@ if (addrate > 0)
     netrate=(diffrate-addrate)/diffrate;
 
 // non dynamic
-real diffparam = 0.; // this is being treated dynamically if dynamic param is true.
+real diffparam = 0.02; // this is being treated dynamically if dynamic param is true.
 real absgrowth = 0;
 
 real diffamount=0;
@@ -386,8 +386,8 @@ problem phasefield(phi, v, master=0, solver=sparsesolver) // ,
     // + int2d(Th) (1/eta * ( v * (12 * lmda *(rhotwophiArea-A0RPtwo)*rhotwo*phi*(1-rhotwoold))));
 
 
-func smoothPhi = (phi > 0.7) * 0.5 * (1 + tanh(24*phi - 20));
-func smoothRho = (rho < 0.5) * 0.5 * (1 - tanh(24*rho - 10));
+func smoothPhi = 0.5 * (1 + tanh(24*phi - 20));//(phi > 0.7) * 
+func smoothRho = 0.5 * (1 - tanh(24*rho - 8)); //(rho < 0.5) * 
 func RhoDifferentiate = int2d(Th) (dt * diffparam * smoothPhi * smoothRho * sqrt(dx(rho)^2 + dy(rho)^2));
 
 
@@ -411,7 +411,7 @@ problem RhoField(rho, w, master=0, solver=sparsesolver)
     // in strong form (slightly in correc)
     // + int2d(Th) (rhointerface * diffparam * w ) // slightly incorrect ues of diffparam as constant,
     // in weak form . Trying without a phi in here
-    + int2d(Th) ( diffparam * smoothPhi * smoothRho * w * sqrt(dx(rhoold)^2 + dy(rhoold)^2 + epseps))//
+    + int2d(Th) ( diffparam * smoothPhi * smoothRho * w * (dx(rho) * dx(rhoold) + dy(rho) * dy(rhoold)) / sqrt((dx(rhoold)^2 + dy(rhoold)^2) + epseps)) //  sqrt(dx(rhoold)^2 + dy(rhoold)^2 + epseps))
     - int2d(Th) ( w * (rhoold)/dt  );
 
 
