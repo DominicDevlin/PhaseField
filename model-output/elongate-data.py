@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 # The data.txt file should contain the provided rows of numbers
 # datan= '-2-42.2-1.72'
 # Get a list of all subdirectories in the 'data' directory
-data_dir = 'data/3-diff/'
+data_dir = 'data/10-diff/'
 subdirectories = [subdir for subdir in os.listdir(data_dir) if os.path.isdir(os.path.join(data_dir, subdir))]
 
 tauphirho_values = [16, 36, 64, 100]
@@ -63,9 +63,11 @@ for subdir in subdirectories:
     n=5
     check_list = [round(x * 0.05, 2) for x in range(int(n * 20) + 1)]   
     bool_list = [False] * len(check_list)
+    sum_list = [0] * len(check_list)
+    counter_list = [0] * len(check_list)
     
     # Find the y value for which phi_value goes below 0.x
-    threshold = 0.5
+    threshold = 0.8
     y_threshold = None
 
 
@@ -74,19 +76,34 @@ for subdir in subdirectories:
             closest_value = min(check_list, key=lambda c: abs(c - y[i]))
             if phi[i] > threshold:
                 bool_list[check_list.index(closest_value)] = True
+            sum_list[check_list.index(closest_value)] += phi[i]
+            counter_list[check_list.index(closest_value)] += 1
             
             # if diff[i] < 0.01:
             #     diff_values.append(np.nan)
             # else:
             #     diff_values.append(diff[i])
-
+    avg_phi_list = []
+    for (i, (sum_val, counter_val)) in enumerate(zip(sum_list, counter_list)):
+        if counter_val != 0:
+            tt = sum_val / counter_val
+            avg_phi_list.append(tt)
+        else:
+            avg_phi_list.append(0)
+    # print("NUMBER IS: ", subdir )
+    # print(avg_phi_list)
     # print(bool_list)
     
-    for i in range(4, len(bool_list)):
-        if bool_list[i] == False and bool_list[i-1] == True:
+    for i in range(8, len(bool_list)):
+        if avg_phi_list[i] < 0.12:
+        # if bool_list[i] == False and bool_list[i-1] == True:
+            y_threshold = check_list[i]
+            break
+        if (avg_phi_list[i] > avg_phi_list[i-2] + 0.1):
             y_threshold = check_list[i]
             break
     # print(y_threshold)
+    print("y threshold is: ", y_threshold)
 
 
     # for y_val, phi_val in zip(y_values, phi_values):
