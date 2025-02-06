@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 # The data.txt file should contain the provided rows of numbers
 # datan= '-2-42.2-1.72'
 # Get a list of all subdirectories in the 'data' directory
-data_dir = 'data/3-diff/'
+data_dir = 'data/1-diff/'
 subdirectories = [subdir for subdir in os.listdir(data_dir) if os.path.isdir(os.path.join(data_dir, subdir))]
 
 tauphirho_values = [16, 36, 64, 100]
@@ -60,34 +60,95 @@ for subdir in subdirectories:
     rho_values=[]
     diff_values = []
 
-    n=5
-    check_list = [round(x * 0.05, 2) for x in range(int(n * 20) + 1)]   
-    bool_list = [False] * len(check_list)
+    ylen=6
+    xlen=4
+    interval = 0.05
+    start_y = 1
+    nsteps = int(ylen / interval)
+    xnsteps = int(xlen / interval)
+    start_point = int(nsteps * (start_y / ylen))
+    
+    avg_x_for_y = [round(x * interval - 2, 2) for x in range(int(xnsteps) + 1)] 
+    y_list = [round(x * interval, 2) for x in range(int(nsteps) + 1)]   
+    bool_list = [False] * len(y_list)
+    
+    full_matrix = [len(avg_x_for_y) * [0] for i in range(len(y_list))]
+    full_matrix_counter =  [len(avg_x_for_y) * [0] for i in range(len(y_list))]
+    full_matrix_avg =  [len(avg_x_for_y) * [0] for i in range(len(y_list))]
+    
+    sum_list = [0] * len(y_list)
+    counter_list = [0] * len(y_list)
     
     # Find the y value for which phi_value goes below 0.x
-    threshold = 0.5
+    threshold = 0.8
     y_threshold = None
 
 
     for i in range(len(x)):
-        if x[i] < 0.8 and x[i] > -0.8:
-            closest_value = min(check_list, key=lambda c: abs(c - y[i]))
+        if x[i] < 2 and x[i] > -2:
+            closest_value = min(y_list, key=lambda c: abs(c - y[i]))
             if phi[i] > threshold:
-                bool_list[check_list.index(closest_value)] = True
+                bool_list[y_list.index(closest_value)] = True
+                
+            closx_val = min(avg_x_for_y, key=lambda c: abs(c - x[i]))
+            xind = avg_x_for_y.index(closx_val)
+            yind = y_list.index(closest_value)
+            sum_list[yind] += phi[i]
+            counter_list[yind] += 1
+            full_matrix[yind][xind] += phi[i]
+            full_matrix_counter[yind][xind] += 1
             
+            
+    np.set_printoptions(threshold=np.inf)
+    # full_matrix_avg = np.divide(full_matrix, full_matrix_counter, out=np.zeros_like(full_matrix), where=full_matrix_counter!=0)
+
+
+    curvature_list = []
+
+    for i in range(len(full_matrix_avg)):
+        avg_x_val = 0
+        for j in range(len(full_matrix_avg[i])):
+            if (full_matrix_counter[i][j] != 0):
+                full_matrix_avg[i][j] = full_matrix[i][j] / full_matrix_counter[i][j]
+            avg_x_val += j * full_matrix_avg[i][j]
+        if (sum(full_matrix_avg[i]) > 0):
+            avg_x_val = avg_x_val / sum(full_matrix_avg[i])
+            avg_x_val = avg_x_val * interval - 2
+        else:
+            avg_x_val = 0
+        curvature_list.append(avg_x_val)
+                        
             # if diff[i] < 0.01:
             #     diff_values.append(np.nan)
             # else:
             #     diff_values.append(diff[i])
-
+    avg_phi_list = []
+    for (i, (sum_val, counter_val)) in enumerate(zip(sum_list, counter_list)):
+        if counter_val != 0:
+            tt = sum_val / counter_val
+            avg_phi_list.append(tt)
+        else:
+            avg_phi_list.append(0)
+    print("NUMBER IS: ", subdir )
+    print(avg_phi_list)
     # print(bool_list)
     
-    for i in range(4, len(bool_list)):
-        if bool_list[i] == False and bool_list[i-1] == True:
-            y_threshold = check_list[i]
+    curved_length = start_y
+    
+    for i in range(start_point, len(bool_list)):
+        distance = np.sqrt((curvature_list[i] - curvature_list[i-1]) ** 2 + (y_list[i] - y_list[i-1]) ** 2)
+        # print("distance is: ", distance)
+        curved_length += distance
+        if avg_phi_list[i] < 0.08:
+        # if bool_list[i] == False and bool_list[i-1] == True:
+            y_threshold = y_list[i]
+            break
+        if (avg_phi_list[i] > avg_phi_list[i-2] + 0.1):
+            y_threshold = y_list[i]
             break
     # print(y_threshold)
-
+    print("y threshold is: ", y_threshold)
+    print("curved length is: ", curved_length)
 
     # for y_val, phi_val in zip(y_values, phi_values):
     #     if phi_val < threshold and y_val > 0.5:
@@ -101,8 +162,12 @@ for subdir in subdirectories:
     if y_threshold < 0:
         y_threshold = 0
     
+    curved_length = curved_length - 2
+    if curved_length < 0:
+        curved_length = 0
+    
     tau_strings.append(ttt)
-    y_thresholds.append(y_threshold)
+    y_thresholds.append(curved_length)
     # print(trhophi, trho, y_threshold)
 
 
@@ -164,8 +229,7 @@ for tpr in tauphirho_values:
     plot_y_values.append(sorted_plot_y_values)
 
 
-
-
+from scipy.interpolate import UnivariateSpline
 # Make matplotlib line plot
 colors = ['red', 'blue', 'green', 'orange', 'purple']
 
@@ -173,18 +237,35 @@ colors = ['red', 'blue', 'green', 'orange', 'purple']
 # Create the figure
 fig, ax = plt.subplots()
 
-# Plot each line explicitly
+
 for i in range(len(plot_x_values)):
-    currsig = f"{sigmaHLvalues[i]:.2g}"
-    ax.plot(
-        plot_x_values[i],
-        plot_y_values[i],
-        'o-',
-        color=colors[i % len(colors)],
-        label=f'sigmaHL = {currsig}'
-    )
+    # Convert to NumPy arrays
+    x = np.array(plot_x_values[i], dtype=float)
+    y = np.array(plot_y_values[i], dtype=float)
     
-ax.set_ylim([-0.05, 2])
+    # Create a finer grid for smooth interpolation
+    x_new = np.linspace(x.min(), x.max(), 200)
+    
+    # Create the spline function (cubic spline by default)
+    spline = UnivariateSpline(x, y, s=0.008)
+
+    y_smooth = spline(x_new)
+    
+    currsig = f"{sigmaHLvalues[i]:.2g}"
+    
+    # Plot the smooth curve
+    ax.plot(
+        x_new,
+        y_smooth,
+        color=colors[i % len(colors)],
+        label=f'sigmaHL = {currsig}',
+        linewidth=2
+    )
+
+    # Optionally, plot the original data points
+    ax.plot(x, y, 'o', color=colors[i % len(colors)], markersize=5)
+    
+ax.set_ylim([-0.05, 1])
 
 # Set tick properties explicitly
 ax.tick_params(

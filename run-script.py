@@ -51,4 +51,4 @@ command = ["FreeFem++", "working.edp", tauphi_str, taurhophi_str, taurho_str]
 
 print(f"Running: {' '.join(command)}")
 # Execute the command
-subprocess.run(command)
+# subprocess.run(command)
