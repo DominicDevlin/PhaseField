@@ -12,9 +12,9 @@ from matplotlib.cm import get_cmap
 # ---------------------------------------------------------------
 
 # number = 'data/3-diff/0.5-36-25.4'
-number = 'examples/0.5-36-25.4'
+number = 'data/3-diff/1.39-100-82.3'
 prepend = '' + number + '/'
-time = '20'
+time = '1.39-100-82.3'
 
 
 df = pd.read_csv(prepend + 'phi_data' + '-' + time + '.dat', header=None, names=['x', 'y', 'conc'], delimiter='\t')
