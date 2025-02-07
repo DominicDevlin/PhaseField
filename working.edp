@@ -622,7 +622,6 @@ while(curt < endsim)//(maxCFL > 1e-4)
     GetArea
 
 
-
     if (counter % 10 == 0)
     {
         // cout << "Area aratio 1: " << aratio1 << endl;
