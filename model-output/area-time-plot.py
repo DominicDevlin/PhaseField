@@ -72,6 +72,7 @@ def main():
     # Regex to extract time from filenames "phi_data-XXX.dat"
     time_regex = re.compile(r"phi_data-(?:.*-)?([\d.]+)\.dat")
 
+    gamma_hm_pattern = r"0\.889-64-(\d+)-\d+\.dat"
     
     # Prepare the plot
     plt.figure(figsize=(8, 6))
@@ -86,6 +87,9 @@ def main():
             label = label_parts[-1]
         else:
             label = subdir_label
+            
+        print(float(label))
+
 
         # Pattern for the phi data files in the current subdirectory
         file_pattern = os.path.join(subdir, "phi_data-*.dat")
@@ -138,8 +142,9 @@ def main():
         sorted_times = sorted(time_concentration_map.keys())
         sorted_concentrations = [time_concentration_map[t] for t in sorted_times]
 
+        sigma = np.sqrt((5*np.sqrt(2)/12)*0.002 * float(label))
         # Plot the line for the current subdirectory
-        plt.plot(sorted_times, sorted_concentrations, marker='o', linestyle='-', label=label)
+        plt.plot(sorted_times, sorted_concentrations, marker='o', linestyle='-', label=sigma)
 
     # Finalize the plot
     plt.xlabel("Time")
@@ -148,6 +153,7 @@ def main():
     plt.legend(title="Subdirectory (xx.x)")
     plt.grid(False)
     plt.tight_layout()
+    plt.xlim(0, 400)
     plt.show()
 
 if __name__ == "__main__":

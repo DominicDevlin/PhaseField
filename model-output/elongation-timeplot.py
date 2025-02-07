@@ -27,6 +27,8 @@ def main():
             label = label_parts[-1]
         else:
             label = subdir_label
+            
+        print(float(label))
 
         # Pattern for the phi data files in the current subdirectory
         file_pattern = os.path.join(subdir, "phi_data-*.dat")
@@ -144,7 +146,7 @@ def main():
                 distance = np.sqrt((curvature_list[i] - curvature_list[i-1]) ** 2 + (y_list[i] - y_list[i-1]) ** 2)
                 # print("distance is: ", distance)
                 curved_length += distance
-                if avg_phi_list[i] < 0.08:
+                if avg_phi_list[i] < 0.07:
                 # if bool_list[i] == False and bool_list[i-1] == True:
                     y_threshold = y_list[i]
                     break
@@ -173,9 +175,11 @@ def main():
         # Sort times for plotting
         sorted_times = sorted(elongation_map.keys())
         sorted_concentrations = [elongation_map[t] for t in sorted_times]
-
+        
+        sigma = np.sqrt((5*np.sqrt(2)/12)*0.002 * float(label))
+        
         # Plot the line for the current subdirectory
-        plt.plot(sorted_times, sorted_concentrations, marker='o', linestyle='-', label=label)
+        plt.plot(sorted_times, sorted_concentrations, marker='o', linestyle='-', label=sigma)
 
 
     plt.xlabel("Time")
@@ -183,6 +187,7 @@ def main():
     plt.title("Total Concentration vs. Time")
     plt.grid(False)
     plt.tight_layout()
+    plt.xlim(0, 400)
     plt.show()
 
 if __name__ == "__main__":
