@@ -58,7 +58,7 @@ def integrate_concentration_with_delaunay(x, y, c):
 
 def main():
     # Set the path to the subdirectory containing your .dat files
-    data_path = "examples/0.5-36-25.4"    # <-- Replace with your path
+    data_path = "examples/0.889-64-51.3"    # <-- Replace with your path
     file_pattern = os.path.join(data_path, "rho_data-*.dat")
 
     # Prepare a dictionary to hold time -> total concentration
