@@ -289,6 +289,8 @@ ax.spines['left'].set_linewidth(1.5)
 # Add legend
 ax.legend(fontsize=12)
 
+ax.set_ylim([0, 2.0])
+
 # Show the plot
 plt.show()
     
