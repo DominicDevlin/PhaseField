@@ -31,7 +31,7 @@ def main():
      
 
         labels.append(float(label))
-        sigma = np.sqrt((5*np.sqrt(2)/12)*0.0002 * float(label))
+        sigma = float(label) * np.sqrt((2)*0.0002) / 24
         sigmas.append(sigma)
 
     labels = sorted(labels)
