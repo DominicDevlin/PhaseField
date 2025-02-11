@@ -139,7 +139,7 @@ for subdir in subdirectories:
         distance = np.sqrt((curvature_list[i] - curvature_list[i-1]) ** 2 + (y_list[i] - y_list[i-1]) ** 2)
         # print("distance is: ", distance)
         curved_length += distance
-        if avg_phi_list[i] < 0.08:
+        if avg_phi_list[i] < 0.07:
         # if bool_list[i] == False and bool_list[i-1] == True:
             y_threshold = y_list[i]
             break
@@ -158,11 +158,11 @@ for subdir in subdirectories:
     if y_threshold is None:
         y_threshold = 6
 
-    y_threshold = y_threshold - 2
+    y_threshold = y_threshold - 1.8
     if y_threshold < 0:
         y_threshold = 0
     
-    curved_length = curved_length - 2
+    curved_length = curved_length - 1.8
     if curved_length < 0:
         curved_length = 0
     
@@ -206,8 +206,8 @@ for tpr in tauphirho_values:
         grrp = const1* tphi + const2 * trho
 
         # sigmaHM = np.sqrt(np.sqrt(grrp) * np.sqrt(gammarho))
-        sigmaHM = np.sqrt(gammarho)
-        sigmaHL = np.sqrt(gammaphirho)
+        sigmaHM = np.sqrt(2*eps) * gammarho / 24
+        sigmaHL = np.sqrt(2*eps) * gammaphirho / 24
         sigmaLM = 0
         print(sigmaHM, sigmaHL)
         sigratio = sigmaHM - sigmaHL
@@ -265,7 +265,6 @@ for i in range(len(plot_x_values)):
     # Optionally, plot the original data points
     ax.plot(x, y, 'o', color=colors[i % len(colors)], markersize=5)
     
-ax.set_ylim([-0.05, 1])
 
 # Set tick properties explicitly
 ax.tick_params(
@@ -289,7 +288,7 @@ ax.spines['left'].set_linewidth(1.5)
 # Add legend
 ax.legend(fontsize=12)
 
-ax.set_ylim([0, 2.0])
+ax.set_ylim([-0.1, 2.1])
 
 # Show the plot
 plt.show()
