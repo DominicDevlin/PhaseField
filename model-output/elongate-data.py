@@ -139,7 +139,7 @@ for subdir in subdirectories:
         distance = np.sqrt((curvature_list[i] - curvature_list[i-1]) ** 2 + (y_list[i] - y_list[i-1]) ** 2)
         # print("distance is: ", distance)
         curved_length += distance
-        if avg_phi_list[i] < 0.07:
+        if avg_phi_list[i] < 0.08:
         # if bool_list[i] == False and bool_list[i-1] == True:
             y_threshold = y_list[i]
             break
@@ -163,8 +163,8 @@ for subdir in subdirectories:
         y_threshold = 0
     
     curved_length = curved_length - 1.8
-    if curved_length < 0:
-        curved_length = 0
+    if curved_length < -0.1:
+        curved_length = -0.1
     
     tau_strings.append(ttt)
     y_thresholds.append(curved_length)
@@ -206,8 +206,8 @@ for tpr in tauphirho_values:
         grrp = const1* tphi + const2 * trho
 
         # sigmaHM = np.sqrt(np.sqrt(grrp) * np.sqrt(gammarho))
-        sigmaHM = np.sqrt(2*eps) * gammarho / 24
-        sigmaHL = np.sqrt(2*eps) * gammaphirho / 24
+        sigmaHM = np.sqrt(2*eps) * trho / 24
+        sigmaHL = np.sqrt(2*eps) * tphirho / 24
         sigmaLM = 0
         print(sigmaHM, sigmaHL)
         sigratio = sigmaHM - sigmaHL
