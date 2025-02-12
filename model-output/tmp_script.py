@@ -7,7 +7,7 @@ from scipy.spatial import Delaunay
 
 def main():
     # Base directory containing subdirectories (e.g., "examples")
-    base_path = "examples/"
+    base_path = "examples/64"
     pattern = "0.889-64-*"
     # Pattern matching subdirectories of the form "0.889-64-xx.x"
     subdir_pattern = os.path.join(base_path, pattern)
