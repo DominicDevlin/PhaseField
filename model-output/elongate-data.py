@@ -206,8 +206,8 @@ for tpr in tauphirho_values:
         grrp = const1* tphi + const2 * trho
 
         # sigmaHM = np.sqrt(np.sqrt(grrp) * np.sqrt(gammarho))
-        sigmaHM = trho * np.sqrt((2)*0.0002) / 24
-        sigmaHL = tphirho * np.sqrt((2)*0.0002) / 24
+        sigmaHM = np.sqrt(2*eps) * trho / 24
+        sigmaHL = np.sqrt(2*eps) * tphirho / 24
         sigmaLM = 0
         print(sigmaHM, sigmaHL)
         sigratio = sigmaHM - sigmaHL
@@ -265,7 +265,6 @@ for i in range(len(plot_x_values)):
     # Optionally, plot the original data points
     ax.plot(x, y, 'o', color=colors[i % len(colors)], markersize=5)
     
-ax.set_ylim([-0.05, 1])
 
 # Set tick properties explicitly
 ax.tick_params(
