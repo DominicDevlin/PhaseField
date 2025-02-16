@@ -11,9 +11,10 @@ from matplotlib.cm import get_cmap
 #    If your data is whitespace-separated, use 'delim_whitespace=True'.
 # ---------------------------------------------------------------
 
-number = 'data/1-diff/0.889-64-55.2'
+# number = 'examples/0.889-64-41.3'
+number = 'data/'
 prepend = '' + number + '/'
-time = '0.889-64-55.2'
+time = '1'
 
 
 df = pd.read_csv(prepend + 'phi_data' + '-' + time + '.dat', header=None, names=['x', 'y', 'conc'], delimiter='\t')

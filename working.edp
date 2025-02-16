@@ -22,8 +22,8 @@ if (ARGV.n > 3)
 verbosity=0;
 int PrintStep=25000;
 bool doPrint=true;
-bool doTimespan=false;
-int timePrint=100;
+bool doTimespan=true;
+int timePrint=10;
 bool printinterface=false;
 bool PrintEnergy=true;
 string foldern = "images/" + dirstr + "phirho-images/";
@@ -515,11 +515,11 @@ real Ly = 1.0 * dR;  // y half-extent
 func initPhi = 0.5 * (1.0- tanh(( max(abs((x - dxc) / Lx), abs((y - dyc) / Ly)) - 1.0 )/ DropTh)) //0.5 * (1-tanh((abs(y - dyc) - dR) / DropTh))// 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-0.4-dyc)^2) - dR) / (sqrt(2) * DropTh)))
  + 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-dyct)^2) - dRrho) / (sqrt(2) * rhoDropTh)));
 func initRho = 0.5 * (1 - tanh((sqrt((x-dxc)^2 + (y-dyct)^2) - dRrho) / (sqrt(2) * rhoDropTh)));
-func initOutofRho = 0.5 * (1.0- tanh(( max(abs((x - dxc) / Lx), abs((y - dyc) / Ly)) - 1.0 )/ DropTh));
+// func initOutofRho = 0.5 * (1.0- tanh(( max(abs((x - dxc) / Lx), abs((y - dyc) / Ly)) - 1.0 )/ DropTh));
 
 // circle instead
-// dRrho = 0.45;  // Radius
-// func initOutofRho = 0;
+dRrho = 0.45;  // Radius
+func initOutofRho = 0;
 
 func initRhoTwo =  0;
 

@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 # The data.txt file should contain the provided rows of numbers
 # datan= '-2-42.2-1.72'
 # Get a list of all subdirectories in the 'data' directory
-data_dir = 'data/10-diff/'
+data_dir = 'data/circle-start/'
 subdirectories = [subdir for subdir in os.listdir(data_dir) if os.path.isdir(os.path.join(data_dir, subdir))]
 
 tauphirho_values = [16, 36, 64, 100]
@@ -139,7 +139,7 @@ for subdir in subdirectories:
         distance = np.sqrt((curvature_list[i] - curvature_list[i-1]) ** 2 + (y_list[i] - y_list[i-1]) ** 2)
         # print("distance is: ", distance)
         curved_length += distance
-        if avg_phi_list[i] < 0.07:
+        if avg_phi_list[i] < 0.01:
         # if bool_list[i] == False and bool_list[i-1] == True:
             y_threshold = y_list[i]
             break
@@ -158,11 +158,11 @@ for subdir in subdirectories:
     if y_threshold is None:
         y_threshold = 6
 
-    y_threshold = y_threshold - 1.8
+    y_threshold = y_threshold - 1.6
     if y_threshold < -0.1:
         y_threshold = -0.1
     
-    curved_length = curved_length - 1.8
+    curved_length = curved_length - 1.6
     if curved_length < -0.1:
         curved_length = -0.1
     
