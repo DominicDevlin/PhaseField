@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 # The data.txt file should contain the provided rows of numbers
 # datan= '-2-42.2-1.72'
 # Get a list of all subdirectories in the 'data' directory
-data_dir = 'data/circle-start/'
+data_dir = 'data/3-diff/'
 subdirectories = [subdir for subdir in os.listdir(data_dir) if os.path.isdir(os.path.join(data_dir, subdir))]
 
 tauphirho_values = [16, 36, 64, 100]
@@ -223,7 +223,7 @@ for tpr in tauphirho_values:
 
     # Unzip the sorted data
     sorted_plot_x_values, sorted_plot_y_values = zip(*sorted_data)
-    print(sorted_plot_x_values, sorted_plot_y_values)
+    # print(sorted_plot_x_values, sorted_plot_y_values)
     
     plot_x_values.append(sorted_plot_x_values)
     plot_y_values.append(sorted_plot_y_values)

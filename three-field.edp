@@ -1,0 +1,314 @@
+load "gmsh";
+load "iovtk";
+load "UMFPACK64";
+load "isoline";
+load "Element_P3";
+
+real endsim=52;
+real endrelaxation=0.2; // n steps before swapping to phase field main
+bool printScreen=true;
+int screenStep = 5;
+real equilibraterho=1; // use lower rho surface tension at the beginning of simulation
+
+string parstr = "";
+string dirstr = "";
+if (ARGV.n > 3)
+{
+    parstr = "-" + ARGV[2] + "-" + ARGV[3] + "-" + ARGV[4];
+    dirstr =  ARGV[2] + "-" + ARGV[3] + "-" + ARGV[4] + "/";
+    printScreen = false;
+}
+
+verbosity=0;
+int PrintStep=50;
+bool doPrint=true;
+bool doTimespan=false;
+int timePrint=100;
+bool printinterface=false;
+bool PrintEnergy=true;
+string foldern = "images/" + dirstr + "phirho-images/";
+string folderint1 = "images/" + dirstr + "interface1/";
+string folderint2 = "images/" + dirstr + "interface2/";
+string folderphi = "images/" + dirstr + "phi-images/";
+string folderrho = "images/" + dirstr + "rho-images/";
+// string folderrhotwo = "images/" + dirstr + "rhotwo-images/";
+string commandstart = "mkdir images";
+string command0 = "mkdir images/" + dirstr;
+string command1 = "mkdir images/" + dirstr + "phirho-images";
+string command2 = "mkdir images/" + dirstr + "interface1";
+string command3 = "mkdir images/" + dirstr + "interface2";
+string command4 = "mkdir images/" + dirstr + "phi-images";
+string command5 = "mkdir images/" + dirstr + "rho-images";
+// string command6 = "mkdir images/" + dirstr + "rhotwo-images";
+
+bool makeData = true;
+
+if (dirstr == "")
+{
+    dirstr = "data/";
+}
+
+string datafolder = "model-output/" + dirstr;
+string datacommand1 = "mkdir model-output";
+string datacommand2 = "mkdir model-output/" + dirstr;
+
+if (makeData)
+{
+    system(datacommand1);
+    system(datacommand2);
+}
+
+
+if (doPrint)
+{
+    system(commandstart);
+    system(command0);
+    if (printinterface)
+    {
+        system(command2);
+        system(command3);
+    }
+    system(command1);
+    system(command4);
+    system(command5);
+    // system(command6);
+}
+   
+
+// -------------------------------------------------------------------------------------------------------------------------------------
+// Mesh and grid
+
+real xmin =  -2;
+real xmax =  2;
+real ymin =  0;
+real ymax =  6;
+
+// Mesh resolution
+int  n     = 2; // Number of segments per unit length
+real refI  = 1; // Refinement factor for the interface
+real mGrw  = 1;  // Growth rate of the mesh elements
+int  dref  = 10; // Number of time-steps between mesh adaption
+
+
+int sz=72*6/4;
+//mesh Th=square(sz,sz,[.15+x*.5,.4+y*.5]);
+mesh Th = square((xmax-xmin)*n,(ymax-ymin)*n,[xmin+(xmax-xmin)*x,ymin+(ymax-ymin)*y]);
+
+// -------------------------------------------------------------------------------------------------------------------------------------
+// Fields
+fespace Vhfield (Th,P3,periodic=[[2,y],[4,y],[1,x],[3,x]]);
+// -------------------------------------------------------------------------------------------------------------------------------------
+// Compilation of macros
+
+// Mesh adaptation and destruction of the old mesh
+
+
+bool dynamicdiff = false;
+
+// dynamic
+real diffrate =0;//1e-4;// 1e-4;//1e-4;//1e-4;
+real addproportion = 0.; // between 0 and 1
+real addrate=addproportion * diffrate;//0.25e-4;//0.5e-4;
+real netrate=1;
+if (addrate > 0)
+    netrate=(diffrate-addrate)/diffrate;
+
+// non dynamic
+real diffparam = 0.; // this is being treated dynamically if dynamic param is true.
+real absgrowth = 0;
+
+real diffamount=0;
+
+real upperdifflimit=0.6;
+real lowerdifflimit=0.4;
+
+
+Vhfield c1;
+Vhfield c2;
+Vhfield c1old;
+Vhfield c2old;
+Vhfield v;
+Vhfield w;
+Vhfield u;
+
+real M = 0.1;
+real dt = 0.0001;
+real sig12=1;
+real sig23=1;
+real sig13=1;
+real k1 = sig12 + sig13 - sig23;
+real k2 = sig12 + sig23 - sig13;
+real k3 = sig13 + sig23 - sig12;
+real epssq =0.1;
+real eta=1;
+real lmda = 120;
+
+real c1Area = 0;
+real c2Area = 0;
+real c3Area = 0;
+
+real A0c1 = 1;
+real A0c2 = 1;
+real A0c3 = 1;
+
+
+problem SolveOne(c1, v, master=0, solver=sparsesolver)
+    =int2d(Th)(v * (c1)/dt)
+
+    // double well terms
+    + int2d(Th)(1/eta * v * sig12 * c1 * c2^2 )
+    + int2d(Th)(1/eta * v * sig13 * ( c1  - 3*c1*c1old - 2*c1*c2 + 2*c1*c1old^2 + c1*c2^2 + 3*c1*c1old*c2))
+    + int2d(Th)(1/eta * v * sig23 * ( c1*c2^2 - c2^2 + c2^3 ))
+
+    // gradient energy terms
+    + int2d(Th) (1/eta * epssq * k1 * (dx(c1) * dx(v) + dy(c1) * dy(v)))
+    + int2d(Th) (1/eta * epssq * k3 * (dx(c1) * dx(v) + dy(c1) * dy(v)))
+    + int2d(Th) (1/eta * epssq * k3 * (dx(c2) * dx(v) + dy(c2) * dy(v)))
+
+
+    + int2d(Th) (1/eta * ( v * (lmda *(c1Area-A0)*phi*(1-phiold))))
+
+    - int2d(Th)(v * c1old/dt);
+
+
+
+
+problem SolveTwo(c2, w, master=0, solver=sparsesolver)
+    =int2d(Th)(w * (c2)/dt)
+
+
+
+    -int2d(Th)(w * c2old/dt);
+
+
+
+
+
+
+
+
+macro getAdaptMesh()
+Th = adaptmesh(Th,interfacemesh,hmin=1.0/(n*refI),hmax=1.0/n,iso=true,ratio=mGrw,err=0.01,nbvx=5e4,periodic=[[2,y],[4,y],[1,x],[3,x]]);
+w=0;
+u = 0;
+// EOM
+
+Vhfield interfacemesh;
+macro MakeMesh()
+interfacemesh = c1;
+// EOM
+
+
+
+
+real dR = 0.6;  // Radius
+real dRrho = 0.4;  // Radius
+real dxc= 0.0;  // x coordinate
+real dyc= 3;  // y coordinate, 0.2 is start above gorund
+real DropTh = 0.1;  // Drop thickness
+real Lx = dR;  // x half-extent
+real Ly = dR;  // y half-extent
+
+// func initc1 = 0.5* (1.-tanh(( max(abs((x - dxc) / Lx), abs((y - dyc) / Ly)) - 1.0 )/ DropTh));
+
+func initc1 = -tanh(( max(abs((x - dxc) / Lx), abs((y - dyc) / Ly)) - 1.0 )/ DropTh);
+
+// func initc2 = 0.5 * (1.0- tanh(( max(abs((x - 0) / Lx), abs((y - 3) / Ly)) - 1.0 )/ DropTh));
+
+func initc2 = 0.5 * (1.0- tanh((sqrt(x^2+(y-1)^2)-0.5)/DropTh));
+// func initc2 = 0.5 * (1.0- tanh((abs(y-3)-1)/ DropTh));
+
+
+real radius = 0.05;
+real centerX = 0.35;
+real centerX2 = 0.5;
+real centerY = 0.5;
+real Inside =.999;
+real Outside = -.999;
+
+func real initialCondition(real x, real y)
+{
+//return randres53()*2-1;
+return randreal1()*1.8-.9;
+    if (sqrt(pow(x - centerX, 2) + pow(y - centerY, 2)) <= radius || 
+       sqrt(pow(x - centerX2, 2) + pow(y - centerY, 2)) <= radius || 
+       sqrt(pow(x - centerX, 2) + pow(y - 0.8, 2)) <= radius || 
+       sqrt(pow(x - centerX2, 2) + pow(y - 0.8, 2)) <= radius)
+    return Inside;
+  else
+    return Outside;
+}
+
+c2 = 0;
+// plot(c1, wait=true, fill=true, value=1);
+// plot(c2, wait=true, fill=true, value=1);
+c1 = initc1;
+MakeMesh
+getAdaptMesh
+c2 = 0;
+
+
+c1 = initc1;
+
+MakeMesh
+getAdaptMesh
+c2 = 0;
+
+
+c1 = initc1;
+MakeMesh
+getAdaptMesh
+c2 = 0;
+c1 = initc1;
+c1old = c1;
+c2old = c2;
+
+
+int nAdapt=0;
+real curt=0.0;
+// // Time stepping
+int counter = 0;
+bool recorded;
+while(curt < endsim)//(maxCFL > 1e-4)
+{
+    // If needed, carry out mesh adaptation, solve again, adapt again
+    if( nAdapt == dref)
+    {
+        // if (counter < 150)
+        //     ElongateMesh(curt)
+        cout << "    Mesh adpt 1, ";
+        MakeMesh
+        getAdaptMesh
+        cout << endl;
+        nAdapt++;
+        nAdapt = 0;
+        // n=20;
+    }
+    ++counter;
+
+    cout << "Time: " << curt << endl;
+    // solve equations
+    curt = curt+dt;
+    real c1mass = int2d(Th)(c1);
+    cout << "C1 mass: " << c1mass << endl;
+
+    real c2mass = int2d(Th)(c2);
+    cout << "C2 mass: " << c2mass << endl;
+
+    SolveOne;
+    // SolveTwo;
+
+    Vhfield tmp = c1 + c2;
+    
+    plot(c1, wait=false, fill=true, value=1);
+
+
+    // Prepare for the next time step
+    c1old=c1;
+    // c2=1-c1;
+    c2old=c2;
+    // rhotwoold = rhotwo;
+
+    // plot(c1, wait=true, fill=true, value=1);
+    nAdapt++;
+}
