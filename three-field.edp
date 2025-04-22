@@ -129,7 +129,6 @@ Vhfield c1old;
 Vhfield c2old;
 Vhfield v;
 Vhfield w;
-Vhfield u;
 
 real M = 0.1;
 real dt = 0.0001;
@@ -151,6 +150,21 @@ real A0c1 = 1;
 real A0c2 = 1;
 real A0c3 = 1;
 
+// Is this the correct way to do this?? I'm not sure.
+real TotalArea = (ymax-ymin) * (xmax-xmin);
+
+macro GetArea()
+
+    c1Area = int2d(Th)(c1^2 * (3 - 2*c1));
+
+    c2Area = int2d(Th)(c2^2 * (3 - 2*c2));
+
+    c3Area =  TotalArea - c1Area - c2Area;
+
+    A0c3 = TotalArea - A0c1 - A0c2;
+
+// EOM
+
 
 problem SolveOne(c1, v, master=0, solver=sparsesolver)
     =int2d(Th)(v * (c1)/dt)
@@ -158,29 +172,42 @@ problem SolveOne(c1, v, master=0, solver=sparsesolver)
     // double well terms
     + int2d(Th)(1/eta * v * sig12 * c1 * c2^2 )
     + int2d(Th)(1/eta * v * sig13 * ( c1  - 3*c1*c1old - 2*c1*c2 + 2*c1*c1old^2 + c1*c2^2 + 3*c1*c1old*c2))
-    + int2d(Th)(1/eta * v * sig23 * ( c1*c2^2 - c2^2 + c2^3 ))
+    + int2d(Th)(1/eta * v * sig23 * ( c1*c2^2 ))
+
+    + int2d(Th)(1/eta * v * sig23 * ( - c2^2 + c2^3 ))
 
     // gradient energy terms
     + int2d(Th) (1/eta * epssq * k1 * (dx(c1) * dx(v) + dy(c1) * dy(v)))
     + int2d(Th) (1/eta * epssq * k3 * (dx(c1) * dx(v) + dy(c1) * dy(v)))
     + int2d(Th) (1/eta * epssq * k3 * (dx(c2) * dx(v) + dy(c2) * dy(v)))
 
-
-    + int2d(Th) (1/eta * ( v * (lmda *(c1Area-A0)*phi*(1-phiold))))
-
+    // volume constraints:
+    + int2d(Th) (1/eta * ( v * lmda *(c1Area-A0c1)*c1*(1-c1old)))
+    + int2d(Th) (1/eta * ( v * lmda *(c1Area-A0c3)*(1-c1-c2)*(c1old+c2)))
+    + int2d(Th) (1/eta * ( v * lmda *(c1Area-A0c3)*(1-c1-c2)*(c1old+c2)))
     - int2d(Th)(v * c1old/dt);
 
 
 
 
 problem SolveTwo(c2, w, master=0, solver=sparsesolver)
-    =int2d(Th)(w * (c2)/dt)
+    =int2d(Th)(v * (c2)/dt)
 
+    // double well terms
+    + int2d(Th)(1/eta * v * sig12 * c2 * c1^2 )
+    + int2d(Th)(1/eta * v * sig13 * ( c2  - 3*c2*c2old - 2*c2*c1 + 2*c2*c2old^2 + c2*c1^2 + 3*c2*c2old*c1))
+    + int2d(Th)(1/eta * v * sig23 * ( c2*c1^2 - c1^2 + c1^3 ))
 
+    // gradient energy terms
+    + int2d(Th) (1/eta * epssq * k1 * (dx(c2) * dx(v) + dy(c2) * dy(v)))
+    + int2d(Th) (1/eta * epssq * k3 * (dx(c2) * dx(v) + dy(c2) * dy(v)))
+    + int2d(Th) (1/eta * epssq * k3 * (dx(c1) * dx(v) + dy(c1) * dy(v)))
 
-    -int2d(Th)(w * c2old/dt);
+    // volume constraints:
+    + int2d(Th) (1/eta * ( v * lmda *(c2Area-A0c2)*c2*(1-c2old)))
+    + int2d(Th) (1/eta * ( v * lmda *(c2Area-A0c3)*(1-c2-c1)*(c2old+c1)))
 
-
+    - int2d(Th)(v * c2old/dt);
 
 
 
@@ -197,8 +224,6 @@ Vhfield interfacemesh;
 macro MakeMesh()
 interfacemesh = c1;
 // EOM
-
-
 
 
 real dR = 0.6;  // Radius
