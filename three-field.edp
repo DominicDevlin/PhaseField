@@ -4,8 +4,8 @@ load "UMFPACK64";
 load "isoline";
 load "Element_P3";
 
-real endsim=52;
-real endrelaxation=0.2; // n steps before swapping to phase field main
+real endsim=202;
+real endrelaxation=0.5; // n steps before swapping to phase field main
 bool printScreen=true;
 int screenStep = 5;
 real equilibraterho=1; // use lower rho surface tension at the beginning of simulation
@@ -20,25 +20,22 @@ if (ARGV.n > 3)
 }
 
 verbosity=0;
-int PrintStep=50;
+int PrintStep=100;
 bool doPrint=true;
 bool doTimespan=false;
-int timePrint=100;
+int timePrint=200;
 bool printinterface=false;
 bool PrintEnergy=true;
-string foldern = "images/" + dirstr + "phirho-images/";
-string folderint1 = "images/" + dirstr + "interface1/";
-string folderint2 = "images/" + dirstr + "interface2/";
-string folderphi = "images/" + dirstr + "phi-images/";
-string folderrho = "images/" + dirstr + "rho-images/";
+string folder1 = "images/" + dirstr + "composite/";
+string folder2 = "images/" + dirstr + "c1/";
+string folder3 = "images/" + dirstr + "c2/";
+
 // string folderrhotwo = "images/" + dirstr + "rhotwo-images/";
 string commandstart = "mkdir images";
 string command0 = "mkdir images/" + dirstr;
-string command1 = "mkdir images/" + dirstr + "phirho-images";
-string command2 = "mkdir images/" + dirstr + "interface1";
-string command3 = "mkdir images/" + dirstr + "interface2";
-string command4 = "mkdir images/" + dirstr + "phi-images";
-string command5 = "mkdir images/" + dirstr + "rho-images";
+string command1 = "mkdir images/" + dirstr + "composite";
+string command2 = "mkdir images/" + dirstr + "c1";
+string command3 = "mkdir images/" + dirstr + "c2";
 // string command6 = "mkdir images/" + dirstr + "rhotwo-images";
 
 bool makeData = true;
@@ -58,20 +55,13 @@ if (makeData)
     system(datacommand2);
 }
 
-
 if (doPrint)
 {
     system(commandstart);
     system(command0);
-    if (printinterface)
-    {
-        system(command2);
-        system(command3);
-    }
     system(command1);
-    system(command4);
-    system(command5);
-    // system(command6);
+    system(command2);
+    system(command3);
 }
    
 
@@ -107,9 +97,9 @@ Vhfield v;
 Vhfield w;
 
 real dt = 0.01;
-real sig12=6;
-real sig23=2;
-real sig13=2;
+real sig12=28;
+real sig23=10;
+real sig13=10;
 real k1 = sig12 + sig13 - sig23;
 real k2 = sig12 + sig23 - sig13;
 real k3 = sig13 + sig23 - sig12;
@@ -220,6 +210,9 @@ macro MakeMesh()
 interfacemesh = c1 - c2;
 // EOM
 
+macro clip(f) ((f>1.)*1. + (f<0.)*0. + ((f>=0.)*(f<=1.))*f) // EOM
+
+
 
 real dR = 0.6;  // Radius
 real dRrho = 0.4;  // Radius
@@ -277,9 +270,17 @@ A0c3 = TotalArea - A0c1 - A0c2;
 
 cout << c1Area << "\t" << c2Area << "\t" << c3Area << endl;
 
+c1 = clip(initc1);
+c2 = clip(initc2);
 
-c1 = c1-c2;
-c1 = (c1>0)*c1;
+Vhfield sum12 = c1 + c2;
+Vhfield factor  = 1.0 / max(1.0 , sum12);   // “./” is component-wise division
+c1 = c1 * factor;   // rescale only where necessary
+c2 = c2 * factor;
+
+
+// c1 = c1-c2;
+// c1 = (c1>0)*c1;
 
 int nAdapt=0;
 real curt=0.0;
@@ -302,26 +303,39 @@ while(curt < endsim)//(maxCFL > 1e-4)
         // n=20;
     }
     ++counter;
+    if (counter % 10 == 0)
+    {
+        cout << "Time: " << curt << endl;
+        // solve equations
+        
+        real c1mass = int2d(Th)(c1);
+        cout << "c1 mass: " << c1Area << "  with constraint: " << A0c1 << endl;
 
-    cout << "Time: " << curt << endl;
-    // solve equations
+        real c2mass = int2d(Th)(c2);
+        cout << "c2 mass: " << c2Area << "  with constraint: " << A0c2 << endl;
+
+        cout << "c3 mass: " << c3Area << "  with constraint: " << A0c3 << endl;
+    }
+
     curt = curt+dt;
-    real c1mass = int2d(Th)(c1);
-    cout << "c1 mass: " << c1Area << "  with constraint: " << A0c1 << endl;
-
-    real c2mass = int2d(Th)(c2);
-    cout << "c2 mass: " << c2Area << "  with constraint: " << A0c2 << endl;
-
-    cout << "c3 mass: " << c3Area << "  with constraint: " << A0c3 << endl;
-
     SolveOne;
     SolveTwo;
 
 
-    MakeMesh
+    GetArea;
 
-    plot(interfacemesh, wait=false, fill=true, value=1);
+    if (curt < endrelaxation)
+    {
+        A0c1 = c1Area;
+        A0c2 = c2Area;
+        A0c3 = c3Area;
+    }
 
+
+    if (counter % screenStep == 0 && printScreen)
+    {
+        plot(interfacemesh,fill=1,value=1, wait=false);
+    }
 
     // Prepare for the next time step
     c1old=c1;
@@ -331,4 +345,37 @@ while(curt < endsim)//(maxCFL > 1e-4)
 
     // plot(c1, wait=true, fill=true, value=1);
     nAdapt++;
+
+
+    if (counter % PrintStep == 0 && doPrint)
+    {
+        string outputn = folder1 + "image-" + curt + ".eps";
+        plot(interfacemesh, ps=outputn, fill=1, wait=false);
+        outputn = folder2 + "image-" + curt + ".eps";
+        plot(c1, ps=outputn, fill=1, wait=false, value=true);
+        outputn = folder3 + "image-" + curt + ".eps";
+        plot(c2, ps=outputn, fill=1, wait=false, value=true);
+
+    }
+
+    if (doTimespan && counter % timePrint == 0)
+    {
+        string filen = datafolder + "c1-" + curt + ".dat";
+        ofstream TheFile(filen);
+        Vhfield xx=x;
+        Vhfield yy=y;
+        for(int i=0; i< Vhfield.ndof; ++i)
+        {
+            TheFile << xx[][i] << "\t" << yy[][i] << "\t" << c1[][i] << endl;
+        }
+
+        filen = datafolder + "c2-" + curt + ".dat";
+        ofstream TheFiletwo(filen);
+        for(int i=0; i< Vhfield.ndof; ++i)
+        {
+            TheFiletwo << xx[][i] << "\t" << yy[][i] << "\t" << c2[][i] << endl;
+        }
+
+    }
+
 }
