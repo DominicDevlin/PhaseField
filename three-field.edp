@@ -22,8 +22,8 @@ if (ARGV.n > 3)
 verbosity=0;
 int PrintStep=100;
 bool doPrint=true;
-bool doTimespan=false;
-int timePrint=200;
+bool doTimespan=true;
+int DataOutputStep=200;
 bool printinterface=false;
 bool PrintEnergy=true;
 string folder1 = "images/" + dirstr + "composite/";
@@ -97,9 +97,17 @@ Vhfield v;
 Vhfield w;
 
 real dt = 0.01;
-real sig12=28;
+real sig12=10;
 real sig23=10;
 real sig13=10;
+
+if (ARGV.n > 3)
+{
+    sig12 = atof(ARGV[2]);
+    sig13 = atof(ARGV[3]);
+    sig23 = atof(ARGV[4]);
+}
+
 real k1 = sig12 + sig13 - sig23;
 real k2 = sig12 + sig23 - sig13;
 real k3 = sig13 + sig23 - sig12;
@@ -147,22 +155,19 @@ problem SolveOne(c1, v, master=0, solver=sparsesolver)
     // volume constraints:
     + int2d(Th) (1/eta * ( v * lmda *(c1Area-A0c1)*c1*(1-c1old)))
 
-    // --- terms that do NOT contain c1 --------------------- (→ right-hand side)
-    + int2d(Th)( (1/eta) * v * lmda * (c3Area - A0c3) * (c1old + c2) )
-    - int2d(Th)( (1/eta) * v * lmda * (c3Area - A0c3) * c2 * (c1old + c2) )
-
-    // --- term that DOES contain c1 ------------------------ (→ left-hand side)
-    - int2d(Th)( (1/eta) * v * lmda * (c3Area - A0c3) * c1 * (c1old + c2) )
-
     // higher order term part 1:
     + int2d(Th)( (1/eta) * v * ( (k3-k2)*c2^3 + (k2-2*k3)*c2^2 + k3*c2 ))
     + int2d(Th)( (1/eta) * v * ( 3*(k3-k1)*c1*c1old*c2  +  2*(2*k3-k1-k2)*c1*c2^2  +  2*(k1-2*k3)*c1*c2 ))
-
+    // higher order term part 2:
     + int2d(Th) ((1/eta) * v * bigdelta * ( 18*c1*c1old*c2^3  +  12*c1*c1old^2*c2^2  +  6*c1*c2^4  - 18*c1*c1old*c2^2  + 6*c1*c2^2  - 12*c1*c2^3 ))
 
 
     - int2d(Th)(v * c1old/dt);
 
+    // removed c3 volume constraint
+    // + int2d(Th)( (1/eta) * v * lmda * (c3Area - A0c3) * (c1old + c2) )
+    // - int2d(Th)( (1/eta) * v * lmda * (c3Area - A0c3) * c2 * (c1old + c2) )
+    // - int2d(Th)( (1/eta) * v * lmda * (c3Area - A0c3) * c1 * (c1old + c2) )
 
 
 
@@ -180,22 +185,16 @@ problem SolveTwo(c2, w, master=0, solver=sparsesolver)
     + int2d(Th) (1/eta * epssq * k3 * (dx(c2) * dx(w) + dy(c2) * dy(w)))
     + int2d(Th) (1/eta * epssq * k3 * (dx(c1) * dx(w) + dy(c1) * dy(w)))
 
-    // volume constraints:
+    // volume constraint:
     + int2d(Th) (1/eta * ( w * lmda *(c2Area-A0c2)*c2*(1-c2old)))
-
-
-    + int2d(Th) (1/eta * ( w * lmda *(c3Area-A0c3)*(c2old+c1)))
-    - int2d(Th) (1/eta * ( w * lmda *(c3Area-A0c3)*c2*(c2old+c1)))
-    - int2d(Th) (1/eta * ( w * lmda *(c3Area-A0c3)*c1*(c2old+c1)))
 
     // higher order term part 1:
     + int2d(Th)( (1/eta) * w * ( (k3-k1)*c1^3 + (k1-2*k3)*c1^2 + k3*c1 ))
     + int2d(Th)( (1/eta) * w * ( 3*(k3-k2)*c2*c2old*c1  +  2*(2*k3-k2-k1)*c2*c1^2  +  2*(k2-2*k3)*c2*c1 ))
-
+    // higher order term part 2:
     + int2d(Th) ((1/eta) * w * bigdelta * ( 18*c2*c2old*c1^3  +  12*c2*c2old^2*c1^2  +  6*c2*c1^4  - 18*c2*c2old*c1^2  + 6*c2*c1^2  - 12*c2*c1^3 ))
 
     - int2d(Th)(w * c2old/dt);
-
 
 
 
@@ -222,17 +221,37 @@ real DropTh = 0.1;  // Drop thickness
 real Lx = dR;  // x half-extent
 real Ly = dR;  // y half-extent
 
-func initc1 = 0.5* (1.-tanh(( max(abs((x - dxc) / 1.5), abs((y - 4) / Ly)) - 1.0 )/ DropTh));
+// func initc1 = 0.5* (1.-tanh(( max(abs((x - dxc) / 1.5), abs((y - 4) / Ly)) - 1.0 )/ DropTh));
+// // func initc1 = -tanh(( max(abs((x - dxc) / Lx), abs((y - dyc) / Ly)) - 1.0 )/ DropTh);
+// // func initc2 = 0.5 * (1.0- tanh(( max(abs((x - 0) / Lx), abs((y - 3) / Ly)) - 1.0 )/ DropTh));
+// func initc2 = 0.5* (1.-tanh(( max(abs((x - dxc) / Lx), abs((y - 3.2) / Ly)) - 1.0 )/ DropTh));
+// // func initc2 = 0.5 * (1.0- tanh((abs(y-3)-1)/ DropTh));
 
-// func initc1 = -tanh(( max(abs((x - dxc) / Lx), abs((y - dyc) / Ly)) - 1.0 )/ DropTh);
+/* ---------- rectangular band for  c1  ---------- */
+real bandH   = 2.0;              // THICKNESS of the band
+real bandYC  = 1.1;              // VERTICAL CENTRE of the band
+real eps = 0.02; 
 
-// func initc2 = 0.5 * (1.0- tanh(( max(abs((x - 0) / Lx), abs((y - 3) / Ly)) - 1.0 )/ DropTh));
+// periodic distance in x so the band “wraps” cleanly across x = 0 and x = Lx
+// func perX(real x) = min( abs(x)     , Lx - abs(x) );
 
-func initc2 = 0.5* (1.-tanh(( max(abs((x - dxc) / Lx), abs((y - 3.2) / Ly)) - 1.0 )/ DropTh));
-// func initc2 = 0.5 * (1.0- tanh((abs(y-3)-1)/ DropTh));
+/* 0-1 profile: value ≈1 inside the band, ≈0 outside */
+func initc1 = 0.5 * ( 1. - tanh( ( abs(y - bandYC) - bandH/2. ) / eps ) );
 
+/* ---------- semicircle sitting on the band for  c2  ---------- */
+real R   = 0.8;                              // RADIUS  of the semicircle
+real x0  = 0;                            // HORIZONTAL CENTRE
+real y0  = bandYC + bandH/2.;            // VERTICAL CENTRE (touching band)
 
+/* full (smoothed) circle field */
+func circ  = sqrt(  (x - x0)^2  +  (y - y0)^2 );
+func disk = 0.5 * ( 1. - tanh( (circ - R) / eps ) );
 
+/* Heaviside-like mask so we keep only the UPPER half of the circle */
+func mask = 0.5 * ( 1. + tanh( ( y - (bandYC + bandH/2.) ) / eps ) );
+
+/* final semicircle initial condition */
+func initc2 = disk * mask;
 
 
 // plot(c1, wait=true, fill=true, value=1);
@@ -350,7 +369,7 @@ while(curt < endsim)//(maxCFL > 1e-4)
     if (counter % PrintStep == 0 && doPrint)
     {
         string outputn = folder1 + "image-" + curt + ".eps";
-        plot(interfacemesh, ps=outputn, fill=1, wait=false);
+        plot(interfacemesh, ps=outputn, fill=1, value=true, wait=false);
         outputn = folder2 + "image-" + curt + ".eps";
         plot(c1, ps=outputn, fill=1, wait=false, value=true);
         outputn = folder3 + "image-" + curt + ".eps";
@@ -358,7 +377,7 @@ while(curt < endsim)//(maxCFL > 1e-4)
 
     }
 
-    if (doTimespan && counter % timePrint == 0)
+    if (doTimespan && counter % DataOutputStep == 0)
     {
         string filen = datafolder + "c1-" + curt + ".dat";
         ofstream TheFile(filen);
