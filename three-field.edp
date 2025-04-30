@@ -75,7 +75,7 @@ real ymax =  6;
 
 // Mesh resolution
 int  n     = 2; // Number of segments per unit length
-real refI  = 14; // Refinement factor for the interface
+real refI  = 12; // Refinement factor for the interface
 real mGrw  = 1.2;  // Growth rate of the mesh elements
 int  dref  = 10; // Number of time-steps between mesh adaption
 
@@ -91,15 +91,16 @@ fespace Vhfield (Th,P2,periodic=[[2,y],[4,y],[1,x],[3,x]]);
 
 Vhfield c1;
 Vhfield c2;
+Vhfield c3;
 Vhfield c1old;
 Vhfield c2old;
 Vhfield v;
 Vhfield w;
 
 real dt = 0.01;
-real sig12=10;
-real sig23=10;
-real sig13=10;
+real sig12=30.;
+real sig13=20;
+real sig23=20;
 
 if (ARGV.n > 3)
 {
@@ -111,11 +112,11 @@ if (ARGV.n > 3)
 real k1 = sig12 + sig13 - sig23;
 real k2 = sig12 + sig23 - sig13;
 real k3 = sig13 + sig23 - sig12;
-real epssq =0.0002;
+real epssq =0.0005;
 real eta=1;
 real lmda = 120;
 
-real bigdelta = 150;
+real bigdelta = 200;
 
 real c1Area = 0;
 real c2Area = 0;
@@ -138,61 +139,95 @@ macro GetArea()
 // EOM
 
 
+// problem SolveOne(c1, v, master=0, solver=sparsesolver)
+//     =int2d(Th)(v * (c1)/dt)
+
+//     // double well terms
+//     + int2d(Th)(1/eta * v * 2 * sig12 * c1 * c2^2 )
+//     + int2d(Th)(1/eta * v * sig13 * ( c1  - 3*c1*c1old - 2*c1*c2 + 2*c1*c1old^2 + c1*c2^2 + 3*c1*c1old*c2))
+//     + int2d(Th)(1/eta * v * sig23 * ( c1*c2^2 ))
+//     + int2d(Th)(1/eta * v * sig23 * ( - c2^2 + c2^3 ))
+
+//     // gradient energy terms
+//     + int2d(Th) (1/eta * epssq * k1 * (dx(c1) * dx(v) + dy(c1) * dy(v)))
+//     + int2d(Th) (1/eta * epssq * k3 * (dx(c1) * dx(v) + dy(c1) * dy(v)))
+//     + int2d(Th) (1/eta * epssq * k3 * (dx(c2) * dx(v) + dy(c2) * dy(v)))
+
+//     // volume constraints:
+//     + int2d(Th) (1/eta * ( v * lmda *(c1Area-A0c1)*c1*(1-c1old)))
+
+//     /*
+//     // higher order term part 1:
+//     + int2d(Th)( (1/eta) * v * ( (k3-k2)*c2^3 + (k2-2*k3)*c2^2 + k3*c2 ))
+//     + int2d(Th)( (1/eta) * v * ( 3*(k3-k1)*c1*c1old*c2  +  2*(2*k3-k1-k2)*c1*c2^2  +  2*(k1-2*k3)*c1*c2 ))
+//     // higher order term part 2:
+//     + int2d(Th) ((1/eta) * v * bigdelta * ( 18*c1*c1old*c2^3  +  12*c1*c1old^2*c2^2  +  6*c1*c2^4  - 18*c1*c1old*c2^2  + 6*c1*c2^2  - 12*c1*c2^3 ))
+//     */
+
+//     - int2d(Th)(v * c1old/dt);
+
+//     // removed c3 volume constraint
+//     // + int2d(Th)( (1/eta) * v * lmda * (c3Area - A0c3) * (c1old + c2) )
+//     // - int2d(Th)( (1/eta) * v * lmda * (c3Area - A0c3) * c2 * (c1old + c2) )
+//     // - int2d(Th)( (1/eta) * v * lmda * (c3Area - A0c3) * c1 * (c1old + c2) )
+
+
+
+// problem SolveTwo(c2, w, master=0, solver=sparsesolver)
+//     =int2d(Th)(w * (c2)/dt)
+
+//     // double well terms
+//     + int2d(Th)(1/eta * w * sig12 * c2 * c1^2 )
+//     + int2d(Th)(1/eta * w * sig23 * ( c2  - 3*c2*c2old - 2*c2*c1 + 2*c2*c2old^2 + c2*c1^2 + 3*c2*c2old*c1))
+//     + int2d(Th)(1/eta * w * sig13 * ( c2*c1^2 ))
+//     + int2d(Th)(1/eta * w * sig13 * ( c1^3- c1^2  ))
+
+//     // gradient energy terms
+//     + int2d(Th) (1/eta * epssq * k2 * (dx(c2) * dx(w) + dy(c2) * dy(w)))
+//     + int2d(Th) (1/eta * epssq * k3 * (dx(c2) * dx(w) + dy(c2) * dy(w)))
+//     + int2d(Th) (1/eta * epssq * k3 * (dx(c1) * dx(w) + dy(c1) * dy(w)))
+
+//     // volume constraint:
+//     + int2d(Th) (1/eta * ( w * lmda *(c2Area-A0c2)*c2*(1-c2old)))
+
+//     /*
+//     // higher order term part 1:
+//     + int2d(Th)( (1/eta) * w * ( (k3-k1)*c1^3 + (k1-2*k3)*c1^2 + k3*c1 ))
+//     + int2d(Th)( (1/eta) * w * ( 3*(k3-k2)*c2*c2old*c1  +  2*(2*k3-k2-k1)*c2*c1^2  +  2*(k2-2*k3)*c2*c1 ))
+//     // higher order term part 2:
+//     + int2d(Th) ((1/eta) * w * bigdelta * ( 18*c2*c2old*c1^3  +  12*c2*c2old^2*c1^2  +  6*c2*c1^4  - 18*c2*c2old*c1^2  + 6*c2*c1^2  - 12*c2*c1^3 ))
+//     */
+//     - int2d(Th)(w * c2old/dt);
+
+
+
 problem SolveOne(c1, v, master=0, solver=sparsesolver)
     =int2d(Th)(v * (c1)/dt)
 
     // double well terms
-    + int2d(Th)(1/eta * v * sig12 * c1 * c2^2 )
-    + int2d(Th)(1/eta * v * sig13 * ( c1  - 3*c1*c1old - 2*c1*c2 + 2*c1*c1old^2 + c1*c2^2 + 3*c1*c1old*c2))
-    + int2d(Th)(1/eta * v * sig23 * ( c1*c2^2 ))
-    + int2d(Th)(1/eta * v * sig23 * ( - c2^2 + c2^3 ))
+    + int2d(Th)( v * 2*sig12*c1*c2^2 )
+    + int2d(Th)( v * 2*sig13*( c1*c3^2 - c1*c1old*c3 ) )
+    + int2d(Th)( v *(-2)*sig23*c2^2*c3 )
+    + int2d(Th)( epssq*k1*( dx(c1)*dx(v) + dy(c1)*dy(v) ) )
 
-    // gradient energy terms
-    + int2d(Th) (1/eta * epssq * k1 * (dx(c1) * dx(v) + dy(c1) * dy(v)))
-    + int2d(Th) (1/eta * epssq * k3 * (dx(c1) * dx(v) + dy(c1) * dy(v)))
-    + int2d(Th) (1/eta * epssq * k3 * (dx(c2) * dx(v) + dy(c2) * dy(v)))
-
-    // volume constraints:
     + int2d(Th) (1/eta * ( v * lmda *(c1Area-A0c1)*c1*(1-c1old)))
-
-    // higher order term part 1:
-    + int2d(Th)( (1/eta) * v * ( (k3-k2)*c2^3 + (k2-2*k3)*c2^2 + k3*c2 ))
-    + int2d(Th)( (1/eta) * v * ( 3*(k3-k1)*c1*c1old*c2  +  2*(2*k3-k1-k2)*c1*c2^2  +  2*(k1-2*k3)*c1*c2 ))
-    // higher order term part 2:
-    + int2d(Th) ((1/eta) * v * bigdelta * ( 18*c1*c1old*c2^3  +  12*c1*c1old^2*c2^2  +  6*c1*c2^4  - 18*c1*c1old*c2^2  + 6*c1*c2^2  - 12*c1*c2^3 ))
 
 
     - int2d(Th)(v * c1old/dt);
 
-    // removed c3 volume constraint
-    // + int2d(Th)( (1/eta) * v * lmda * (c3Area - A0c3) * (c1old + c2) )
-    // - int2d(Th)( (1/eta) * v * lmda * (c3Area - A0c3) * c2 * (c1old + c2) )
-    // - int2d(Th)( (1/eta) * v * lmda * (c3Area - A0c3) * c1 * (c1old + c2) )
 
 
 
 problem SolveTwo(c2, w, master=0, solver=sparsesolver)
     =int2d(Th)(w * (c2)/dt)
 
-    // double well terms
-    + int2d(Th)(1/eta * w * sig12 * c2 * c1^2 )
-    + int2d(Th)(1/eta * w * sig23 * ( c2  - 3*c2*c2old - 2*c2*c1 + 2*c2*c2old^2 + c2*c1^2 + 3*c2*c2old*c1))
-    + int2d(Th)(1/eta * w * sig13 * ( c2*c1^2 ))
-    + int2d(Th)(1/eta * w * sig13 * ( c1^3- c1^2  ))
+    + int2d(Th)( w * 2*sig12*c2*c1^2 )
+    + int2d(Th)( w * 2*sig23*( c2*c3^2 - c2*c2old*c3 ) )
+    + int2d(Th)( w *(-2)*sig13*c1^2*c3 )
+    + int2d(Th)( epssq*k2*( dx(c2)*dx(w) + dy(c2)*dy(w) ) )
 
-    // gradient energy terms
-    + int2d(Th) (1/eta * epssq * k2 * (dx(c2) * dx(w) + dy(c2) * dy(w)))
-    + int2d(Th) (1/eta * epssq * k3 * (dx(c2) * dx(w) + dy(c2) * dy(w)))
-    + int2d(Th) (1/eta * epssq * k3 * (dx(c1) * dx(w) + dy(c1) * dy(w)))
-
-    // volume constraint:
     + int2d(Th) (1/eta * ( w * lmda *(c2Area-A0c2)*c2*(1-c2old)))
 
-    // higher order term part 1:
-    + int2d(Th)( (1/eta) * w * ( (k3-k1)*c1^3 + (k1-2*k3)*c1^2 + k3*c1 ))
-    + int2d(Th)( (1/eta) * w * ( 3*(k3-k2)*c2*c2old*c1  +  2*(2*k3-k2-k1)*c2*c1^2  +  2*(k2-2*k3)*c2*c1 ))
-    // higher order term part 2:
-    + int2d(Th) ((1/eta) * w * bigdelta * ( 18*c2*c2old*c1^3  +  12*c2*c2old^2*c1^2  +  6*c2*c1^4  - 18*c2*c2old*c1^2  + 6*c2*c1^2  - 12*c2*c1^3 ))
 
     - int2d(Th)(w * c2old/dt);
 
@@ -210,7 +245,7 @@ interfacemesh = c1 - c2;
 // EOM
 
 macro clip(f) ((f>1.)*1. + (f<0.)*0. + ((f>=0.)*(f<=1.))*f) // EOM
-
+macro clip01(f) ((f<0.)*0. + ((f>=0.)*(f<=1.))*f) // EOM
 
 
 real dR = 0.6;  // Radius
@@ -221,7 +256,6 @@ real DropTh = 0.1;  // Drop thickness
 real Lx = dR;  // x half-extent
 real Ly = dR;  // y half-extent
 
-// func initc1 = 0.5* (1.-tanh(( max(abs((x - dxc) / 1.5), abs((y - 4) / Ly)) - 1.0 )/ DropTh));
 // // func initc1 = -tanh(( max(abs((x - dxc) / Lx), abs((y - dyc) / Ly)) - 1.0 )/ DropTh);
 // // func initc2 = 0.5 * (1.0- tanh(( max(abs((x - 0) / Lx), abs((y - 3) / Ly)) - 1.0 )/ DropTh));
 // func initc2 = 0.5* (1.-tanh(( max(abs((x - dxc) / Lx), abs((y - 3.2) / Ly)) - 1.0 )/ DropTh));
@@ -236,7 +270,9 @@ real eps = 0.02;
 // func perX(real x) = min( abs(x)     , Lx - abs(x) );
 
 /* 0-1 profile: value ≈1 inside the band, ≈0 outside */
-func initc1 = 0.5 * ( 1. - tanh( ( abs(y - bandYC) - bandH/2. ) / eps ) );
+// func initc1 = 0.5 * ( 1. - tanh( ( abs(y - bandYC) - bandH/2. ) / eps ) );
+func initc1 = 0.5* (1.-tanh(( max(abs((x - dxc) / 1.5), abs((y - 1.6) / Ly)) - 1.0 )/ DropTh));
+
 
 /* ---------- semicircle sitting on the band for  c2  ---------- */
 real R   = 0.8;                              // RADIUS  of the semicircle
@@ -337,8 +373,16 @@ while(curt < endsim)//(maxCFL > 1e-4)
     }
 
     curt = curt+dt;
+    c3=1-c1-c2;
     SolveOne;
     SolveTwo;
+
+    // c1 = clip(c1);
+    // c2 = clip(c2);
+    // Vhfield s  = c1 + c2;
+    // Vhfield fac = 1.0 / max(1.0 , s);
+    // c1 = c1 * fac;
+    // c2 = c2 * fac;
 
 
     GetArea;
