@@ -133,7 +133,7 @@ real lmda = 120;
 real bigdelta = abs(max(k1,k2,k3))*30;
 cout << "big delta is: " << bigdelta << endl;
 real epseps = 1e-9;
-real Drate = 40;
+real Drate = 0;
 
 real c1Area = 0;
 real c2Area = 0;
