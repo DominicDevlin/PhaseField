@@ -111,9 +111,10 @@ Vhfield precurvatureY;
 Vhfield divprecurvature;
 
 real dt = 0.01;
-real sig12=8.;
+real sig12=18.;
 real sig13=5;
 real sig23=5;
+real sig123 = 70;
 
 
 
@@ -127,7 +128,7 @@ if (ARGV.n > 3)
 real k1 = sig12 + sig13 - sig23;
 real k2 = sig12 + sig23 - sig13;
 real k3 = sig13 + sig23 - sig12;
-real epssq =0.0005;
+real epssq =0.0001;
 real eta=1;
 real lmda = 120;
 real bigdelta = abs(max(k1,k2,k3))*30;
@@ -162,12 +163,15 @@ macro GetArea()
 problem SolveOne(c1, v, master=0, solver=sparsesolver)
     =int2d(Th)(v * (c1)/dt)
 
-    + int2d(Th)( v * 2*sig12*c1*c2^2 )
-    + int2d(Th)( v * 2*sig13*( c1*c3^2 - c1*c1old*c3 ) )
-    + int2d(Th)( v *(-2)*sig23*c2^2*c3 )
-    + int2d(Th)( epssq*k1*( dx(c1)*dx(v) + dy(c1)*dy(v) ) )
-    + int2d(Th) ( epssq * k3 * (dx(c2) * dx(v) + dy(c2) * dy(v)))
-    + int2d(Th) ( epssq * k3 * (dx(c1) * dx(v) + dy(c1) * dy(v)))
+    + int2d(Th)( v * 2*sig12*c1*c2^2)
+    + int2d(Th)( v * 2*sig13*( -3*c1*c1old + 2*c1*c1old^2 + 3*c1*c1old*c2 + c1 - 2*c1*c2 + c1*c2^2 ) )
+    + int2d(Th)( v *(2)*sig23*( c1*c2^2 ))
+    + int2d(Th)( v *(-2)*sig23*(c2^2 - c2^3))
+    + int2d(Th) (v*sig123 * c1 * (4*c1old^2*c2^2 + 2*c2^4 + 6*c1old*c2^3 - 6*c1old*c2^2 - 4*c2^3 + 2*c2^2))
+
+    + int2d(Th) (epssq * (2*sig12 + 8*sig13 + 2*sig23) * (dx(c1) * dx(v) + dy(c1) * dy(v)))
+    + int2d(Th) (epssq * (-2*sig12 + 4*sig13 + 4*sig23) * (dx(c2) * dx(v) + dy(c2) * dy(v)))
+
 
     + int2d(Th) (1/eta * ( v * lmda *(c1Area-A0c1)*c1*(1-c1old)))
 
@@ -189,12 +193,15 @@ func DiffAmount = int2d(Th) (dt * Drate * c1^2 * c2^2);
 problem SolveTwo(c2, w, master=0, solver=sparsesolver)
     =int2d(Th)(w * (c2)/dt)
 
-    + int2d(Th)( w * 2*sig12*c2*c1^2 )
-    + int2d(Th)( w * 2*sig23*( c2*c3^2 - c2*c2old*c3 ) )
-    + int2d(Th)( w *(-2)*sig13*c1^2*c3 )
-    + int2d(Th)( epssq*k2*( dx(c2)*dx(w) + dy(c2)*dy(w) ) )
-    + int2d(Th) (1/eta * epssq * k3 * (dx(c2) * dx(w) + dy(c2) * dy(w)))
-    + int2d(Th) (1/eta * epssq * k3 * (dx(c1) * dx(w) + dy(c1) * dy(w)))
+    + int2d(Th)( w * 2*sig12*c2*c1^2)
+    + int2d(Th)( w * 2*sig23*( -3*c2*c2old + 2*c2*c2old^2 + 3*c2*c2old*c1 + c2 - 2*c2*c1 + c2*c1^2 ) )
+    + int2d(Th)( w *(2)*sig13*( c2*c1^2 ))
+    + int2d(Th)( w *(-2)*sig13*(c1^2 - c1^3))
+    + int2d(Th) (w*sig123 * c2 * (4*c2old^2*c1^2 + 2*c1^4 + 6*c2old*c1^3 - 6*c2old*c1^2 - 4*c1^3 + 2*c1^2))
+
+    + int2d(Th) (epssq * (2*sig12 + 8*sig23 + 2*sig13) * (dx(c2) * dx(w) + dy(c2) * dy(w)))
+    + int2d(Th) (epssq * (-2*sig12 + 4*sig23 + 4*sig13) * (dx(c1) * dx(w) + dy(c1) * dy(w)))
+
 
     + int2d(Th) (1/eta * ( w * lmda *(c2Area-A0c2)*c2*(1-c2old)))
 
