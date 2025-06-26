@@ -111,10 +111,10 @@ Vhfield precurvatureY;
 Vhfield divprecurvature;
 
 real dt = 0.01;
-real sig12=6.;
+real sig12=4;
 real sig13=10;
-real sig23=6;
-real sig123 = 120;
+real sig23=4;
+real sig123 = 200;
 
 
 
@@ -130,7 +130,7 @@ real k2 = sig12 + sig23 - sig13;
 real k3 = sig13 + sig23 - sig12;
 real epssq =0.0001;
 real eta=1;
-real lmda = 120;
+real lmda = 200;
 real bigdelta = abs(max(k1,k2,k3))*30;
 cout << "big delta is: " << bigdelta << endl;
 real epseps = 1e-9;
