@@ -111,9 +111,9 @@ Vhfield precurvatureY;
 Vhfield divprecurvature;
 
 real dt = 0.01;
-real sig12=2.;
-real sig13=8;
-real sig23=2;
+real sig12=6.;
+real sig13=10;
+real sig23=6;
 real sig123 = 120;
 
 
@@ -159,6 +159,30 @@ macro GetArea()
 
 // EOM
 
+func phaseoneintegral = int2d(Th)( 1/eta * (
+    2*sig12*c1*c2^2
+    +  2*sig13*( -3*c1*c1old + 2*c1*c1old^2 + 3*c1*c1old*c2 + c1 - 2*c1*c2 + c1*c2^2 )
+    + (2)*sig23*( c1*c2^2 )
+    + (-2)*sig23*(c2^2 - c2^3)
+    + sig123 * c1 * (4*c1old^2*c2^2 + 2*c2^4 + 6*c1old*c2^3 - 6*c1old*c2^2 - 4*c2^3 + 2*c2^2)
+    //abs(grad(ca-cb))^2
+    +  (epssq/2) * (2*sig12 + 8*sig13 + 2*sig23) * (dxx(c1) + dyy(c1))
+    + (epssq/2) * (-2*sig12 + 4*sig13 + 4*sig23) * (dxx(c2) + dyy(c2))
+));
+
+func phasetwointegral = int2d(Th)( 1/eta * (
+    2*sig12*c2*c1^2 + 
+    2*sig23*( -3*c2*c2old + 2*c2*c2old^2 + 3*c2*c2old*c1 + c2 - 2*c2*c1 + c2*c1^2 ) +
+    (2)*sig13*( c2*c1^2 ) +
+    (-2)*sig13*(c1^2 - c1^3) +
+    sig123 * c2 * (4*c2old^2*c1^2 + 2*c1^4 + 6*c2old*c1^3 - 6*c2old*c1^2 - 4*c1^3 + 2*c1^2) +
+    (epssq/2) * (2*sig12 + 8*sig23 + 2*sig13) * (dxx(c2) + dyy(c2)) +
+    (epssq/2) * (-2*sig12 + 4*sig23 + 4*sig13) * (dxx(c1) + dyy(c1))
+)) ;
+
+real g2phase1 = 0;
+real g2phase2 = 0; 
+
 
 problem SolveOne(c1, v, master=0, solver=sparsesolver)
     =int2d(Th)(v * (c1)/dt)
@@ -169,10 +193,12 @@ problem SolveOne(c1, v, master=0, solver=sparsesolver)
     + int2d(Th)(1/eta * v *(-2)*sig23*(c2^2 - c2^3))
     + int2d(Th)(1/eta *v*sig123 * c1 * (4*c1old^2*c2^2 + 2*c2^4 + 6*c1old*c2^3 - 6*c1old*c2^2 - 4*c2^3 + 2*c2^2))
 
-    + int2d(Th)(1/eta * epssq * (2*sig12 + 8*sig13 + 2*sig23) * (dx(c1) * dx(v) + dy(c1) * dy(v)))
-    + int2d(Th)(1/eta * epssq * (-2*sig12 + 4*sig13 + 4*sig23) * (dx(c2) * dx(v) + dy(c2) * dy(v)))
+    + int2d(Th)(1/eta * (epssq/2) * (2*sig12 + 8*sig13 + 2*sig23) * (dx(c1) * dx(v) + dy(c1) * dy(v)))
+    + int2d(Th)(1/eta * (epssq/2) * (-2*sig12 + 4*sig13 + 4*sig23) * (dx(c2) * dx(v) + dy(c2) * dy(v)))
 
     + int2d(Th)(1/eta * ( v * lmda *(c1Area-A0c1)*c1*(1-c1old)))
+
+    // + int2d(Th)(1/eta * v * ( g2phase1) * (6 * c1*(1-c1old))  )
 
     + int2d(Th)( v * Drate * c1*c1old*c2^2)
 
@@ -184,36 +210,39 @@ problem SolveOne(c1, v, master=0, solver=sparsesolver)
     // + int2d(Th) (v * 6 * bigdelta * c1 * c2^2 * c3 * (c3 - c1old) )
 
 
+
 func DiffAmount = int2d(Th) (dt * Drate * c1^2 * c2^2);
 
 
-problem SolveTwo(c2, w, master=0, solver=sparsesolver)
-    =int2d(Th)(w * (c2)/dt)
 
-    // func. derivative of traditional double well: sig12*c1^2 * c2^2 + sig13*c1^2 * c3^2 + sig23*c2^2 * c3^2
-    + int2d(Th)(1/eta * w * 2*sig12*c2*c1^2)
-    + int2d(Th)(1/eta * w * 2*sig23*( -3*c2*c2old + 2*c2*c2old^2 + 3*c2*c2old*c1 + c2 - 2*c2*c1 + c2*c1^2 ) )
-    + int2d(Th)(1/eta * w *(2)*sig13*( c2*c1^2 ))
-    + int2d(Th)(1/eta * w *(-2)*sig13*(c1^2 - c1^3))
-    // higher order term to prevent ghost leakage: sig123 *c1^2 * c2^2 *c3^2
-    + int2d(Th)(1/eta * w * sig123 * c2 * (4*c2old^2*c1^2 + 2*c1^4 + 6*c2old*c1^3 - 6*c2old*c1^2 - 4*c1^3 + 2*c1^2))
+    problem SolveTwo(c2, w, master=0, solver=sparsesolver)
+        =int2d(Th)(w * (c2)/dt)
 
-    // func. derivative of gradient energy: eps^2/2 * SUM(a<b) sig_ab * abs(grad(ca-cb))^2
-    // should give equilibrium profile gamma_ab = sqrt(2)/6  * eps * sig_ij
-    // resulting in triangle: gamma_12 / sin(theta_3) = gamma_23 / sin(theta_1) = gamma_13 / sin(theta_2), theta_1 + theta_2 + theta_3 = 180
-    + int2d(Th)(1/eta * (epssq/2) * (2*sig12 + 8*sig23 + 2*sig13) * (dx(c2) * dx(w) + dy(c2) * dy(w)))
-    + int2d(Th)(1/eta * (epssq/2) * (-2*sig12 + 4*sig23 + 4*sig13) * (dx(c1) * dx(w) + dy(c1) * dy(w)))
+        // func. derivative of traditional double well: sig12*c1^2 * c2^2 + sig13*c1^2 * c3^2 + sig23*c2^2 * c3^2
+        + int2d(Th)(1/eta * w * 2*sig12*c2*c1^2)
+        + int2d(Th)(1/eta * w * 2*sig23*( -3*c2*c2old + 2*c2*c2old^2 + 3*c2*c2old*c1 + c2 - 2*c2*c1 + c2*c1^2 ) )
+        + int2d(Th)(1/eta * w *(2)*sig13*( c2*c1^2 ))
+        + int2d(Th)(1/eta * w *(-2)*sig13*(c1^2 - c1^3))
+        // higher order term to prevent ghost leakage: sig123 *c1^2 * c2^2 *c3^2
+        + int2d(Th)(1/eta * w * sig123 * c2 * (4*c2old^2*c1^2 + 2*c1^4 + 6*c2old*c1^3 - 6*c2old*c1^2 - 4*c1^3 + 2*c1^2))
 
-    // conservation term: SUM_a lambda/12 * (Aa - A0a) * h(ca)
-    // where h(ca) = int [ca^2 * (3 - 2*ca) ]
-    + int2d(Th)(1/eta * ( w * lmda *(c2Area-A0c2)*c2*(1-c2old)))
+        // func. derivative of gradient energy: eps^2/2 * SUM(a<b) sig_ab * abs(grad(ca-cb))^2
+        // should give equilibrium profile gamma_ab = sqrt(2)/6  * eps * sig_ij
+        // resulting in triangle: gamma_12 / sin(theta_3) = gamma_23 / sin(theta_1) = gamma_13 / sin(theta_2), theta_1 + theta_2 + theta_3 = 180
+        + int2d(Th)(1/eta * (epssq/2) * (2*sig12 + 8*sig23 + 2*sig13) * (dx(c2) * dx(w) + dy(c2) * dy(w)))
+        + int2d(Th)(1/eta * (epssq/2) * (-2*sig12 + 4*sig23 + 4*sig13) * (dx(c1) * dx(w) + dy(c1) * dy(w)))
 
-    // + int2d(Th)( w*( - k1*c1^2* c2 - k2*c1^2 * c2  +2*k2*c1*c3*c2 -2*k3*c1*c3*c2 ))
-    // + int2d(Th)( w * ( k1*c1^2*c3 + k3*c1*c3^2  ))
-    // + int2d(Th)(w * 6 * bigdelta * c1^2 * c2 * c3 * (c3 - c2old) )
-    - int2d(Th) ( w * Drate * c1^2*c2*c2old)
+        // conservation term: SUM_a lambda/12 * (Aa - A0a) * h(ca)
+        // where h(ca) = int [ca^2 * (3 - 2*ca) ]
+        + int2d(Th)(1/eta * ( w * lmda *(c2Area-A0c2)*c2*(1-c2old)))
+        //+ int2d(Th)(1/eta * w * ( g2phase2) * (6 * c2*(1-c2old))  )
 
-    - int2d(Th)(w * c2old/dt);
+        // + int2d(Th)( w*( - k1*c1^2* c2 - k2*c1^2 * c2  +2*k2*c1*c3*c2 -2*k3*c1*c3*c2 ))
+        // + int2d(Th)( w * ( k1*c1^2*c3 + k3*c1*c3^2  ))
+        // + int2d(Th)(w * 6 * bigdelta * c1^2 * c2 * c3 * (c3 - c2old) )
+        - int2d(Th) ( w * Drate * c1^2*c2*c2old)
+
+        - int2d(Th)(w * c2old/dt);
 
 
 
@@ -388,7 +417,9 @@ while(curt < endsim)//(maxCFL > 1e-4)
     // {
     //     curvature=0;
     // }
-
+    // g2phase1 = phaseoneintegral / int2d(Th)(6 * c1 * (1 - c1));
+    // g2phase2 = phasetwointegral / int2d(Th)(6 * c2 * (1 - c2));
+    // cout << "g2phase1: " << g2phase1 << "  g2phase2: " << g2phase2 << endl;
 
     c3=1-c1-c2;
     SolveOne;
@@ -410,7 +441,6 @@ while(curt < endsim)//(maxCFL > 1e-4)
         A0c2 = c2Area;
         A0c3 = c3Area;
     }
-
 
     if (counter % screenStep == 0 && printScreen)
     {
