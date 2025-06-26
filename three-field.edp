@@ -5,7 +5,7 @@ load "isoline";
 load "Element_P3";
 
 real endsim=202;
-real endrelaxation=0.5; // n steps before swapping to phase field main
+real endrelaxation=0.1; // n steps before swapping to phase field main
 bool printScreen=true;
 int screenStep = 5;
 real equilibraterho=1; // use lower rho surface tension at the beginning of simulation
@@ -111,10 +111,10 @@ Vhfield precurvatureY;
 Vhfield divprecurvature;
 
 real dt = 0.01;
-real sig12=18.;
-real sig13=5;
-real sig23=5;
-real sig123 = 70;
+real sig12=2.;
+real sig13=8;
+real sig23=2;
+real sig123 = 120;
 
 
 
