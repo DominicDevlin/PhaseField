@@ -99,23 +99,31 @@ Vhfield c2old;
 Vhfield v;
 Vhfield w;
 
+Vhfield c12;
+Vhfield c13;
+
 Vhfield dummyc1old;
 Vhfield absdelc1;
 Vhfield c1interface;
 Vhfield dummyv;
 Vhfield dummyc1;
 
-Vhfield curvature;
-Vhfield precurvatureX;
-Vhfield precurvatureY;
-Vhfield divprecurvature;
+Vhfield c1curvature;
+Vhfield c1precurvatureX;
+Vhfield c1precurvatureY;
+Vhfield c1divprecurvature;
+
+Vhfield c2curvature;
+Vhfield c2precurvatureX;
+Vhfield c2precurvatureY;
+Vhfield c2divprecurvature;
+
 
 real dt = 0.01;
-real sig12=2;
-real sig13=6;
+real sig12=4;
+real sig13=2;
 real sig23=2;
 real sig123 = 400;
-
 
 
 if (ARGV.n > 3)
@@ -182,6 +190,7 @@ func phasetwointegral = int2d(Th)( 1/eta * (
 
 real g2phase1 = 0;
 real g2phase2 = 0; 
+func DiffAmount = int2d(Th) (dt * Drate * c1^2 * c2^2);
 
 
 problem SolveOne(c1, v, master=0, solver=sparsesolver)
@@ -196,6 +205,8 @@ problem SolveOne(c1, v, master=0, solver=sparsesolver)
     + int2d(Th)(1/eta * (epssq/2) * (2*sig12 + 8*sig13 + 2*sig23) * (dx(c1) * dx(v) + dy(c1) * dy(v)))
     + int2d(Th)(1/eta * (epssq/2) * (-2*sig12 + 4*sig13 + 4*sig23) * (dx(c2) * dx(v) + dy(c2) * dy(v)))
 
+    + int2d(Th)(1/eta * (epssq) * v * c1interface * (sig12*c1curvature + sig13*c2curvature) )
+
     + int2d(Th)(1/eta * ( v * lmda *(c1Area-A0c1)*c1*(1-c1old)))
 
     // + int2d(Th)(1/eta * v * ( g2phase1) * (6 * c1*(1-c1old))  )
@@ -204,14 +215,34 @@ problem SolveOne(c1, v, master=0, solver=sparsesolver)
 
     - int2d(Th)(v * c1old/dt);
 
-    // + int2d(Th) ( (k1+k3) * epssq * v * c1interface * curvature )
+    
     // + int2d(Th) (v * ( 2*k1*c1*c2*c3 - k1*c1*c1old*c2 - k2*c1*c2^2 - 2*k3*c1*c2*c3 ))
     // + int2d(Th) (v * ( k2 * c2^2*c3 + k3*c2*c3^2))
     // + int2d(Th) (v * 6 * bigdelta * c1 * c2^2 * c3 * (c3 - c1old) )
 
 
+problem SolveDummyc1(dummyc1, dummyv, master=0, solver=sparsesolver)
 
-func DiffAmount = int2d(Th) (dt * Drate * c1^2 * c2^2);
+    =int2d(Th)(dummyv * (dummyc1)/dt)
+
+    + int2d(Th)(1/eta * dummyv * 2*sig12*dummyc1old*c2^2)
+    + int2d(Th)(1/eta * dummyv * 2*sig13*( -3*dummyc1old*dummyc1old + 2*dummyc1old*dummyc1old^2 + 3*dummyc1old*dummyc1old*c2 + dummyc1old - 2*dummyc1old*c2 + dummyc1old*c2^2 ) )
+    + int2d(Th)(1/eta * dummyv *(2)*sig23*( dummyc1old*c2^2 ))
+    + int2d(Th)(1/eta * dummyv *(-2)*sig23*(c2^2 - c2^3))
+    + int2d(Th)(1/eta *dummyv*sig123 * dummyc1old * (4*dummyc1old^2*c2^2 + 2*c2^4 + 6*dummyc1old*c2^3 - 6*dummyc1old*c2^2 - 4*c2^3 + 2*c2^2))
+
+    + int2d(Th)(1/eta * (epssq/2) * (2*sig12 + 8*sig13 + 2*sig23) * (dx(dummyc1) * dx(dummyv) + dy(dummyc1) * dy(dummyv)))
+    + int2d(Th)(1/eta * (epssq/2) * (-2*sig12 + 4*sig13 + 4*sig23) * (dx(c2) * dx(dummyv) + dy(c2) * dy(dummyv)))
+
+    + int2d(Th)(1/eta * ( dummyv * lmda *(c1Area-A0c1)*dummyc1*(1-dummyc1old)))
+
+    // + int2d(Th)(1/eta * v * ( g2phase1) * (6 * c1*(1-c1old))  )
+
+    + int2d(Th)( dummyv * Drate * dummyc1*dummyc1old*c2^2)
+
+    - int2d(Th)(dummyv * dummyc1old/dt);
+
+
 
 
 
@@ -235,31 +266,14 @@ problem SolveTwo(c2, w, master=0, solver=sparsesolver)
     // conservation term: SUM_a lambda/12 * (Aa - A0a) * h(ca)
     // where h(ca) = int [ca^2 * (3 - 2*ca) ]
     + int2d(Th)(1/eta * ( w * lmda *(c2Area-A0c2)*c2*(1-c2old)))
-    //+ int2d(Th)(1/eta * w * ( g2phase2) * (6 * c2*(1-c2old))  )
 
-    // + int2d(Th)( w*( - k1*c1^2* c2 - k2*c1^2 * c2  +2*k2*c1*c3*c2 -2*k3*c1*c3*c2 ))
-    // + int2d(Th)( w * ( k1*c1^2*c3 + k3*c1*c3^2  ))
-    // + int2d(Th)(w * 6 * bigdelta * c1^2 * c2 * c3 * (c3 - c2old) )
     - int2d(Th) ( w * Drate * c1^2*c2*c2old)
 
     - int2d(Th)(w * c2old/dt);
 
 
 
-problem SolveDummyc1(dummyc1, dummyv, master=0, solver=sparsesolver)
-    =int2d(Th)(dummyv * (dummyc1)/dt)
 
-    + int2d(Th)( dummyv * 2*sig12*dummyc1*c2^2 )
-    + int2d(Th)( dummyv * 2*sig13*( dummyc1*c3^2 - dummyc1*dummyc1old*c3 ) )
-    + int2d(Th)( dummyv *(-2)*sig23*c2^2*c3 )
-
-    + int2d(Th)( epssq*k1*( dx(dummyc1)*dx(dummyv) + dy(dummyc1)*dy(dummyv) ) )
-    + int2d(Th) ( epssq * k3 * (dx(c2) * dx(dummyv) + dy(c2) * dy(dummyv)))
-    + int2d(Th) ( epssq * k3 * (dx(dummyc1) * dx(dummyv) + dy(dummyc1) * dy(dummyv)))
-
-    + int2d(Th) (1/eta * ( dummyv * lmda *(c1Area-A0c1)*dummyc1*(1-dummyc1old)))
-
-    - int2d(Th)(dummyv * dummyc1old/dt);
 
 
 
@@ -283,8 +297,8 @@ real dRrho = 0.4;  // Radius
 real dxc= 0.0;  // x coordinate
 real dyc= 3;  // y coordinate, 0.2 is start above gorund
 real DropTh = 0.02;  // Drop thickness
-real Lx = dR;  // x half-extent
-real Ly = dR;  // y half-extent
+real Lx = 3.0 * dR;  // x half-extent
+real Ly = 1.0 * dR;  // y half-extent
 
 // // func initc1 = -tanh(( max(abs((x - dxc) / Lx), abs((y - dyc) / Ly)) - 1.0 )/ DropTh);
 // // func initc2 = 0.5 * (1.0- tanh(( max(abs((x - 0) / Lx), abs((y - 3) / Ly)) - 1.0 )/ DropTh));
@@ -303,8 +317,8 @@ real eps = 0.02;
 // func initc1 = 0.5 * ( 1. - tanh( ( abs(y - bandYC) - bandH/2. ) / eps ) );
 // func initc1 = 0.5* (1.-tanh(( max(abs((x - dxc) / 1.5), abs((y - 1.6) / Ly)) - 1.0 )/ DropTh));
 
-func initc1 = 0.5* (1.-tanh( (abs((y - 1.1)) - 1 )/ DropTh));    
-
+// func initc1 = 0.5* (1.-tanh( (abs((y - 1.1)) - 1 )/ DropTh));    
+func initc1 = 0.5 * (1.0 - tanh(( max(abs((x - dxc) / Lx), abs((y - 1.5) / Ly)) - 1.0 )/ DropTh));
 
 /* ---------- semicircle sitting on the band for  c2  ---------- */
 real R   = 0.8;                              // RADIUS  of the semicircle
@@ -405,23 +419,44 @@ while(curt < endsim)//(maxCFL > 1e-4)
     }
 
     curt = curt+dt;
+    c3=1-c1-c2;
 
-    // if (RemoveCurvature)
-    // {
-    //     precurvatureX = dx(c1) / sqrt(dx(c1)^2 + dy(c1)^2 + epseps);
-    //     precurvatureY = dy(c1) / sqrt(dx(c1)^2 + dy(c1)^2 + epseps);
-    //     divprecurvature = dx(precurvatureX) + dy(precurvatureY);
-    //     curvature = sqrt(dx(c1)^2 + dy(c1)^2) * divprecurvature;
-    // }
-    // else
-    // {
-    //     curvature=0;
-    // }
+    if (RemoveCurvature)
+    {
+        c12 = c1 - c2;
+        c13 = c1 - c3;
+        c1precurvatureX = dx(c12) / sqrt(dx(c12)^2 + dy(c12)^2 + epseps);
+        c1precurvatureY = dy(c12) / sqrt(dx(c12)^2 + dy(c12)^2 + epseps);
+        c1divprecurvature = dx(c1precurvatureX) + dy(c1precurvatureY);
+        c1curvature = sqrt(dx(c12)^2 + dy(c12)^2) * c1divprecurvature;
+
+        c2precurvatureX = dx(c13) / sqrt(dx(c13)^2 + dy(c13)^2 + epseps);
+        c2precurvatureY = dy(c13) / sqrt(dx(c13)^2 + dy(c13)^2 + epseps);
+        c2divprecurvature = dx(c2precurvatureX) + dy(c2precurvatureY);
+        c2curvature = sqrt(dx(c13)^2 + dy(c13)^2) * c2divprecurvature;
+        if (counter % 20 == 0)
+        {
+            dummyc1 = c1;
+            dummyc1old = dummyc1;
+            for (int d = 0; d < 3; ++d)
+            {
+                SolveDummyc1;
+                dummyc1old = dummyc1;        
+            }
+            absdelc1 = sqrt(dx(dummyc1)^2 + dy(dummyc1)^2);
+            c1interface = (absdelc1 > 1);
+        }
+    }
+    else
+    {
+        c1curvature=0;
+        c2curvature=0;
+    }
     // g2phase1 = phaseoneintegral / int2d(Th)(6 * c1 * (1 - c1));
     // g2phase2 = phasetwointegral / int2d(Th)(6 * c2 * (1 - c2));
     // cout << "g2phase1: " << g2phase1 << "  g2phase2: " << g2phase2 << endl;
 
-    c3=1-c1-c2;
+    
     SolveOne;
     SolveTwo;
 
@@ -457,18 +492,7 @@ while(curt < endsim)//(maxCFL > 1e-4)
     nAdapt++;
 
 
-    // if (counter % 12 == 0)
-    // {
-    //     dummyc1 = c1;
-    //     dummyc1old = dummyc1;
-    //     for (int d = 0; d < 4; ++d)
-    //     {
-    //         SolveDummyc1;
-    //         dummyc1old = dummyc1;        
-    //     }
-    //     absdelc1 = sqrt(dx(dummyc1)^2 + dy(dummyc1)^2);
-    //     c1interface = (absdelc1 > 1);
-    // }
+
 
 
 
