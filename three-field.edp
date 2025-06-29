@@ -118,11 +118,13 @@ Vhfield c2precurvatureX;
 Vhfield c2precurvatureY;
 Vhfield c2divprecurvature;
 
+Vhfield suppressTP;
+
 
 real dt = 0.01;
 real sig12=4;
-real sig13=2;
-real sig23=2;
+real sig13=8;
+real sig23=8;
 real sig123 = 400;
 
 
@@ -137,6 +139,7 @@ real k1 = sig12 + sig13 - sig23;
 real k2 = sig12 + sig23 - sig13;
 real k3 = sig13 + sig23 - sig12;
 real epssq =0.0002;
+real eps = sqrt(epssq);
 real eta=1;
 real lmda = 120;
 real bigdelta = abs(max(k1,k2,k3))*30;
@@ -205,7 +208,7 @@ problem SolveOne(c1, v, master=0, solver=sparsesolver)
     + int2d(Th)(1/eta * (epssq/2) * (2*sig12 + 8*sig13 + 2*sig23) * (dx(c1) * dx(v) + dy(c1) * dy(v)))
     + int2d(Th)(1/eta * (epssq/2) * (-2*sig12 + 4*sig13 + 4*sig23) * (dx(c2) * dx(v) + dy(c2) * dy(v)))
 
-    + int2d(Th)(1/eta * (epssq) * v * c1interface * (sig12*c1curvature + sig13*c2curvature) )
+    + int2d(Th)(1/eta * (2*epssq) * v * c1interface * (sig13*c2curvature + sig12*c1curvature))
 
     + int2d(Th)(1/eta * ( v * lmda *(c1Area-A0c1)*c1*(1-c1old)))
 
@@ -307,14 +310,14 @@ real Ly = 1.0 * dR;  // y half-extent
 
 /* ---------- rectangular band for  c1  ---------- */
 real bandH   = 2.0;              // THICKNESS of the band
-real bandYC  = 1.1;              // VERTICAL CENTRE of the band
-real eps = 0.02; 
+real bandYC  = 2.1;              // VERTICAL CENTRE of the band
+real gum = 0.02; 
 
 // periodic distance in x so the band “wraps” cleanly across x = 0 and x = Lx
 // func perX(real x) = min( abs(x)     , Lx - abs(x) );
 
 /* 0-1 profile: value ≈1 inside the band, ≈0 outside */
-// func initc1 = 0.5 * ( 1. - tanh( ( abs(y - bandYC) - bandH/2. ) / eps ) );
+// func initc1 = 0.5 * ( 1. - tanh( ( abs(y - bandYC) - bandH/2. ) / gum ) );
 // func initc1 = 0.5* (1.-tanh(( max(abs((x - dxc) / 1.5), abs((y - 1.6) / Ly)) - 1.0 )/ DropTh));
 
 // func initc1 = 0.5* (1.-tanh( (abs((y - 1.1)) - 1 )/ DropTh));    
@@ -330,7 +333,7 @@ func circ  = sqrt(  (x - x0)^2  +  (y - y0)^2 );
 func disk = 0.5 * ( 1. - tanh( (circ - R) / eps ) );
 
 /* Heaviside-like mask so we keep only the UPPER half of the circle */
-func mask = 0.5 * ( 1. + tanh( ( y - (bandYC + bandH/2.) ) / eps ) );
+func mask = 0.5 * ( 1. + tanh( ( y - (bandYC + bandH/2.) ) / gum ) );
 
 /* final semicircle initial condition */
 func initc2 = disk * mask;
@@ -423,6 +426,7 @@ while(curt < endsim)//(maxCFL > 1e-4)
 
     if (RemoveCurvature)
     {
+
         c12 = c1 - c2;
         c13 = c1 - c3;
         c1precurvatureX = dx(c12) / sqrt(dx(c12)^2 + dy(c12)^2 + epseps);
@@ -434,7 +438,10 @@ while(curt < endsim)//(maxCFL > 1e-4)
         c2precurvatureY = dy(c13) / sqrt(dx(c13)^2 + dy(c13)^2 + epseps);
         c2divprecurvature = dx(c2precurvatureX) + dy(c2precurvatureY);
         c2curvature = sqrt(dx(c13)^2 + dy(c13)^2) * c2divprecurvature;
-        if (counter % 20 == 0)
+
+        
+
+        if (counter % 12 == 0 && curt > 0.2)
         {
             dummyc1 = c1;
             dummyc1old = dummyc1;
@@ -446,17 +453,18 @@ while(curt < endsim)//(maxCFL > 1e-4)
             absdelc1 = sqrt(dx(dummyc1)^2 + dy(dummyc1)^2);
             c1interface = (absdelc1 > 1);
         }
+        if (curt < 0.2)
+            c1interface=0;
     }
     else
     {
-        c1curvature=0;
-        c2curvature=0;
+        c1interface=0;
     }
     // g2phase1 = phaseoneintegral / int2d(Th)(6 * c1 * (1 - c1));
     // g2phase2 = phasetwointegral / int2d(Th)(6 * c2 * (1 - c2));
     // cout << "g2phase1: " << g2phase1 << "  g2phase2: " << g2phase2 << endl;
 
-    
+    // c1interface=0;
     SolveOne;
     SolveTwo;
 
@@ -477,6 +485,7 @@ while(curt < endsim)//(maxCFL > 1e-4)
         A0c3 = c3Area;
     }
 
+    c2curvature =c2curvature * (absdelc1>1);
     if (counter % screenStep == 0 && printScreen)
     {
         plot(interfacemesh,fill=1,value=1, wait=false);
