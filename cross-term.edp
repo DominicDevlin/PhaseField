@@ -10,7 +10,7 @@ bool printScreen=true;
 int screenStep = 5;
 real equilibraterho=1; // use lower rho surface tension at the beginning of simulation
 
-bool RemoveCurvature = true;
+bool RemoveCurvature = false;
 
 string parstr = "";
 string dirstr = "";
@@ -77,7 +77,7 @@ real ymax =  6;
 
 // Mesh resolution
 int  n     = 2; // Number of segments per unit length
-real refI  = 12; // Refinement factor for the interface
+real refI  = 10; // Refinement factor for the interface
 real mGrw  = 1.2;  // Growth rate of the mesh elements
 int  dref  = 10; // Number of time-steps between mesh adaption
 
@@ -128,8 +128,8 @@ Vhfield suppressTP;
 
 
 real dt = 0.01;
-real sig12=8;
-real sig13=0.5;
+real sig12=3;
+real sig13=3;
 real sig23=3;
 real sig123 = 400;
 
@@ -144,14 +144,14 @@ if (ARGV.n > 3)
 real k1 = sig12 + sig13 - sig23;
 real k2 = sig12 + sig23 - sig13;
 real k3 = sig13 + sig23 - sig12;
-real epssq =0.0002;
+real epssq =0.004;
 real eps = sqrt(epssq);
 real eta=1;
 real lmda = 120;
 real bigdelta = abs(max(k1,k2,k3))*30;
 cout << "big delta is: " << bigdelta << endl;
 real epseps = 1e-9;
-real Drate = 1;
+real Drate = 0;
 
 real c1Area = 0;
 real c2Area = 0;
@@ -202,6 +202,8 @@ real g2phase2 = 0;
 func DiffAmount = int2d(Th) (dt * Drate * c1^2 * c2^2);
 
 
+real S = sig12 + sig13 + sig23;
+
 problem SolveOne(c1, v, master=0, solver=sparsesolver)
     =int2d(Th)(v * (c1)/dt)
 
@@ -211,10 +213,24 @@ problem SolveOne(c1, v, master=0, solver=sparsesolver)
     + int2d(Th)(1/eta * v *(-2)*sig23*(c2^2 - c2^3))
     + int2d(Th)(1/eta *v*sig123 * c1old * (4*c1old^2*c2^2 + 2*c2^4 + 6*c1old*c2^3 - 6*c1old*c2^2 - 4*c2^3 + 2*c2^2))
 
-    + int2d(Th)(1/eta * (epssq/2) * (2*sig12 + 8*sig13 + 2*sig23) * (dx(c1) * dx(v) + dy(c1) * dy(v)))
-    + int2d(Th)(1/eta * (epssq/2) * (-2*sig12 + 4*sig13 + 4*sig23) * (dx(c2) * dx(v) + dy(c2) * dy(v)))
+    // I1
+    + int2d(Th)(1/eta * (epssq/2) * v * (2) * S * c1 * abs(dx(c2) + dy(c2))^2 )
+    // I2
+    + int2d(Th)(1/eta * (epssq/2) * v * (-2) * S * c2 * (dx(c2)*dx(c1) + dy(c2)*dy(c1)) )
+    // I3
+    + int2d(Th)(1/eta * (epssq/2) * v * (2) * sig13 * (dx(c2)*dx(c1) + dy(c2)*dy(c1)))
+    // I4
+    + int2d(Th)(1/eta * (epssq/2) * v * (-2) * sig23 * abs(dx(c2) + dy(c2))^2)
+    // I5
+    + int2d(Th)(1/eta * (epssq/2) * (2*sig13 - 4*sig13*c2 + 2*(sig12 + sig13 + sig23)*c2^2) * (dx(c1)*dx(v) + dy(c1)*dy(v)))
+    // I6
+    + int2d(Th)(1/eta * (epssq/2) * 2*sig13*c1 * (dx(c2) * dx(v) + dy(c2) * dy(v)))
+    // I7
+    + int2d(Th)(1/eta * (epssq/2) * (-2*S*c1*c2 * (dx(c2)*dx(v) + dy(c2)*dy(v))))
+    // I7 part two
+    + int2d(Th)(1/eta * (epssq/2) * (2*sig23*c2 * (dx(c2)*dx(v) + dy(c2)*dy(v))))
 
-    + int2d(Th)(1/eta * (epssq ) * v * c1interface * (sig12*c12curvature + sig13*c13curvature + sig23*c23curvature))
+    + int2d(Th)(1/eta * (epssq/2) * v * c1interface * (sig12*(c12curvature - c23curvature) + sig13*(c12curvature- c13curvature) + sig23 * (c23curvature - c23curvature)))
 
     + int2d(Th)(1/eta * ( v * lmda *(c1Area-A0c1)*c1*(1-c1old)))
 
@@ -269,8 +285,22 @@ problem SolveTwo(c2, w, master=0, solver=sparsesolver)
     // func. derivative of gradient energy: eps^2/2 * SUM(a<b) sig_ab * abs(grad(ca-cb))^2
     // should give equilibrium profile gamma_ab = sqrt(2)/6  * eps * sig_ij
     // resulting in triangle: gamma_12 / sin(theta_3) = gamma_23 / sin(theta_1) = gamma_13 / sin(theta_2), theta_1 + theta_2 + theta_3 = 180
-    + int2d(Th)(1/eta * (epssq/2) * (2*sig12 + 8*sig23 + 2*sig13) * (dx(c2) * dx(w) + dy(c2) * dy(w)))
-    + int2d(Th)(1/eta * (epssq/2) * (-2*sig12 + 4*sig23 + 4*sig13) * (dx(c1) * dx(w) + dy(c1) * dy(w)))
+    // I1
+    + int2d(Th)(1/eta * (epssq/2) * w * (2) * S * c2 * abs(dx(c1) + dy(c1))^2 )
+    // I2
+    + int2d(Th)(1/eta * (epssq/2) * w * (-2) * S * c1 * (dx(c1)*dx(c2) + dy(c1)*dy(c2)) )
+    // I3
+    + int2d(Th)(1/eta * (epssq/2) * w * (2) * sig23 * (dx(c1)*dx(c2) + dy(c1)*dy(c2)))
+    // I4
+    + int2d(Th)(1/eta * (epssq/2) * w * (-2) * sig13 * abs(dx(c1) + dy(c1))^2)
+    // I5
+    + int2d(Th)(1/eta * (epssq/2) * (2*sig23 - 4*sig23*c1 + 2*(sig12 + sig23 + sig13)*c1^2) * (dx(c2)*dx(w) + dy(c2)*dy(w)))
+    // I6
+    + int2d(Th)(1/eta * (epssq/2) * 2*sig23*c2 * (dx(c1) * dx(w) + dy(c1) * dy(w)))
+    // I7
+    + int2d(Th)(1/eta * (epssq/2) * (-2*S*c2*c1 * (dx(c1)*dx(w) + dy(c1)*dy(w))))
+    // I7 part two
+    + int2d(Th)(1/eta * (epssq/2) * (2*sig13*c1 * (dx(c1)*dx(w) + dy(c1)*dy(w))))
 
     // conservation term: SUM_a lambda/12 * (Aa - A0a) * h(ca)
     // where h(ca) = int [ca^2 * (3 - 2*ca) ]
@@ -433,9 +463,9 @@ while(curt < endsim)//(maxCFL > 1e-4)
     if (RemoveCurvature)
     {
 
-        c12 = c1 - c2;
-        c13 = c1 - c3;
-        c23 = c2 - c3;
+        c12 = c1;// abs(c1*(dx(c2) + dy(c2)) - c2*(dx(c1) + dy(c1)));
+        c13 = c3;// abs(c1*(dx(c3) + dy(c3)) - c3*(dx(c1) + dy(c1)));
+        c23 = c2;// abs(c2*(dx(c3) + dy(c3)) - c3*(dx(c2) + dy(c2)));
 
         c12precurvatureX = dx(c12) / sqrt(dx(c12)^2 + dy(c12)^2 + epseps);
         c12precurvatureY = dy(c12) / sqrt(dx(c12)^2 + dy(c12)^2 + epseps);
