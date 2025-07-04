@@ -10,7 +10,7 @@ bool printScreen=true;
 int screenStep = 5;
 real equilibraterho=1; // use lower rho surface tension at the beginning of simulation
 
-bool RemoveCurvature = true;
+bool RemoveCurvature = false;
 
 string parstr = "";
 string dirstr = "";
@@ -124,7 +124,6 @@ Vhfield c23precurvatureX;
 Vhfield c23precurvatureY;
 Vhfield c23divprecurvature;
 
-Vhfield suppressTP;
 
 
 real dt = 0.01;
@@ -147,6 +146,7 @@ real k3 = sig13 + sig23 - sig12;
 real epssq =0.0002;
 real eps = sqrt(epssq);
 real eta=1;
+real eta2=1;
 real lmda = 120;
 real bigdelta = abs(max(k1,k2,k3))*30;
 cout << "big delta is: " << bigdelta << endl;
@@ -209,12 +209,12 @@ problem SolveOne(c1, v, master=0, solver=sparsesolver)
     + int2d(Th)(1/eta * v * 2*sig13*( -3*c1old*c1old + 2*c1old*c1old^2 + 3*c1old*c1old*c2 + c1old - 2*c1old*c2 + c1old*c2^2 ) )
     + int2d(Th)(1/eta * v *(2)*sig23*( c1old*c2^2 ))
     + int2d(Th)(1/eta * v *(-2)*sig23*(c2^2 - c2^3))
-    + int2d(Th)(1/eta *v*sig123 * c1old * (4*c1old^2*c2^2 + 2*c2^4 + 6*c1old*c2^3 - 6*c1old*c2^2 - 4*c2^3 + 2*c2^2))
+    + int2d(Th)(1/eta * v*sig123 * c1old * (4*c1old^2*c2^2 + 2*c2^4 + 6*c1old*c2^3 - 6*c1old*c2^2 - 4*c2^3 + 2*c2^2))
 
     + int2d(Th)(1/eta * (epssq/2) * (2*sig12 + 8*sig13 + 2*sig23) * (dx(c1) * dx(v) + dy(c1) * dy(v)))
     + int2d(Th)(1/eta * (epssq/2) * (-2*sig12 + 4*sig13 + 4*sig23) * (dx(c2) * dx(v) + dy(c2) * dy(v)))
 
-    + int2d(Th)(1/eta * (epssq ) * v * c1interface * (sig12*c12curvature + sig13*c13curvature + sig23*c23curvature))
+    // + int2d(Th)(1/eta * (epssq ) * v * c1interface * (sig12*c12curvature + sig13*c13curvature + sig23*c23curvature))
 
     + int2d(Th)(1/eta * ( v * lmda *(c1Area-A0c1)*c1*(1-c1old)))
 
@@ -259,22 +259,22 @@ problem SolveTwo(c2, w, master=0, solver=sparsesolver)
     =int2d(Th)(w * (c2)/dt)
 
     // func. derivative of traditional double well: sig12*c1^2 * c2^2 + sig13*c1^2 * c3^2 + sig23*c2^2 * c3^2
-    + int2d(Th)(1/eta * w * 2*sig12*c2old*c1^2)
-    + int2d(Th)(1/eta * w * 2*sig23*( -3*c2old*c2old + 2*c2old*c2old^2 + 3*c2old*c2old*c1 + c2old - 2*c2old*c1 + c2old*c1^2 ) )
-    + int2d(Th)(1/eta * w *(2)*sig13*( c2old*c1^2 ))
-    + int2d(Th)(1/eta * w *(-2)*sig13*(c1^2 - c1^3))
+    + int2d(Th)(1/eta2 * w * 2*sig12*c2old*c1^2)
+    + int2d(Th)(1/eta2 * w * 2*sig23*( -3*c2old*c2old + 2*c2old*c2old^2 + 3*c2old*c2old*c1 + c2old - 2*c2old*c1 + c2old*c1^2 ) )
+    + int2d(Th)(1/eta2 * w *(2)*sig13*( c2old*c1^2 ))
+    + int2d(Th)(1/eta2 * w *(-2)*sig13*(c1^2 - c1^3))
     // higher order term to prevent ghost leakage: sig123 *c1^2 * c2^2 *c3^2
-    + int2d(Th)(1/eta * w * sig123 * c2old * (4*c2old^2*c1^2 + 2*c1^4 + 6*c2old*c1^3 - 6*c2old*c1^2 - 4*c1^3 + 2*c1^2))
+    + int2d(Th)(1/eta2 * w * sig123 * c2old * (4*c2old^2*c1^2 + 2*c1^4 + 6*c2old*c1^3 - 6*c2old*c1^2 - 4*c1^3 + 2*c1^2))
 
     // func. derivative of gradient energy: eps^2/2 * SUM(a<b) sig_ab * abs(grad(ca-cb))^2
     // should give equilibrium profile gamma_ab = sqrt(2)/6  * eps * sig_ij
     // resulting in triangle: gamma_12 / sin(theta_3) = gamma_23 / sin(theta_1) = gamma_13 / sin(theta_2), theta_1 + theta_2 + theta_3 = 180
-    + int2d(Th)(1/eta * (epssq/2) * (2*sig12 + 8*sig23 + 2*sig13) * (dx(c2) * dx(w) + dy(c2) * dy(w)))
-    + int2d(Th)(1/eta * (epssq/2) * (-2*sig12 + 4*sig23 + 4*sig13) * (dx(c1) * dx(w) + dy(c1) * dy(w)))
+    + int2d(Th)(1/eta2 * (epssq/2) * (2*sig12 + 8*sig23 + 2*sig13) * (dx(c2) * dx(w) + dy(c2) * dy(w)))
+    + int2d(Th)(1/eta2 * (epssq/2) * (-2*sig12 + 4*sig23 + 4*sig13) * (dx(c1) * dx(w) + dy(c1) * dy(w)))
 
     // conservation term: SUM_a lambda/12 * (Aa - A0a) * h(ca)
     // where h(ca) = int [ca^2 * (3 - 2*ca) ]
-    + int2d(Th)(1/eta * ( w * lmda *(c2Area-A0c2)*c2*(1-c2old)))
+    + int2d(Th)(1/eta2 * ( w * lmda *(c2Area-A0c2)*c2*(1-c2old)))
 
     - int2d(Th) ( w * Drate * c1^2*c2*c2old)
 
@@ -474,8 +474,9 @@ while(curt < endsim)//(maxCFL > 1e-4)
     }
     // g2phase1 = phaseoneintegral / int2d(Th)(6 * c1 * (1 - c1));
     // g2phase2 = phasetwointegral / int2d(Th)(6 * c2 * (1 - c2));
-    // cout << "g2phase1: " << g2phase1 << "  g2phase2: " << g2phase2 << endl;
+    // cout << "g2phase1: " << g2phase1 << "  g2phase2: " << g2phase2 << endl;\
 
+        
     // c1interface=0;
     SolveOne;
     SolveTwo;
@@ -496,11 +497,16 @@ while(curt < endsim)//(maxCFL > 1e-4)
         A0c2 = c2Area;
         A0c3 = c3Area;
     }
+    if (curt >= endrelaxation)
+    {
+        eta=30;
+    }
 
     if (counter % screenStep == 0 && printScreen)
     {
         plot(interfacemesh,fill=1,value=1, wait=false);
     }
+    
 
     // Prepare for the next time step
     c1old=c1;
