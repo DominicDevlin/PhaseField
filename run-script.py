@@ -10,20 +10,20 @@ if (len(sys.argv) > 1):
     print("INDEX IS: ", index)
     # prepend = "xvfb-run -a "
 
-# this needs to be 2 instead of 1 otherwise phi falls too fast. 
-sigma12 = 30
+
+sigma13 = 3
 
 
 pairs = []
 results = []
 
-sigma13_values =  [10, 20, 30, 40, 50]
-sigma23_values = [10, 20, 30, 40, 50]
-for tpr in sigma13_values:
+sigma12_values =  [3, 6, 9, 12, 15]
+sigma23_values = [3, 6, 9, 12, 15]
+for tpr in sigma12_values:
     for tr in sigma23_values:
         pairs.append((tpr, tr))
 
-sigma13, sigma23 = pairs[index]
+sigma12, sigma23 = pairs[index]
 
 
 
@@ -33,9 +33,9 @@ sigma23_str = f"{sigma23:.3g}"
 
 
 print("totals: ", len(pairs))
-print("tau phi:", sigma12_str)
-print("tau rhophi:", sigma13_str)
-print("tau rho:", sigma12_str)
+print("sig12:", sigma12_str)
+print("sig13:", sigma13_str)
+print("sig23:", sigma23_str)
 
 # Build the command as a list of strings
 command = ["FreeFem++", "three-field.edp", sigma12_str, sigma13_str, sigma12_str]

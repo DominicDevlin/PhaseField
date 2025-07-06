@@ -5,8 +5,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
 #SBATCH --array=0-24
-#SBATCH --account=uoa02799         
-#SBATCH --partition=milan
+#SBATCH --account=uoa02799 
 
 
 module load Python/3.10.5-gimkl-2022a

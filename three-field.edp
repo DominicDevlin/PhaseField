@@ -4,11 +4,11 @@ load "UMFPACK64";
 load "isoline";
 load "Element_P3";
 
-real endsim=202;
-real endrelaxation=0.1; // n steps before swapping to phase field main
+real endsim=501;
+real endrelaxation=0.2; // area relaxation
+real endequilibrate=6; // no differentiation
 bool printScreen=true;
 int screenStep = 5;
-real equilibraterho=1; // use lower rho surface tension at the beginning of simulation
 
 bool RemoveCurvature = false;
 
@@ -22,7 +22,7 @@ if (ARGV.n > 3)
 }
 
 verbosity=0;
-int PrintStep=100;
+int PrintStep=5000;
 bool doPrint=true;
 bool doTimespan=true;
 int DataOutputStep=200;
@@ -127,9 +127,9 @@ Vhfield c23divprecurvature;
 
 
 real dt = 0.01;
-real sig12=8;
-real sig13=0.5;
-real sig23=3;
+real sig12=13;
+real sig13=4;
+real sig23=8;
 real sig123 = 400;
 
 
@@ -146,12 +146,16 @@ real k3 = sig13 + sig23 - sig12;
 real epssq =0.0002;
 real eps = sqrt(epssq);
 real eta=1;
-real eta2=1;
+real eta2=eta;
+real etasolid = 100;
 real lmda = 120;
 real bigdelta = abs(max(k1,k2,k3))*30;
 cout << "big delta is: " << bigdelta << endl;
 real epseps = 1e-9;
-real Drate = 1;
+real Drate = 0;
+real endDrate = 0.5;
+
+real npow = 8;
 
 real c1Area = 0;
 real c2Area = 0;
@@ -214,45 +218,18 @@ problem SolveOne(c1, v, master=0, solver=sparsesolver)
     + int2d(Th)(1/eta * (epssq/2) * (2*sig12 + 8*sig13 + 2*sig23) * (dx(c1) * dx(v) + dy(c1) * dy(v)))
     + int2d(Th)(1/eta * (epssq/2) * (-2*sig12 + 4*sig13 + 4*sig23) * (dx(c2) * dx(v) + dy(c2) * dy(v)))
 
-    // + int2d(Th)(1/eta * (epssq ) * v * c1interface * (sig12*c12curvature + sig13*c13curvature + sig23*c23curvature))
 
     + int2d(Th)(1/eta * ( v * lmda *(c1Area-A0c1)*c1*(1-c1old)))
 
-    // + int2d(Th)(1/eta * v * ( g2phase1) * (6 * c1*(1-c1old))  )
 
-    + int2d(Th)( v * Drate * c1*c1old*c2^2)
+    - int2d(Th)( v * Drate * 4^npow * c1old^npow * c2^npow)
 
     - int2d(Th)(v * c1old/dt);
 
-    
+    // + int2d(Th)(1/eta * (epssq ) * v * c1interface * (sig12*c12curvature + sig13*c13curvature + sig23*c23curvature))
     // + int2d(Th) (v * ( 2*k1*c1*c2*c3 - k1*c1*c1old*c2 - k2*c1*c2^2 - 2*k3*c1*c2*c3 ))
     // + int2d(Th) (v * ( k2 * c2^2*c3 + k3*c2*c3^2))
     // + int2d(Th) (v * 6 * bigdelta * c1 * c2^2 * c3 * (c3 - c1old) )
-
-
-problem SolveDummyc1(dummyc1, dummyv, master=0, solver=sparsesolver)
-
-    =int2d(Th)(dummyv * (dummyc1)/dt)
-
-    + int2d(Th)(1/eta * dummyv * 2*sig12*dummyc1old*c2^2)
-    + int2d(Th)(1/eta * dummyv * 2*sig13*( -3*dummyc1old*dummyc1old + 2*dummyc1old*dummyc1old^2 + 3*dummyc1old*dummyc1old*c2 + dummyc1old - 2*dummyc1old*c2 + dummyc1old*c2^2 ) )
-    + int2d(Th)(1/eta * dummyv *(2)*sig23*( dummyc1old*c2^2 ))
-    + int2d(Th)(1/eta * dummyv *(-2)*sig23*(c2^2 - c2^3))
-    + int2d(Th)(1/eta *dummyv*sig123 * dummyc1old * (4*dummyc1old^2*c2^2 + 2*c2^4 + 6*dummyc1old*c2^3 - 6*dummyc1old*c2^2 - 4*c2^3 + 2*c2^2))
-
-    + int2d(Th)(1/eta * (epssq/2) * (2*sig12 + 8*sig13 + 2*sig23) * (dx(dummyc1) * dx(dummyv) + dy(dummyc1) * dy(dummyv)))
-    + int2d(Th)(1/eta * (epssq/2) * (-2*sig12 + 4*sig13 + 4*sig23) * (dx(c2) * dx(dummyv) + dy(c2) * dy(dummyv)))
-
-    + int2d(Th)(1/eta * ( dummyv * lmda *(c1Area-A0c1)*dummyc1*(1-dummyc1old)))
-
-    // + int2d(Th)(1/eta * v * ( g2phase1) * (6 * c1*(1-c1old))  )
-
-    + int2d(Th)( dummyv * Drate * dummyc1*dummyc1old*c2^2)
-
-    - int2d(Th)(dummyv * dummyc1old/dt);
-
-
-
 
 
 problem SolveTwo(c2, w, master=0, solver=sparsesolver)
@@ -276,14 +253,33 @@ problem SolveTwo(c2, w, master=0, solver=sparsesolver)
     // where h(ca) = int [ca^2 * (3 - 2*ca) ]
     + int2d(Th)(1/eta2 * ( w * lmda *(c2Area-A0c2)*c2*(1-c2old)))
 
-    - int2d(Th) ( w * Drate * c1^2*c2*c2old)
+    + int2d(Th) ( w * Drate * 4^npow * c1^npow * c2old^npow)
 
     - int2d(Th)(w * c2old/dt);
 
 
 
 
+problem SolveDummyc1(dummyc1, dummyv, master=0, solver=sparsesolver)
 
+    =int2d(Th)(dummyv * (dummyc1)/dt)
+
+    + int2d(Th)(1/eta * dummyv * 2*sig12*dummyc1old*c2^2)
+    + int2d(Th)(1/eta * dummyv * 2*sig13*( -3*dummyc1old*dummyc1old + 2*dummyc1old*dummyc1old^2 + 3*dummyc1old*dummyc1old*c2 + dummyc1old - 2*dummyc1old*c2 + dummyc1old*c2^2 ) )
+    + int2d(Th)(1/eta * dummyv *(2)*sig23*( dummyc1old*c2^2 ))
+    + int2d(Th)(1/eta * dummyv *(-2)*sig23*(c2^2 - c2^3))
+    + int2d(Th)(1/eta *dummyv*sig123 * dummyc1old * (4*dummyc1old^2*c2^2 + 2*c2^4 + 6*dummyc1old*c2^3 - 6*dummyc1old*c2^2 - 4*c2^3 + 2*c2^2))
+
+    + int2d(Th)(1/eta * (epssq/2) * (2*sig12 + 8*sig13 + 2*sig23) * (dx(dummyc1) * dx(dummyv) + dy(dummyc1) * dy(dummyv)))
+    + int2d(Th)(1/eta * (epssq/2) * (-2*sig12 + 4*sig13 + 4*sig23) * (dx(c2) * dx(dummyv) + dy(c2) * dy(dummyv)))
+
+    + int2d(Th)(1/eta * ( dummyv * lmda *(c1Area-A0c1)*dummyc1*(1-dummyc1old)))
+
+    // + int2d(Th)(1/eta * v * ( g2phase1) * (6 * c1*(1-c1old))  )
+
+    + int2d(Th)( dummyv * Drate * dummyc1*dummyc1old*c2^2)
+
+    - int2d(Th)(dummyv * dummyc1old/dt);
 
 
 macro getAdaptMesh()
@@ -476,18 +472,9 @@ while(curt < endsim)//(maxCFL > 1e-4)
     // g2phase2 = phasetwointegral / int2d(Th)(6 * c2 * (1 - c2));
     // cout << "g2phase1: " << g2phase1 << "  g2phase2: " << g2phase2 << endl;\
 
-        
     // c1interface=0;
     SolveOne;
     SolveTwo;
-
-    // c1 = clip(c1);
-    // c2 = clip(c2);
-    // Vhfield s  = c1 + c2;
-    // Vhfield fac = 1.0 / max(1.0 , s);
-    // c1 = c1 * fac;
-    // c2 = c2 * fac;
-
 
     GetArea;
 
@@ -499,8 +486,18 @@ while(curt < endsim)//(maxCFL > 1e-4)
     }
     if (curt >= endrelaxation)
     {
-        eta=30;
+        eta=etasolid;
     }
+    if (curt > endequilibrate)
+    {
+        Drate = endDrate;
+    }
+    if (A0c1 < 0.05)
+    {
+        curt = endsim;
+    }
+
+
 
     if (counter % screenStep == 0 && printScreen)
     {
