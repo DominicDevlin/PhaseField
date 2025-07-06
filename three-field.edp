@@ -25,7 +25,7 @@ verbosity=0;
 int PrintStep=5000;
 bool doPrint=true;
 bool doTimespan=true;
-int DataOutputStep=200;
+int DataOutputStep=2000;
 bool printinterface=false;
 bool PrintEnergy=true;
 string folder1 = "images/" + dirstr + "composite/";
@@ -127,10 +127,10 @@ Vhfield c23divprecurvature;
 
 
 real dt = 0.01;
-real sig12=13;
-real sig13=4;
-real sig23=8;
-real sig123 = 400;
+real sig12=15;
+real sig13=3;
+real sig23=15;
+real sig123 = 1200;
 
 
 if (ARGV.n > 3)
@@ -153,7 +153,7 @@ real bigdelta = abs(max(k1,k2,k3))*30;
 cout << "big delta is: " << bigdelta << endl;
 real epseps = 1e-9;
 real Drate = 0;
-real endDrate = 0.5;
+real endDrate = 1;
 
 real npow = 8;
 
@@ -222,7 +222,7 @@ problem SolveOne(c1, v, master=0, solver=sparsesolver)
     + int2d(Th)(1/eta * ( v * lmda *(c1Area-A0c1)*c1*(1-c1old)))
 
 
-    - int2d(Th)( v * Drate * 4^npow * c1old^npow * c2^npow)
+    - int2d(Th)( v * Drate * c1*c1old * c2^2)
 
     - int2d(Th)(v * c1old/dt);
 
@@ -253,7 +253,7 @@ problem SolveTwo(c2, w, master=0, solver=sparsesolver)
     // where h(ca) = int [ca^2 * (3 - 2*ca) ]
     + int2d(Th)(1/eta2 * ( w * lmda *(c2Area-A0c2)*c2*(1-c2old)))
 
-    + int2d(Th) ( w * Drate * 4^npow * c1^npow * c2old^npow)
+    + int2d(Th) ( w * Drate * c1^2 * c2*c2old)
 
     - int2d(Th)(w * c2old/dt);
 

@@ -38,7 +38,7 @@ print("sig13:", sigma13_str)
 print("sig23:", sigma23_str)
 
 # Build the command as a list of strings
-command = ["FreeFem++", "three-field.edp", sigma12_str, sigma13_str, sigma12_str]
+command = ["FreeFem++", "three-field.edp", sigma12_str, sigma13_str, sigma23_str]
 
 print(f"Running: {' '.join(command)}")
 # Execute the command

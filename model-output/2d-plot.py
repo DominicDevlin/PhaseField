@@ -11,21 +11,21 @@ from matplotlib.cm import get_cmap
 #    If your data is whitespace-separated, use 'delim_whitespace=True'.
 # ---------------------------------------------------------------
 
-# number = 'examples/0.889-64-41.3'
-number = 'data/'
+# number = '12-3-12'
+number = 'data/12-3-15'
 prepend = '' + number + '/'
-time = '1'
+time = '174'
 
 
-df = pd.read_csv(prepend + 'phi_data' + '-' + time + '.dat', header=None, names=['x', 'y', 'conc'], delimiter='\t')
-df2 = pd.read_csv(prepend + 'rho_data' + '-' + time + '.dat', header=None, names=['x', 'y', 'conc'], delimiter='\t')
+df = pd.read_csv(prepend + 'c1' + '-' + time + '.dat', header=None, names=['x', 'y', 'conc'], delimiter='\t')
+df2 = pd.read_csv(prepend + 'c2' + '-' + time + '.dat', header=None, names=['x', 'y', 'conc'], delimiter='\t')
 
 # ---------------------------------------------------------------
 # 2. Convert DataFrame columns to NumPy arrays
 # ---------------------------------------------------------------
 x = df['x'].values 
 y = df['y'].values
-c = df['conc'].values* (df2['conc'].values * 2 - 1)
+c = df['conc'].values# - (df2['conc'].values)
 # c = df['conc'].values #* (df2['conc'].values * 2 - 1)
 
 # ---------------------------------------------------------------
@@ -40,7 +40,7 @@ plt.figure(figsize=(8, 12))
 
 # Optionally, specify the contour levels
 # E.g., 50 equally spaced intervals between min and max of c
-levels = np.linspace(-1.03, 1.03, 40)
+levels = np.linspace(-0.03, 0.12, 40)
 
 bwr_cmap = get_cmap('bwr')
 blue_to_white_cmap = LinearSegmentedColormap.from_list(
@@ -63,6 +63,7 @@ plt.gca().set_aspect('equal', adjustable='box')
 plt.xlabel('X coordinate')
 plt.ylabel('Y coordinate')
 plt.title('2D Concentration Distribution')
+plt.ylim(2.9,3.2)
 
 # ---------------------------------------------------------------
 # 6. Show the plot
