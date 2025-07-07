@@ -12,9 +12,9 @@ from matplotlib.cm import get_cmap
 # ---------------------------------------------------------------
 
 # number = '12-3-12'
-number = 'data/12-3-15'
+number = 'data/highK/3-3-3'
 prepend = '' + number + '/'
-time = '174'
+time = '500'
 
 
 df = pd.read_csv(prepend + 'c1' + '-' + time + '.dat', header=None, names=['x', 'y', 'conc'], delimiter='\t')
@@ -25,7 +25,7 @@ df2 = pd.read_csv(prepend + 'c2' + '-' + time + '.dat', header=None, names=['x',
 # ---------------------------------------------------------------
 x = df['x'].values 
 y = df['y'].values
-c = df['conc'].values# - (df2['conc'].values)
+c = df['conc'].values - (df2['conc'].values)
 # c = df['conc'].values #* (df2['conc'].values * 2 - 1)
 
 # ---------------------------------------------------------------
@@ -40,7 +40,7 @@ plt.figure(figsize=(8, 12))
 
 # Optionally, specify the contour levels
 # E.g., 50 equally spaced intervals between min and max of c
-levels = np.linspace(-0.03, 0.12, 40)
+levels = np.linspace(-1.03, 1.03, 40)
 
 bwr_cmap = get_cmap('bwr')
 blue_to_white_cmap = LinearSegmentedColormap.from_list(
@@ -63,7 +63,7 @@ plt.gca().set_aspect('equal', adjustable='box')
 plt.xlabel('X coordinate')
 plt.ylabel('Y coordinate')
 plt.title('2D Concentration Distribution')
-plt.ylim(2.9,3.2)
+# plt.ylim(2.9,3.2)
 
 # ---------------------------------------------------------------
 # 6. Show the plot
