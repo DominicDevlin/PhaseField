@@ -128,9 +128,9 @@ Vhfield suppressTP;
 
 
 real dt = 0.01;
-real sig12=3;
+real sig12=9;
 real sig13=3;
-real sig23=3;
+real sig23=9;
 real sig123 = 400;
 
 

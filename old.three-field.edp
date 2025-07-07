@@ -252,6 +252,7 @@ problem SolveTwo(c2, w, master=0, solver=sparsesolver)
     // where h(ca) = int [ca^2 * (3 - 2*ca) ]
     + int2d(Th)(1/eta2 * ( w * lmda *(c2Area-A0c2)*c2*(1-c2old)))
 
+    // differentiation term
     + int2d(Th) ( w * Drate * c1^2 * c2*c2old)
 
     - int2d(Th)(w * c2old/dt);
