@@ -4,7 +4,7 @@ import numpy as np
 import sympy as sp
 
 
-index = 0
+index = 12
 
 if (len(sys.argv) > 1):
     index = int(sys.argv[1])
