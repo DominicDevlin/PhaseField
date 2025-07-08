@@ -11,10 +11,10 @@ from matplotlib.cm import get_cmap
 #    If your data is whitespace-separated, use 'delim_whitespace=True'.
 # ---------------------------------------------------------------
 
-# number = '12-3-12'
-number = 'data/cross-term/8-2-8'
+# number = '30-3-30'
+number = 'data/large-cross-term/30-6-30'
 prepend = '' + number + '/'
-time = '340'
+time = '180'
 
 
 df = pd.read_csv(prepend + 'c1' + '-' + time + '.dat', header=None, names=['x', 'y', 'conc'], delimiter='\t')
