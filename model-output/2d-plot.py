@@ -12,9 +12,9 @@ from matplotlib.cm import get_cmap
 # ---------------------------------------------------------------
 
 # number = '30-3-30'
-number = 'data/large-cross-term/6-6-18'
+number = 'data/sig13high/3-12-3'
 prepend = '' + number + '/'
-time = '420'
+time = '240'
 
 
 df = pd.read_csv(prepend + 'c1' + '-' + time + '.dat', header=None, names=['x', 'y', 'conc'], delimiter='\t')

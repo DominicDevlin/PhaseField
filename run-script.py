@@ -16,11 +16,10 @@ output = []
 results = []
 eps = 0.03
 
-gamma12_values =  [0.02, 0.04, 0.06, 0.08, 0.1]
-gamma23_values = [0.02, 0.04, 0.06, 0.08, 0.1]
+gamma12_values =  [0.03, 0.06, 0.09, 0.12, 0.15]
+gamma23_values = [0.03, 0.06, 0.09, 0.12, 0.15]
 
-gamma13 = 0.02
-
+gamma13 = 0.12
 
 
 for gamma12 in gamma12_values:
