@@ -14,12 +14,12 @@ if (len(sys.argv) > 1):
 
 output = []
 results = []
-eps = 0.03
+eps = 0.02
 
 gamma12_values =  [0.03, 0.06, 0.09, 0.12, 0.15]
 gamma23_values = [0.03, 0.06, 0.09, 0.12, 0.15]
 
-gamma13 = 0.12
+gamma13 = 0.06
 
 
 for gamma12 in gamma12_values:
