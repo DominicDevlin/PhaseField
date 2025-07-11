@@ -346,8 +346,8 @@ real Ly = 1.0 * dR;  // y half-extent
 // // func initc2 = 0.5 * (1.0- tanh((abs(y-3)-1)/ DropTh));
 
 /* ---------- rectangular band for  c1  ---------- */
-real bandH   = 2.0;              // THICKNESS of the band
-real bandYC  = 1.1;              // VERTICAL CENTRE of the band
+real bandH   = 0.7;              // THICKNESS of the band
+real bandYC  = 1.0;              // VERTICAL CENTRE of the band
 real gum = 0.02; 
 
 // periodic distance in x so the band “wraps” cleanly across x = 0 and x = Lx
@@ -357,20 +357,20 @@ real gum = 0.02;
 // func initc1 = 0.5 * ( 1. - tanh( ( abs(y - bandYC) - bandH/2. ) / gum ) );
 // func initc1 = 0.5* (1.-tanh(( max(abs((x - dxc) / 1.5), abs((y - 1.6) / Ly)) - 1.0 )/ DropTh));
 
-func initc1 = 0.5* (1.-tanh( (abs((y - 1.1)) - 1 )/ 0.03));    
+func initc1 = 0.5* (1.-tanh( (abs((y - bandYC)) - bandH )/ 0.03));    
 // func initc1 = 0.5 * (1.0 - tanh(( max(abs((x - dxc) / Lx), abs((y - 1.5) / Ly)) - 1.0 )/ (DropTh)));
 
 /* ---------- semicircle sitting on the band for  c2  ---------- */
 real R   = 0.8;                              // RADIUS  of the semicircle
 real x0  = 0;                            // HORIZONTAL CENTRE
-real y0  = bandYC + bandH/2.;            // VERTICAL CENTRE (touching band)
+real y0  = bandH + bandYC;// bandYC + bandH/2.;            // VERTICAL CENTRE (touching band)
 
 /* full (smoothed) circle field */
 func circ  = sqrt(  (x - x0)^2  +  (y - y0)^2 );
 func disk = 0.5 * ( 1. - tanh( (circ - R) / (eps) ) );
 
 /* Heaviside-like mask so we keep only the UPPER half of the circle */
-func mask = 0.5 * ( 1. + tanh( ( y - (bandYC + bandH/2.) ) / gum ) );
+func mask = 0.5 * ( 1. + tanh( ( y - (y0) ) / gum ) );
 
 /* final semicircle initial condition */
 func initc2 = disk * mask;
