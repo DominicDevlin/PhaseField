@@ -77,7 +77,7 @@ real ymax =  6;
 
 // Mesh resolution
 int  n     = 2; // Number of segments per unit length
-real refI  = 14; // Refinement factor for the interface
+real refI  = 16; // Refinement factor for the interface
 real mGrw  = 1.2;  // Growth rate of the mesh elements
 int  dref  = 10; // Number of time-steps between mesh adaption
 
@@ -324,8 +324,9 @@ v=0;
 // EOM
 
 Vhfield interfacemesh;
+Vhfield ToPlot;
 macro MakeMesh()
-interfacemesh = c1 - c2;
+interfacemesh = c1+c2 +c1*c2;
 // EOM
 
 macro clip(f) ((f>1.)*1. + (f<0.)*0. + ((f>=0.)*(f<=1.))*f) // EOM
@@ -482,7 +483,8 @@ while(curt < endsim)//(maxCFL > 1e-4)
 
     if (counter % screenStep == 0 && printScreen)
     {
-        plot(interfacemesh,fill=1,value=1, wait=false);
+        ToPlot = c1-c2;
+        plot(c1,fill=1,value=1, wait=false);
         // plot(Th, wait=false);
     }
     

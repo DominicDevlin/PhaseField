@@ -14,7 +14,7 @@ import sys  # Used to exit the script gracefully
 
 # --- Main settings to configure ---
 # Directory containing the data files
-data_directory = 'data/lowvisc/22.5-9-22.5/'
+data_directory = 'data/sig13low/6-9-6/'
 # The increment between time steps (e.g., files are t=20, t=40, etc.)
 time_step_increment = 20
 

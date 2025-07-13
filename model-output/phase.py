@@ -32,7 +32,7 @@ def find_latest_file(directory):
 
 
     
-def process_data_file(filepath, y_min_cutoff=1.5, bin_width=0.05):
+def process_data_file(filepath, y_min_cutoff=1.5, bin_width=0.05, y_init=1.7):
     """
     Discretizes y-space into bins to handle adaptive mesh data. Finds the
     lowest y-bin (>= y_min_cutoff) for which all c1 values of data points
@@ -87,7 +87,7 @@ def process_data_file(filepath, y_min_cutoff=1.5, bin_width=0.05):
                 if np.all(c1_values_in_bin < 0.5):
                     # Since we are iterating from the lowest y upwards, the first
                     # bin that satisfies this is our answer. Return its starting edge.
-                    return y_start - 2
+                    return y_start - y_init
 
         # If the loop completes, no bin was found that met the criteria
         print(f"  -> No y-bin found where all c1 < 0.5 in {filepath}.")
@@ -180,7 +180,7 @@ def generate_phase_diagram(root_directory, fixed_gamma13=6):
 
     # Plot the simulation data points on top
     scatter = ax.scatter(g12_vals, g23_vals, c=y_color_vals, 
-                         cmap='viridis', s=1000, edgecolors='k', zorder=10, vmin=0, vmax=3)
+                         cmap='viridis', s=1000, edgecolors='k', zorder=10, vmin=0, vmax=2.5)
 
     # --- 4. Legends and Labels ---
     
@@ -207,8 +207,9 @@ def generate_phase_diagram(root_directory, fixed_gamma13=6):
     ax.set_xlim(g12_min, g12_max)
     ax.set_ylim(g23_min, g23_max)
     ax.tick_params(axis='both', which='major', labelsize=12)
-    plt.xticks(np.arange(0.03, 0.16, 0.03)) 
-    plt.yticks(np.arange(0.03, 0.16, 0.03)) 
+    # these are wrong
+    plt.xticks(np.arange(0.06, 0.28, 0.02)) 
+    plt.yticks(np.arange(0.06, 0.28, 0.02)) 
 
     plt.tight_layout(rect=[0, 0, 0.85, 1]) # Adjust layout to make space for legend
     #plt.savefig('phase_diagram_with_background.png', dpi=300)
