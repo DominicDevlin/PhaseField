@@ -50,4 +50,4 @@ command = ["FreeFem++", "three-field.edp", sigma12_str, sigma13_str, sigma23_str
 
 print(f"Running: {' '.join(command)}")
 # Execute the command
-subprocess.run(command)
+# subprocess.run(command)
