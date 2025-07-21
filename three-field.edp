@@ -25,7 +25,7 @@ verbosity=0;
 int PrintStep=10000;
 bool doPrint=true;
 bool doTimespan=true;
-int DataOutputStep=2000;
+int DataOutputStep=50;
 bool printinterface=false;
 bool PrintEnergy=true;
 string folder1 = "images/" + dirstr + "composite/";
@@ -127,9 +127,9 @@ Vhfield c23divprecurvature;
 
 
 real dt = 0.01;
-real sig12=24;
+real sig12=4;
 real sig13=6;
-real sig23=24;
+real sig23=4;
 real sig123 = 2000;
 
 real eps = 0.02;
@@ -484,7 +484,7 @@ while(curt < endsim)//(maxCFL > 1e-4)
     if (counter % screenStep == 0 && printScreen)
     {
         ToPlot = c1-c2;
-        plot(c1,fill=1,value=1, wait=false);
+        plot(ToPlot,fill=1,value=1, wait=false);
         // plot(Th, wait=false);
     }
     

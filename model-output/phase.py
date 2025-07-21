@@ -180,7 +180,7 @@ def generate_phase_diagram(root_directory, fixed_gamma13=6):
 
     # Plot the simulation data points on top
     scatter = ax.scatter(g12_vals, g23_vals, c=y_color_vals, 
-                         cmap='viridis', s=1000, edgecolors='k', zorder=10, vmin=0, vmax=2.5)
+                         cmap='viridis', s=1000, edgecolors='k', zorder=10, vmin=0, vmax=2)
 
     # --- 4. Legends and Labels ---
     
