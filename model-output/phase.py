@@ -219,7 +219,7 @@ def generate_phase_diagram(root_directory, fixed_gamma13=6):
 if __name__ == '__main__':
     # --- Option 1: Point the script to your actual data directory ---
     # Replace this with the path to your folder containing '3-6-3', '9-6-3', etc.
-    main_directory = 'data/sig13low'
+    main_directory = 'data/sigma13low'
     
 
     # The second argument is the fixed gamma13 value used for the background.

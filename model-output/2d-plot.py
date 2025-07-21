@@ -12,7 +12,7 @@ from matplotlib.cm import get_cmap
 # ---------------------------------------------------------------
 
 # number = '30-3-30'
-number = 'data/large-cross-term/30-6-30'
+number = 'data/sigma13low/15-9-12'
 prepend = '' + number + '/'
 time = '180'
 

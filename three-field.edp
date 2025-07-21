@@ -9,6 +9,7 @@ real endrelaxation=0.2; // area relaxation
 real endequilibrate=10; // no differentiation
 bool printScreen=true;
 int screenStep = 5;
+bool doPrint=true;
 
 bool RemoveCurvature = false;
 
@@ -19,13 +20,14 @@ if (ARGV.n > 3)
     parstr = "-" + ARGV[2] + "-" + ARGV[3] + "-" + ARGV[4];
     dirstr =  ARGV[2] + "-" + ARGV[3] + "-" + ARGV[4] + "/";
     printScreen = false;
+    doPrint=false;
 }
 
 verbosity=0;
-int PrintStep=10000;
-bool doPrint=true;
+int PrintStep=200;
+
 bool doTimespan=true;
-int DataOutputStep=50;
+int DataOutputStep=4000;
 bool printinterface=false;
 bool PrintEnergy=true;
 string folder1 = "images/" + dirstr + "composite/";
@@ -76,10 +78,10 @@ real ymin =  0;
 real ymax =  6;
 
 // Mesh resolution
-int  n     = 2; // Number of segments per unit length
-real refI  = 16; // Refinement factor for the interface
-real mGrw  = 1.2;  // Growth rate of the mesh elements
-int  dref  = 10; // Number of time-steps between mesh adaption
+int  n     = 1; // Number of segments per unit length
+real refI  = 44; // Refinement factor for the interface
+real mGrw  = 1.4;  // Growth rate of the mesh elements
+int  dref  = 16; // Number of time-steps between mesh adaption
 
 mesh Th = square((xmax-xmin)*n,(ymax-ymin)*n,[xmin+(xmax-xmin)*x,ymin+(ymax-ymin)*y]);
 
@@ -126,8 +128,13 @@ Vhfield c23divprecurvature;
 
 
 
+<<<<<<< HEAD
 real dt = 0.01;
 real sig12=4;
+=======
+real dt = 0.005;
+real sig12=24;
+>>>>>>> 592dee95498b3d695eda4871f181dc9758f22ed7
 real sig13=6;
 real sig23=4;
 real sig123 = 2000;
@@ -326,7 +333,7 @@ v=0;
 Vhfield interfacemesh;
 Vhfield ToPlot;
 macro MakeMesh()
-interfacemesh = c1+c2 +c1*c2;
+interfacemesh = c1 + 20*c2;
 // EOM
 
 macro clip(f) ((f>1.)*1. + (f<0.)*0. + ((f>=0.)*(f<=1.))*f) // EOM

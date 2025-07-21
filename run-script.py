@@ -16,19 +16,31 @@ output = []
 results = []
 eps = 0.02
 
-gamma12_values =  [0.04, 0.06, 0.08, 0.1, 0.12, 0.14, 0.16, 0.18]# 0.12, 0.15]
-gamma23_values = [0.04, 0.06, 0.08, 0.1, 0.12, 0.14, 0.16, 0.18]
+gamma12_values =  [0.02, 0.04, 0.06, 0.08, 0.1, 0.12, 0.14, 0.16]# 0.12, 0.15]
+gamma23_values = [0.02, 0.04, 0.06, 0.08, 0.1, 0.12, 0.14, 0.16]
 
 gamma13 = 0.06
 
-
 for gamma12 in gamma12_values:
     for gamma23 in gamma23_values:
-        sig12 = 3 * gamma12 / eps
-        sig13 = 3 * gamma13 / eps
-        sig23 = 3 * gamma23 / eps
-        output.append((sig12, sig13, sig23))
-        print(sig12, sig13, sig23)
+        if gamma12 >= gamma23 and gamma12 - gamma23 < 0.05:
+            sig12 = 3 * gamma12 / eps
+            sig13 = 3 * gamma13 / eps
+            sig23 = 3 * gamma23 / eps
+            output.append((sig12, sig13, sig23))
+            print(sig12, sig13, sig23)
+            
+# gamma12_values =  [0.1, 0.12, 0.14, 0.16]# 0.12, 0.15]
+# gamma23_values = [0.06, 0.08, 0.1, 0.12, 0.14, 0.16]
+# gamma13 = 0.06
+# for gamma12 in gamma12_values:
+#     for gamma23 in gamma23_values:
+#         if gamma12 >= gamma23 and gamma12 - gamma23 < 0.05:
+#             sig12 = 3 * gamma12 / eps
+#             sig13 = 3 * gamma13 / eps
+#             sig23 = 3 * gamma23 / eps
+#             output.append((sig12, sig13, sig23))
+#             print(sig12, sig13, sig23)
 
 sigma12, sigma13, sigma23 = output[index]
 
