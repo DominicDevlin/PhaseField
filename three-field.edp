@@ -29,7 +29,7 @@ int PrintStep=200;
 bool doTimespan=true;
 int DataOutputStep=4000;
 bool printinterface=false;
-bool PrintEnergy=false;
+bool PrintEnergy=true;
 string folder1 = "images/" + dirstr + "composite/";
 string folder2 = "images/" + dirstr + "c1/";
 string folder3 = "images/" + dirstr + "c2/";
@@ -580,7 +580,7 @@ while(curt < endsim)//(maxCFL > 1e-4)
         real doublewell = int2d(Th)(sig12*c1^2*c2^2 + sig13*c1^2*c2^2 + sig23*c2^2*c3^2 + sig123 * c1^2*c2^2*c3^2);
         real gradientenergy = int2d(Th)( epssq/2 *(sig12 * abs(c1*(dx(c2) + dy(c2) + c2*(dx(c1) + dy(c1)))) +  
                                                     sig13 * abs(c1*(dx(c3) + dy(c3) + c3*(dx(c1) + dy(c1)))) +
-                                                    sig23 * abs(c2*(dx(c3) + dy(c3) + c3*(dx(c2) + dy(c2))) )  ))
+                                                    sig23 * abs(c2*(dx(c3) + dy(c3) + c3*(dx(c2) + dy(c2))) )  ));
         real volumeconstraint = lmda * ((c1Area - A0c1)^2 + (c2Area - A0c2)^2);
         real totalenergy = doublewell + gradientenergy + volumeconstraint;
 
@@ -596,15 +596,15 @@ while(curt < endsim)//(maxCFL > 1e-4)
         {
             string filen = datafolder + "total_energy" + parstr + ".dat";
             ofstream TheFileEn(filen);
-            TheFileEn << curt << doublewell << "\t" << gradientenergy << "\t" 
-                    << volumeconstraint << "\t" totalenergy << "\t" << suppressorterm << endl;
+            TheFileEn << curt << "\t" << doublewell << "\t" << gradientenergy << "\t" 
+                    << volumeconstraint << "\t" << totalenergy << "\t" << suppressorterm << endl;
         }
         else
         {
             string filen = datafolder + "total_energy" + parstr + ".dat";
             ofstream TheFileEn(filen, append);
-            TheFileEn << curt << doublewell << "\t" << gradientenergy << "\t" 
-                    << volumeconstraint << "\t" totalenergy << "\t" << suppressorterm << endl;
+            TheFileEn << curt << "\t" << doublewell << "\t" << gradientenergy << "\t" 
+                    << volumeconstraint << "\t" << totalenergy << "\t" << suppressorterm << endl;
         }
        
     }
