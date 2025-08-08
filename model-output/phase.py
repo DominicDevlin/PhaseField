@@ -180,7 +180,7 @@ def generate_phase_diagram(root_directory, fixed_gamma13=6):
 
     # Plot the simulation data points on top
     scatter = ax.scatter(g12_vals, g23_vals, c=y_color_vals, 
-                         cmap='viridis', s=1000, edgecolors='k', zorder=10, vmin=0, vmax=2.5)
+                         cmap='viridis', s=1000, edgecolors='k', zorder=10, vmin=0, vmax=1.5)
 
     # --- 4. Legends and Labels ---
     
@@ -219,7 +219,7 @@ def generate_phase_diagram(root_directory, fixed_gamma13=6):
 if __name__ == '__main__':
     # --- Option 1: Point the script to your actual data directory ---
     # Replace this with the path to your folder containing '3-6-3', '9-6-3', etc.
-    main_directory = 'data/highdiff'
+    main_directory = 'data/visc'
     
 
     # The second argument is the fixed gamma13 value used for the background.

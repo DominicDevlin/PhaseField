@@ -145,7 +145,7 @@ def process_data_file(filepath, y_min_cutoff=1.5, bin_width=0.05, y_init=1.7):
 
 # --- (The main plotting function is updated to use the new file finder) ---
 
-def generate_phase_diagram(root_directory, fixed_gamma13=6):
+def generate_phase_diagram(root_directory, fixed_gamma13=6, vmaxima=2.5):
     """
     Main function to process data and plot the phase diagram overlaid on a
     theoretical wetting regime field.
@@ -224,7 +224,7 @@ def generate_phase_diagram(root_directory, fixed_gamma13=6):
                    aspect='auto', cmap=cmap_regimes)
 
     scatter = ax.scatter(g12_vals, g23_vals, c=y_color_vals, 
-                         cmap='viridis', s=1000, edgecolors='k', zorder=10, vmin=0, vmax=2.5)
+                         cmap='viridis', s=1000, edgecolors='k', zorder=10, vmin=0, vmax=vmaxima)
 
     cbar = plt.colorbar(scatter, ax=ax, shrink=0.8)
     cbar.set_label('Detachment height (h - h$_0$)', fontsize=14, weight='bold')
@@ -258,8 +258,8 @@ def generate_phase_diagram(root_directory, fixed_gamma13=6):
 
 
 if __name__ == '__main__':
-    main_directory = 'data/highdiff'
+    main_directory = 'data/sig13high'
     
     # The second argument is the fixed gamma13 value (as an integer, e.g., 6 for 0.06)
     # used in your simulations. This will be used to filter directories and for the background plot.
-    generate_phase_diagram(main_directory, fixed_gamma13=9)
+    generate_phase_diagram(main_directory, fixed_gamma13=18, vmaxima=2)
