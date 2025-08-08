@@ -14,7 +14,11 @@ import sys  # Used to exit the script gracefully
 
 # --- Main settings to configure ---
 # Directory containing the data files
+<<<<<<< HEAD
 data_directory = 'data/visc/15-9-15/'
+=======
+data_directory = 'data/equilibrium/3-9-3/'
+>>>>>>> 2894fbf57534191bfd416f6212bc504d8ffd913f
 # The increment between time steps (e.g., files are t=20, t=40, etc.)
 time_step_increment = 20
 

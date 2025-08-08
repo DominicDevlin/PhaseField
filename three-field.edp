@@ -128,13 +128,8 @@ Vhfield c23divprecurvature;
 
 
 
-<<<<<<< HEAD
-real dt = 0.01;
-real sig12=4;
-=======
 real dt = 0.005;
 real sig12=24;
->>>>>>> 592dee95498b3d695eda4871f181dc9758f22ed7
 real sig13=6;
 real sig23=4;
 real sig123 = 2000;
@@ -151,7 +146,7 @@ if (ARGV.n > 3)
 }
 
 real epssq = eps^2;
-cout << "eppsq: " << epssq << "  sig12: " << sig12 << "  sig13: " << sig13 << "  sig23: " << sig23 << endl;
+cout << "epssq: " << epssq << "  sig12: " << sig12 << "  sig13: " << sig13 << "  sig23: " << sig23 << endl;
 real k1 = sig12 + sig13 - sig23;
 real k2 = sig12 + sig23 - sig13;
 real k3 = sig13 + sig23 - sig12;
@@ -579,67 +574,38 @@ while(curt < endsim)//(maxCFL > 1e-4)
     {
         c1interface=0;
     }
+
+    if (PrintEnergy && counter % 10 == 0)
+    {
+        real doublewell = int2d(Th)(sig12*c1^2*c2^2 + sig13*c1^2*c2^2 + sig23*c2^2*c3^2 + sig123 * c1^2*c2^2*c3^2);
+        real gradientenergy = int2d(Th)( epssq/2 *(sig12 * abs(c1*(dx(c2) + dy(c2) + c2*(dx(c1) + dy(c1)))) +  
+                                                    sig13 * abs(c1*(dx(c3) + dy(c3) + c3*(dx(c1) + dy(c1)))) +
+                                                    sig23 * abs(c2*(dx(c3) + dy(c3) + c3*(dx(c2) + dy(c2))) )  ));
+        real volumeconstraint = lmda * ((c1Area - A0c1)^2 + (c2Area - A0c2)^2);
+        real totalenergy = doublewell + gradientenergy + volumeconstraint;
+
+        real suppressorterm = int2d(Th)(sig123 * c1^2*c2^2*c3^2 );
+
+        // real t7 = lmdarho * (rhononphiArea - A0P)^2;
+        // currently not removing curvature from rho.
+        // real t8 = int2d(Th) ( (rhotwointerface * ((eps) * Rcurvature)));
+
+        // coupling
+
+        if (counter == 10)
+        {
+            string filen = datafolder + "total_energy" + parstr + ".dat";
+            ofstream TheFileEn(filen);
+            TheFileEn << curt << "\t" << doublewell << "\t" << gradientenergy << "\t" 
+                    << volumeconstraint << "\t" << totalenergy << "\t" << suppressorterm << endl;
+        }
+        else
+        {
+            string filen = datafolder + "total_energy" + parstr + ".dat";
+            ofstream TheFileEn(filen, append);
+            TheFileEn << curt << "\t" << doublewell << "\t" << gradientenergy << "\t" 
+                    << volumeconstraint << "\t" << totalenergy << "\t" << suppressorterm << endl;
+        }
+       
+    }
 }
-
-
-
-
-// problem SolveOne(c1, v, master=0, solver=sparsesolver)
-//     =int2d(Th)(v * (c1)/dt)
-
-//     // double well terms
-//     + int2d(Th)(1/eta * v * 2 * sig12 * c1 * c2^2 )
-//     + int2d(Th)(1/eta * v * sig13 * ( c1  - 3*c1*c1old - 2*c1*c2 + 2*c1*c1old^2 + c1*c2^2 + 3*c1*c1old*c2))
-//     + int2d(Th)(1/eta * v * sig23 * ( c1*c2^2 ))
-//     + int2d(Th)(1/eta * v * sig23 * ( - c2^2 + c2^3 ))
-
-//     // gradient energy terms
-//     + int2d(Th) (1/eta * epssq * k1 * (dx(c1) * dx(v) + dy(c1) * dy(v)))
-//     + int2d(Th) (1/eta * epssq * k3 * (dx(c1) * dx(v) + dy(c1) * dy(v)))
-//     + int2d(Th) (1/eta * epssq * k3 * (dx(c2) * dx(v) + dy(c2) * dy(v)))
-
-//     // volume constraints:
-//     + int2d(Th) (1/eta * ( v * lmda *(c1Area-A0c1)*c1*(1-c1old)))
-
-//     /*
-//     // higher order term part 1:
-//     + int2d(Th)( (1/eta) * v * ( (k3-k2)*c2^3 + (k2-2*k3)*c2^2 + k3*c2 ))
-//     + int2d(Th)( (1/eta) * v * ( 3*(k3-k1)*c1*c1old*c2  +  2*(2*k3-k1-k2)*c1*c2^2  +  2*(k1-2*k3)*c1*c2 ))
-//     // higher order term part 2:
-//     + int2d(Th) ((1/eta) * v * bigdelta * ( 18*c1*c1old*c2^3  +  12*c1*c1old^2*c2^2  +  6*c1*c2^4  - 18*c1*c1old*c2^2  + 6*c1*c2^2  - 12*c1*c2^3 ))
-//     */
-
-//     - int2d(Th)(v * c1old/dt);
-
-//     // removed c3 volume constraint
-//     // + int2d(Th)( (1/eta) * v * lmda * (c3Area - A0c3) * (c1old + c2) )
-//     // - int2d(Th)( (1/eta) * v * lmda * (c3Area - A0c3) * c2 * (c1old + c2) )
-//     // - int2d(Th)( (1/eta) * v * lmda * (c3Area - A0c3) * c1 * (c1old + c2) )
-
-
-
-// problem SolveTwo(c2, w, master=0, solver=sparsesolver)
-//     =int2d(Th)(w * (c2)/dt)
-
-//     // double well terms
-//     + int2d(Th)(1/eta * w * sig12 * c2 * c1^2 )
-//     + int2d(Th)(1/eta * w * sig23 * ( c2  - 3*c2*c2old - 2*c2*c1 + 2*c2*c2old^2 + c2*c1^2 + 3*c2*c2old*c1))
-//     + int2d(Th)(1/eta * w * sig13 * ( c2*c1^2 ))
-//     + int2d(Th)(1/eta * w * sig13 * ( c1^3- c1^2  ))
-
-//     // gradient energy terms
-//     + int2d(Th) (1/eta * epssq * k2 * (dx(c2) * dx(w) + dy(c2) * dy(w)))
-//     + int2d(Th) (1/eta * epssq * k3 * (dx(c2) * dx(w) + dy(c2) * dy(w)))
-//     + int2d(Th) (1/eta * epssq * k3 * (dx(c1) * dx(w) + dy(c1) * dy(w)))
-
-//     // volume constraint:
-//     + int2d(Th) (1/eta * ( w * lmda *(c2Area-A0c2)*c2*(1-c2old)))
-
-//     /*
-//     // higher order term part 1:
-//     + int2d(Th)( (1/eta) * w * ( (k3-k1)*c1^3 + (k1-2*k3)*c1^2 + k3*c1 ))
-//     + int2d(Th)( (1/eta) * w * ( 3*(k3-k2)*c2*c2old*c1  +  2*(2*k3-k2-k1)*c2*c1^2  +  2*(k2-2*k3)*c2*c1 ))
-//     // higher order term part 2:
-//     + int2d(Th) ((1/eta) * w * bigdelta * ( 18*c2*c2old*c1^3  +  12*c2*c2old^2*c1^2  +  6*c2*c1^4  - 18*c2*c2old*c1^2  + 6*c2*c1^2  - 12*c2*c1^3 ))
-//     */
-//     - int2d(Th)(w * c2old/dt);
