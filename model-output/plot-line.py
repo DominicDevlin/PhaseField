@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 # Load the data from a text file
 # The data.txt file should contain the provided rows of numbers
 datan= '0.5'
-dir = 'data/'#  + datan[1:]
+dir = 'data/init-condition/'#  + datan[1:]
 if (dir != ''):
     dir = dir + ''
 
@@ -31,6 +31,7 @@ diff = c1**2 * c2**2
 y_values=[]
 c1_values=[]
 c2_values=[]
+c3_values=[]
 diff_values = []
 well_values = []
 
@@ -39,6 +40,7 @@ for i in range(len(x)):
         y_values.append(y[i])
         c1_values.append(c1[i])
         c2_values.append(c2[i])
+        c3_values.append(1-c1[i]-c2[i])
         diff_values.append(diff[i])
         val =  c1[i]
         well = val**2*(1-val)**2
@@ -51,6 +53,7 @@ fig, ax1 = plt.subplots()
 # Plot the first two lines on the primary y-axis
 ax1.plot(y_values, c1_values, linestyle='-', color='red', label='yc1', linewidth=3)
 ax1.plot(y_values, c2_values, linestyle='-', color='lightgreen', label='yc2', linewidth=3)
+ax1.plot(y_values, c3_values, linestyle='-', color='blue', label='yc2', linewidth=3)
 
 ax2 = ax1.twinx()
 # Plot the third line on the secondary y-axis
