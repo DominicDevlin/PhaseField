@@ -577,10 +577,10 @@ while(curt < endsim)//(maxCFL > 1e-4)
 
     if (PrintEnergy && counter % 10 == 0)
     {
-        real doublewell = int2d(Th)(sig12*c1^2*c2^2 + sig13*c1^2*c2^2 + sig23*c2^2*c3^2 + sig123 * c1^2*c2^2*c3^2);
-        real gradientenergy = int2d(Th)( epssq/2 *( sig12 * (abs(c1*(dx(c2) + dy(c2) + c2*(dx(c1) + dy(c1))))^2) +  
-                                                    sig13 * (abs(c1*(dx(c3) + dy(c3) + c3*(dx(c1) + dy(c1))))^2) +
-                                                    sig23 * (abs(c2*(dx(c3) + dy(c3) + c3*(dx(c2) + dy(c2))))^2)));
+        real doublewell = int2d(Th)(sig12*c1^2*c2^2 + sig13*c1^2*c3^2 + sig23*c2^2*c3^2 + sig123 * c1^2*c2^2*c3^2);
+        real gradientenergy = int2d(Th)( epssq/2 *( sig12 * (abs( (c1*dx(c2) - c2*dx(c1))^2 + (c1*dy(c2) - c2*dy(c1))^2)) +  
+                                                    sig13 * (abs( (c1*dx(c3) - c3*dx(c1))^2 + (c1*dy(c3) - c3*dy(c1))^2)) +  
+                                                    sig23 * (abs( (c2*dx(c3) - c3*dx(c2))^2 + (c2*dy(c3) - c3*dy(c2))^2))));
         real volumeconstraint = lmda * ((c1Area - A0c1)^2 + (c2Area - A0c2)^2);
         real totalenergy = doublewell + gradientenergy + volumeconstraint;
 
