@@ -108,7 +108,8 @@ def load_mass_file(path, skip_interval=None):
     # sort by time
     order = np.argsort(t)
     t, c2 = t[order], c2[order]
-
+    
+    skip_interval=400
     # downsample: keep every N-th point
     if skip_interval and skip_interval > 1:
         t  = t[::skip_interval]
@@ -134,13 +135,14 @@ def truncate_at_time(t, y, t_max):
     if t.size == 0:
         return t, y
     cut = np.searchsorted(t, t_max, side="right")
-    return t[:cut], y[:cut]
+    return t[:cut+2], y[:cut+2]
 
 
 # =========================
 # Combined main
 # =========================
 def main():
+    markers = ['o', 's', '^', 'D', 'v', 'p', '*', 'h', 'x']
     # 1) Discover parameter sets (x-b-c) from phase subdirectories and order them by legend_lbl
     subdir_glob = os.path.join(BASE_PHASE_DIR, f"{X_SELECTOR}-{FIXED_B}-{FIXED_C}")
     subdirs = [d for d in glob.glob(subdir_glob) if os.path.isdir(d)]
@@ -212,7 +214,7 @@ def main():
         t_peak = keep_times[-1]
         stop_time_by_x[int(float(e["x"]))] = t_peak  # store as int key for mass filename matching
 
-        plt.plot(keep_times, yvals_kept, marker='o', linestyle='-', color=color, label=f"{e['legend_lbl']:g}")
+        plt.plot(keep_times, yvals_kept, marker=markers[idx], linestyle='-', color=color, label=f"{e['legend_lbl']:g}", linewidth=3, markersize=7)
 
     plt.xlabel(XLABEL_TIME)
     plt.ylabel(YLABEL_PHASE)
@@ -220,11 +222,12 @@ def main():
     plt.grid(False)
     plt.tight_layout()
     plt.xlim(left=0)
+    plt.ylim(bottom=0)
     plt.legend(title="sigma (= x·2/3)")
     plt.show()
 
     # 3) Plot corresponding MASS curves truncated to the SAME stop time (and optional c2<thresh) — FIGURE 2
-    plt.figure(figsize=(9, 6))
+    plt.figure(figsize=(8, 6))
     for idx, e in enumerate(entries):
         color = color_list[idx % len(color_list)]
         x_int = int(float(e["x"]))  # mass filenames are integral x per your pattern
@@ -256,7 +259,7 @@ def main():
             continue
 
         label = f"x={x_int} (t≤{t_peak:g})"
-        plt.plot(t_cut, c2_cut, marker='o', linestyle='-', color=color, label=label)
+        plt.plot(t_cut, c2_cut, marker=markers[idx], linestyle='-', color=color, label=label, linewidth=3, markersize=7)
 
     plt.xlabel(XLABEL_TIME)
     plt.ylabel(YLABEL_MASS)
@@ -264,6 +267,7 @@ def main():
     plt.grid(False)
     plt.tight_layout()
     plt.xlim(left=0)
+    plt.ylim(0,1.02)
     plt.legend()
     plt.show()
 

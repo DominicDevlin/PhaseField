@@ -5,8 +5,10 @@ load "isoline";
 load "Element_P3";
 
 real endsim=1501;
+/*area constraint relaxation*/
 real endrelaxation=0.2; // area relaxation
-real endequilibrate=10; // no differentiation
+/* How long before differentiation starts. Set to 10 for semicircle and 100 for rectangle */
+real endequilibrate=100; // no differentiation
 bool printScreen=true;
 int screenStep = 5;
 bool doPrint=true;
@@ -29,7 +31,7 @@ int PrintStep=200;
 bool doTimespan=true;
 int DataOutputStep=4000;
 bool printinterface=false;
-bool PrintEnergy=true;
+bool PrintEnergy=false;
 string folder1 = "images/" + dirstr + "composite/";
 string folder2 = "images/" + dirstr + "c1/";
 string folder3 = "images/" + dirstr + "c2/";
@@ -339,7 +341,7 @@ real dR = 0.6;  // Radius
 real dRrho = 0.4;  // Radius
 real dxc= 0.0;  // x coordinate
 real dyc= 3;  // y coordinate, 0.2 is start above gorund
-real DropTh = 0.02;  // Drop thickness
+real DropTh = 0.03;  // Drop thickness
 real Lx = 3.0 * dR;  // x half-extent
 real Ly = 1.0 * dR;  // y half-extent
 
@@ -347,12 +349,6 @@ real Ly = 1.0 * dR;  // y half-extent
 // // func initc2 = 0.5 * (1.0- tanh(( max(abs((x - 0) / Lx), abs((y - 3) / Ly)) - 1.0 )/ DropTh));
 // func initc2 = 0.5* (1.-tanh(( max(abs((x - dxc) / Lx), abs((y - 3.2) / Ly)) - 1.0 )/ DropTh));
 // // func initc2 = 0.5 * (1.0- tanh((abs(y-3)-1)/ DropTh));
-
-/* ---------- rectangular band for  c1  ---------- */
-real bandH   = 0.7;              // THICKNESS of the band
-real bandYC  = 1.0;              // VERTICAL CENTRE of the band
-real gum = 0.02; 
-
 // periodic distance in x so the band “wraps” cleanly across x = 0 and x = Lx
 // func perX(real x) = min( abs(x)     , Lx - abs(x) );
 
@@ -360,23 +356,57 @@ real gum = 0.02;
 // func initc1 = 0.5 * ( 1. - tanh( ( abs(y - bandYC) - bandH/2. ) / gum ) );
 // func initc1 = 0.5* (1.-tanh(( max(abs((x - dxc) / 1.5), abs((y - 1.6) / Ly)) - 1.0 )/ DropTh));
 
-func initc1 = 0.5* (1.-tanh( (abs((y - bandYC)) - bandH )/ 0.03));    
+/* ---------- rectangular band for  c1  ---------- */
+real bandH   = 0.7;              // THICKNESS of the band
+real bandYC  = 1.0;              // VERTICAL CENTRE of the band
+real gum = 0.02; 
+
+func initc1 = 0.5* (1.-tanh( (abs((y - bandYC)) - bandH )/ DropTh));    
 // func initc1 = 0.5 * (1.0 - tanh(( max(abs((x - dxc) / Lx), abs((y - 1.5) / Ly)) - 1.0 )/ (DropTh)));
 
-/* ---------- semicircle sitting on the band for  c2  ---------- */
-real R   = 0.8;                              // RADIUS  of the semicircle
-real x0  = 0;                            // HORIZONTAL CENTRE
-real y0  = bandH + bandYC;// bandYC + bandH/2.;            // VERTICAL CENTRE (touching band)
+// /* ---------- semicircle sitting on the band for  c2  ---------- */
+// real R   = 0.8;                              // RADIUS  of the semicircle
+// real x0  = 0;                            // HORIZONTAL CENTRE
+// real y0  = bandH + bandYC;// bandYC + bandH/2.;            // VERTICAL CENTRE (touching band)
 
-/* full (smoothed) circle field */
-func circ  = sqrt(  (x - x0)^2  +  (y - y0)^2 );
-func disk = 0.5 * ( 1. - tanh( (circ - R) / (eps) ) );
+// /* full (smoothed) circle field */
+// func circ  = sqrt(  (x - x0)^2  +  (y - y0)^2 );
+// func disk = 0.5 * ( 1. - tanh( (circ - R) / (eps) ) );
 
-/* Heaviside-like mask so we keep only the UPPER half of the circle */
-func mask = 0.5 * ( 1. + tanh( ( y - (y0) ) / gum ) );
+// /* Heaviside-like mask so we keep only the UPPER half of the circle */
+// func mask = 0.5 * ( 1. + tanh( ( y - (y0) ) / gum ) );
 
-/* final semicircle initial condition */
-func initc2 = disk * mask;
+// /* final semicircle initial condition */
+// func initc2 = disk * mask;
+
+/* ---------- rectangular c2 sitting on top of the c1 band ---------- */
+/* target "volume" (area in 2D) */
+real targetVol = 1.1;
+
+/* choose rectangle width; height is set so area = 1 */
+real rectW = 3;              // you can change this
+real rectH = targetVol/rectW;   // ensures rectW*rectH = 1
+
+/* center and placement: bottom edge touches the top of c1 band */
+real x0 = 0;                    // horizontal center (same as before)
+real yb = bandYC + bandH;       // bottom of the rectangle (top of c1 band)
+real yt = yb + rectH;           // top of the rectangle
+
+/* horizontal extents */
+real xl = x0 - 0.5*rectW;
+real xr = x0 + 0.5*rectW;
+
+/* smoothing (reuse your 'gum' for both x and y) */
+real sx = gum;
+real sy = gum;
+
+/* masks */
+func xMask = 0.5*(1. + tanh((x-xl)/sx)) - 0.5*(1. + tanh((x-xr)/sx));
+func yMask = 0.5*(1. + tanh((y-yb)/sy)) - 0.5*(1. + tanh((y-yt)/sy));
+
+/* final rectangular initial condition */
+func initc2 = xMask * yMask;
+
 
 
 c1 = initc1;
