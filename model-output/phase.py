@@ -99,7 +99,7 @@ def process_data_file(filepath, y_min_cutoff=1.5, bin_width=0.05, y_init=1.7):
     
     
 
-def generate_phase_diagram(root_directory, fixed_gamma13=6):
+def generate_phase_diagram(root_directory, fixed_gamma13=6, vmax=2.5):
     """
     Main function to process data and plot the phase diagram overlaid on a
     theoretical wetting regime field.
@@ -118,9 +118,9 @@ def generate_phase_diagram(root_directory, fixed_gamma13=6):
             match = dir_pattern.match(dir_name)
             if match:
                 gamma12, fixed_gamma13, gamma23 = map(int, match.groups()) # We get g13 but ignore it for the axes
-                gamma12 = gamma12 / 100
-                fixed_gamma13 = fixed_gamma13 / 100
-                gamma23 = gamma23 / 100
+                gamma12 = (2/3) * gamma12 / 100
+                fixed_gamma13 = (2/3) * fixed_gamma13 / 100
+                gamma23 = (2/3) * gamma23 / 100
                 print(f"Processing directory: {dir_name} -> (g12={gamma12}, g23={gamma23})")
                 latest_file = find_latest_file(full_path)
                 if latest_file:
@@ -143,8 +143,8 @@ def generate_phase_diagram(root_directory, fixed_gamma13=6):
     print("\nCreating theoretical wetting background...")
     
     # Define the boundaries of our plot based on the data, with some padding
-    g12_min, g12_max = g12_vals.min() - 0.02, g12_vals.max() + 0.02
-    g23_min, g23_max = g23_vals.min() - 0.02, g23_vals.max() + 0.02
+    g12_min, g12_max = g12_vals.min() - 0.01, g12_vals.max() + 0.01
+    g23_min, g23_max = g23_vals.min() - 0.01, g23_vals.max() + 0.01
     
     # Create a grid of points
     g12_grid, g23_grid = np.meshgrid(
@@ -171,16 +171,16 @@ def generate_phase_diagram(root_directory, fixed_gamma13=6):
     # --- 3. Plotting ---
     print("Generating combined phase diagram plot...")
     # plt.style.use('seaborn-v0_8-whitegrid')
-    fig, ax = plt.subplots(figsize=(12, 9))
+    fig, ax = plt.subplots(figsize=(9, 9))
 
     # Plot the background field first
     im = ax.imshow(regime_grid, origin='lower', 
                    extent=[g12_min, g12_max, g23_min, g23_max],
-                   aspect='auto', cmap=cmap_regimes)
+                   cmap=cmap_regimes)
 
     # Plot the simulation data points on top
     scatter = ax.scatter(g12_vals, g23_vals, c=y_color_vals, 
-                         cmap='viridis', s=1000, edgecolors='k', zorder=10, vmin=0, vmax=1.5)
+                         cmap='viridis', s=1000, edgecolors='k', zorder=10, vmin=0, vmax=vmax)
 
     # --- 4. Legends and Labels ---
     
@@ -207,11 +207,13 @@ def generate_phase_diagram(root_directory, fixed_gamma13=6):
     ax.set_xlim(g12_min, g12_max)
     ax.set_ylim(g23_min, g23_max)
     ax.tick_params(axis='both', which='major', labelsize=12)
-    # these are wrong
-    plt.xticks(np.arange(0.06, 0.28, 0.02)) 
-    plt.yticks(np.arange(0.06, 0.28, 0.02)) 
+    
+    ax.set_aspect('equal', adjustable='box')
 
-    plt.tight_layout(rect=[0, 0, 0.85, 1]) # Adjust layout to make space for legend
+    plt.xticks(np.arange(0.02, 0.18, 0.02)) 
+    plt.yticks(np.arange(0.02, 0.18, 0.02)) 
+
+    plt.tight_layout(rect=[0, 0, 1, 1]) # Adjust layout to make space for legend
     #plt.savefig('phase_diagram_with_background.png', dpi=300)
     plt.show()
 
@@ -219,9 +221,9 @@ def generate_phase_diagram(root_directory, fixed_gamma13=6):
 if __name__ == '__main__':
     # --- Option 1: Point the script to your actual data directory ---
     # Replace this with the path to your folder containing '3-6-3', '9-6-3', etc.
-    main_directory = 'data/visc'
+    main_directory = 'data/highdiff'
     
 
     # The second argument is the fixed gamma13 value used for the background.
     # This should match the value used in your simulations.
-    generate_phase_diagram(main_directory, fixed_gamma13=6)
+    generate_phase_diagram(main_directory, fixed_gamma13=12, vmax=2.2)

@@ -29,7 +29,7 @@ verbosity=0;
 int PrintStep=200;
 
 bool doTimespan=true;
-int DataOutputStep=4000;
+int DataOutputStep=100;
 bool printinterface=false;
 bool PrintEnergy=false;
 string folder1 = "images/" + dirstr + "composite/";
@@ -131,9 +131,9 @@ Vhfield c23divprecurvature;
 
 
 real dt = 0.005;
-real sig12=24;
-real sig13=6;
-real sig23=4;
+real sig12=8;
+real sig13=12;
+real sig23=8;
 real sig123 = 2000;
 
 real eps = 0.02;
@@ -380,11 +380,11 @@ func initc1 = 0.5* (1.-tanh( (abs((y - bandYC)) - bandH )/ DropTh));
 // func initc2 = disk * mask;
 
 /* ---------- rectangular c2 sitting on top of the c1 band ---------- */
-/* target "volume" (area in 2D) */
+/* target "volume" (area in 2D) */ 
 real targetVol = 1.1;
-
+// used 1.1 volume for simulations
 /* choose rectangle width; height is set so area = 1 */
-real rectW = 3;              // you can change this
+real rectW = 4.2;              // you can change this
 real rectH = targetVol/rectW;   // ensures rectW*rectH = 1
 
 /* center and placement: bottom edge touches the top of c1 band */
