@@ -12,9 +12,9 @@ from matplotlib.cm import get_cmap
 # ---------------------------------------------------------------
 
 # number = '30-3-30'
-number = 'data/rect-init/15-9-15'
+number = 'data/equilibrium/21-9-15'
 prepend = '' + number + '/'
-time = '20'
+time = '500'
 
 
 df = pd.read_csv(prepend + 'c1' + '-' + time + '.dat', header=None, names=['x', 'y', 'conc'], delimiter='\t')
