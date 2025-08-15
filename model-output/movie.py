@@ -14,7 +14,7 @@ import sys  # Used to exit the script gracefully
 
 # --- Main settings to configure ---
 # Directory containing the data files
-data_directory = 'data/rect-init/9-9-9/'
+data_directory = 'data/30-visc/6-9-21/'
 # The increment between time steps (e.g., files are t=20, t=40, etc.)
 time_step_increment = 20
 

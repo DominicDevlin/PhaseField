@@ -1,28 +1,8 @@
 #!/usr/bin/env python3
-"""
-Compute and visualize interior contact angles at three-phase triple junctions.
 
-Inputs
-------
-c1.dat : columns [x, y, c1]
-c2.dat : columns [x, y, c2]
-(c3 := 1 - c1 - c2)
 
-Outputs
--------
-- Console printout of triple point(s) and interior angles (θ1, θ2, θ3) that sum ~360°.
-- Optional figure with:
-    * light background showing which phase dominates (argmax(c1,c2,c3)),
-    * interfaces (phi12=0, phi23=0, phi31=0),
-    * triple point markers,
-    * angle labels placed inside each phase wedge.
-
-Usage
------
-python triple_contact_angles.py --c1 c1.dat --c2 c2.dat --plot triples.png --nx 600
-"""
-defaultf1="data/equilibrium/21-9-15/c1-500.dat"
-defaultf2="data/equilibrium/21-9-15/c2-500.dat"
+main_directory = 'data/equilibrium'
+choose_time = "1000"
 
 import argparse
 import math
@@ -31,10 +11,15 @@ from typing import List, Tuple
 
 import numpy as np
 import matplotlib
-matplotlib.use("Agg")  # headless-safe
 import matplotlib.pyplot as plt
 import matplotlib.tri as mtri
 from matplotlib.colors import ListedColormap
+
+import os
+import re
+import numpy as np
+import matplotlib.colors as mcolors
+import matplotlib.patches as mpatches
 
 # ----------------------------
 # IO + interpolation utilities
@@ -149,100 +134,34 @@ def angle_between(u, v):
     dot = np.clip(np.dot(cu, cv), -1.0, 1.0)
     return float(np.degrees(np.arccos(dot)))
 
-def plot_angles_at_point(xt: float, yt: float, angles: Tuple[float, float, float], gradients: Tuple, filename: str):
-    """
-    Creates a schematic plot of the three angles and interfaces at a triple point.
-
-    Args:
-        xt, yt: Coordinates of the triple point.
-        angles: A tuple of the three interior angles (th1, th2, th3).
-        gradients: A tuple of the three gradient vectors (g1, g2, g3).
-        filename: The path to save the output plot.
-    """
-    th1, th2, th3 = angles
-    g1, g2, g3 = gradients
-
-    fig, ax = plt.subplots(figsize=(8, 8))
-
-    # The interface line direction is perpendicular to the difference in gradients
-    n12 = g1 - g2  # Normal to interface 1-2
-    n23 = g2 - g3  # Normal to interface 2-3
-    n31 = g3 - g1  # Normal to interface 3-1
-
-    # Get tangent vectors by rotating normals by 90 degrees
-    t12 = unit(np.array([-n12[1], n12[0]]))
-    t23 = unit(np.array([-n23[1], n23[0]]))
-    t31 = unit(np.array([-n31[1], n31[0]]))
-
-    # Plot the three interface lines extending from the triple point
-    line_len = 1.0
-    ax.plot([xt - line_len * t12[0], xt + line_len * t12[0]], 
-            [yt - line_len * t12[1], yt + line_len * t12[1]], 'k-')
-    ax.plot([xt - line_len * t23[0], xt + line_len * t23[0]], 
-            [yt - line_len * t23[1], yt + line_len * t23[1]], 'k-')
-    ax.plot([xt - line_len * t31[0], xt + line_len * t31[0]], 
-            [yt - line_len * t31[1], yt + line_len * t31[1]], 'k-')
-
-    # Plot the central triple point
-    ax.plot(xt, yt, 'ro', markersize=10, label=f'Triple Point ({xt:.3f}, {yt:.3f})')
-
-    # Place angle labels inside each phase wedge. The gradient (g1, g2, g3)
-    # points into the corresponding phase region, so we use it to position the label.
-    label_dist = 0.4 * line_len
-    ax.text(xt + label_dist * unit(g1)[0], yt + label_dist * unit(g1)[1],
-            f'$\\theta_1 = {th1:.1f}^\\circ$',
-            ha='center', va='center', fontsize=16, color='C0',
-            bbox=dict(boxstyle='round,pad=0.3', fc='white', ec='none', alpha=0.8))
-
-    ax.text(xt + label_dist * unit(g2)[0], yt + label_dist * unit(g2)[1],
-            f'$\\theta_2 = {th2:.1f}^\\circ$',
-            ha='center', va='center', fontsize=16, color='C2',
-            bbox=dict(boxstyle='round,pad=0.3', fc='white', ec='none', alpha=0.8))
-
-    ax.text(xt + label_dist * unit(g3)[0], yt + label_dist * unit(g3)[1],
-            f'$\\theta_3 = {th3:.1f}^\\circ$',
-            ha='center', va='center', fontsize=16, color='C3',
-            bbox=dict(boxstyle='round,pad=0.3', fc='white', ec='none', alpha=0.8))
-            
-    # Final plot adjustments
-    ax.set_title("Contact Angles at Triple Point", fontsize=18)
-    ax.set_aspect('equal', adjustable='box')
-    ax.legend(loc='upper right')
-    # Set plot limits to center on the point, relative to the lines
-    ax.set_xlim(xt - 1.2 * line_len, xt + 1.2 * line_len)
-    ax.set_ylim(yt - 1.2 * line_len, yt + 1.2 * line_len)
-    ax.axis('off')  # Hide the axes for a cleaner schematic look
-
-    plt.savefig(filename, bbox_inches='tight', dpi=150)
-    plt.close(fig)
-    print(f"\nGenerated schematic angle plot: {filename}")
-
 
 # ----------------------------
 # Main
 # ----------------------------
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--c1", default=defaultf1, help="path to c1 data file")
-    ap.add_argument("--c2", default=defaultf2, help="path to c2 data file")
-    ap.add_argument("--nx", type=int, default=500, help="grid resolution in x (y auto)")
-    ap.add_argument("--plot", default=None, help="optional output figure path (PNG/SVG)")
-    ap.add_argument("--phi_tol", type=float, default=5e-3, help="|phi31| tolerance for triple-point filtering")
-    ap.add_argument("--report-small-angles", action="store_true",
-                    help="also print the three small crossing angles that sum to 180°")
-    args = ap.parse_args()
+def get_angle(c1path, c2path):
+
+
+    # ap = argparse.ArgumentParser()
+    # ap.add_argument("--c1", default=defaultf1, help="path to c1 data file")
+    # ap.add_argument("--c2", default=defaultf2, help="path to c2 data file")
+    # ap.add_argument("--nx", type=int, default=500, help="grid resolution in x (y auto)")
+    # ap.add_argument("--plot", default=None, help="optional output figure path (PNG/SVG)")
+    # ap.add_argument("--phi_tol", type=float, default=5e-3, help="|phi31| tolerance for triple-point filtering")
+    # ap.add_argument("--report-small-angles", action="store_true",
+    #                 help="also print the three small crossing angles that sum to 180°")
+    # args = ap.parse_args()
 
     # Load scattered fields
-    x1, y1, c1v = load_field(args.c1)
-    x2, y2, c2v = load_field(args.c2)
+    x1, y1, c1v = load_field(c1path)
+    x2, y2, c2v = load_field(c2path)
 
     f1 = build_linear_interpolator(x1, y1, c1v)
     f2 = build_linear_interpolator(x2, y2, c2v)
 
     xmin, xmax, ymin, ymax = common_bbox(x1, y1, x2, y2, margin=0.02)
-    nx = 30#max(256, args.nx)
-    ny = 30#max(256, int(round(nx * (ymax - ymin) / (xmax - xmin))))
+    nx = 100#max(256, args.nx)
+    ny = 100#max(256, int(round(nx * (ymax - ymin) / (xmax - xmin))))
     print(nx, ny)
     X = np.linspace(xmin, xmax, nx)
     Y = np.linspace(ymin, ymax, ny)
@@ -267,7 +186,7 @@ def main():
 
     if len(lines12) == 0 or len(lines23) == 0:
         print("No interfaces found (phi12 or phi23 has no zero-level contours in the overlap).")
-        sys.exit(0)
+        return 180
 
     # Intersections of phi12=0 and phi23=0 -> triple-point candidates
     raw_pts = pairwise_intersections(lines12, lines23)
@@ -286,6 +205,7 @@ def main():
     candidates = [p for p in raw_pts]# if abs(phi31_val(p[0], p[1])) <= args.phi_tol]
     if not candidates:
         print("Intersections found, but none satisfy |phi31|<=tol near zero; try increasing --phi_tol.")
+        return 0
         sys.exit(0)
 
     # Cluster nearby intersections -> at most two triple points
@@ -319,30 +239,162 @@ def main():
             "small_deg": (a1, a2, a3),
             "gradients": (g1, g2, g3)
         })
-
+    lowest_angle = 360
     # ---- Printout ----
     print("\nDetected triple junctions (interior angles shown; sum ~360°):\n")
     for i, res in enumerate(results, 1):
         (xt, yt) = res["triple_point"]
         th1, th2, th3 = res["angles_deg"]
         a1, a2, a3 = res["small_deg"]
+
         print(f"#{i}: at (x={xt:.6g}, y={yt:.6g})")
         print(f"    θ1 (inside phase-1): {th1:8.3f}°")
         print(f"    θ2 (inside phase-2): {th2:8.3f}°")
         print(f"    θ3 (inside phase-3): {th3:8.3f}°")
         print(f"    angle sum (should be ~360): {(th1+th2+th3):.3f}°")
-        if args.report_small_angles:
-            print(f"    α (small crossing angles): {a1:.3f}°, {a2:.3f}°, {a3:.3f}° (sum ~180)")
         print()
-        
-   # ---- Generate Schematic Plot of Angles ----
-    if results:
-        # Plot the angles for the first detected triple point
-        first_result = results[0]
-        xt, yt = first_result["triple_point"]
-        angles = first_result["angles_deg"]
-        gradients = first_result["gradients"]
-        plot_angles_at_point(xt, yt, angles, gradients, filename="triple_point_angles.png")
+        if th2 < lowest_angle:
+            lowest_angle=th2
+        if th1 > 165 and th2 > 165:
+            return 180
+        if th2 > 140 and th3 > 140:
+            return 0
+    return th2
 
-if __name__ == "__main__":
-    main()
+
+
+
+  
+    
+
+def generate_phase_diagram(root_directory, fixed_gamma13=6, vmax=2.5):
+    """
+    Main function to process data and plot the phase diagram overlaid on a
+    theoretical wetting regime field.
+    
+    Args:
+        root_directory (str): Path to the main data directory.
+        fixed_gamma13 (float): The value of gamma13 to use for the theoretical background.
+    """
+    # --- 1. Data Processing (Same as before) ---
+    dir_pattern = re.compile(r'^(\d+)-(\d+)-(\d+)$')
+    results = []
+    print(f"Scanning root directory: {root_directory}")
+    for dir_name in os.listdir(root_directory):
+        full_path = os.path.join(root_directory, dir_name)
+        print("FULL PATH IS: ", full_path)
+        if os.path.isdir(full_path):
+            match = dir_pattern.match(dir_name)
+            if match:
+                gamma12, fixed_gamma13, gamma23 = map(int, match.groups()) # We get g13 but ignore it for the axes
+                gamma12 = (2/3) * gamma12 / 100
+                fixed_gamma13 = (2/3) * fixed_gamma13 / 100
+                gamma23 = (2/3) * gamma23 / 100
+                print(f"Processing directory: {dir_name} -> (g12={gamma12}, g23={gamma23})")
+                c1_file = full_path + "/c1" + "-" + choose_time + ".dat"
+                c2_file = full_path + "/c2" + "-" + choose_time + ".dat"
+                print(c1_file, c2_file)
+                if c1_file:
+                    contact_angle = get_angle(c1_file, c2_file)
+                    if not np.isnan(contact_angle):
+                        results.append((gamma12, gamma23, contact_angle))
+                    else:
+                        print(f"  -> No valid data point (c1>0.5) found for (g12={gamma12}, g23={gamma23}).")
+
+    if not results:
+        print("\nNo data could be processed. Exiting.")
+        return
+
+    data_points = np.array(results)
+    g12_vals = data_points[:, 0]
+    g23_vals = data_points[:, 1]
+    y_color_vals = data_points[:, 2]
+
+    # --- 2. Create the Theoretical Wetting Regime Field ---
+    print("\nCreating theoretical wetting background...")
+    
+    # Define the boundaries of our plot based on the data, with some padding
+    g12_min, g12_max = g12_vals.min() - 0.01, g12_vals.max() + 0.01
+    g23_min, g23_max = g23_vals.min() - 0.01, g23_vals.max() + 0.01
+    
+    # Create a grid of points
+    g12_grid, g23_grid = np.meshgrid(
+        np.linspace(g12_min, g12_max, 500),
+        np.linspace(g23_min, g23_max, 500)
+    )
+
+    # Define regime conditions based on the triangle inequality
+    # We assign an integer to each regime.
+    # 0: Partial Wetting (Young's Regime) - The default
+    # 1: Droplet Dewets from Solid (g12 > g13 + g23)
+    # 2: Droplet Wets Solid (g13 > g12 + g23)
+    # 3: Solid Wets Droplet (g23 > g12 + g13)
+    regime_grid = np.zeros_like(g12_grid)
+    regime_grid[g12_grid > fixed_gamma13 + g23_grid] = 1
+    regime_grid[fixed_gamma13 > g12_grid + g23_grid] = 2
+    regime_grid[g23_grid > g12_grid + fixed_gamma13] = 3
+
+    # Define discrete colors for the regimes
+    # Using light, distinct colors for the background
+    regime_colors = ['#d3d3d3', '#ffcccc', '#cce5ff', '#d4edda'] # Grey, Red, Blue, Green
+    cmap_regimes = mcolors.ListedColormap(regime_colors)
+    
+    # --- 3. Plotting ---
+    print("Generating combined phase diagram plot...")
+    # plt.style.use('seaborn-v0_8-whitegrid')
+    fig, ax = plt.subplots(figsize=(9, 9))
+
+    # Plot the background field first
+    im = ax.imshow(regime_grid, origin='lower', 
+                   extent=[g12_min, g12_max, g23_min, g23_max],
+                   cmap=cmap_regimes)
+
+    # Plot the simulation data points on top
+    scatter = ax.scatter(g12_vals, g23_vals, c=y_color_vals, 
+                         cmap='viridis', s=1000, edgecolors='k', zorder=10, vmin=0, vmax=vmax)
+
+    # --- 4. Legends and Labels ---
+    
+    # Colorbar for the scatter plot data
+    cbar = plt.colorbar(scatter, ax=ax, shrink=0.8)
+    cbar.set_label('Max y-value (for c1 > 0.5)', fontsize=12, weight='bold')
+
+    # Custom legend for the background regimes
+    legend_labels = {
+        0: 'Partial Wetting / Dewetting',
+        1: 'Droplet Dewets from Solid ($\gamma_{12} > \gamma_{13} + \gamma_{23}$)',
+        2: 'Droplet Wets Solid ($\gamma_{13} > \gamma_{12} + \gamma_{23}$)',
+        3: 'Solid Wets Droplet ($\gamma_{23} > \gamma_{12} + \gamma_{13}$)'
+    }
+    patches = [mpatches.Patch(color=regime_colors[i], label=label) for i, label in legend_labels.items()]
+    # ax.legend(handles=patches, bbox_to_anchor=(1.05, 0.6), loc='upper left',
+    #           title='Theoretical Wetting Regimes', fontsize=10)
+
+    # Set axis labels and title
+    ax.set_xlabel('$\gamma_{12}$ (Surface Tension 1-2)', fontsize=14, weight='bold')
+    ax.set_ylabel('$\gamma_{23}$ (Surface Tension 2-3)', fontsize=14, weight='bold')
+    ax.set_title(f'Phase Diagram of Wetting Behavior (for $\gamma_{13} = {fixed_gamma13}$)', fontsize=16, weight='bold')
+    
+    ax.set_xlim(g12_min, g12_max)
+    ax.set_ylim(g23_min, g23_max)
+    ax.tick_params(axis='both', which='major', labelsize=12)
+    
+    ax.set_aspect('equal', adjustable='box')
+
+    plt.xticks(np.arange(0.02, 0.16, 0.02)) 
+    plt.yticks(np.arange(0.02, 0.16, 0.02)) 
+
+    plt.tight_layout(rect=[0, 0, 1, 1]) # Adjust layout to make space for legend
+    #plt.savefig('phase_diagram_with_background.png', dpi=300)
+    plt.show()
+
+
+if __name__ == '__main__':
+    # --- Option 1: Point the script to your actual data directory ---
+    # Replace this with the path to your folder containing '3-6-3', '9-6-3', etc.
+    
+    
+
+    # The second argument is the fixed gamma13 value used for the background.
+    # This should match the value used in your simulations.
+    generate_phase_diagram(main_directory, fixed_gamma13=12, vmax=180)
