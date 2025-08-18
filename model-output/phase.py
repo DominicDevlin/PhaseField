@@ -221,7 +221,7 @@ def generate_phase_diagram(root_directory, fixed_gamma13=6, vmax=2.5):
 if __name__ == '__main__':
     # --- Option 1: Point the script to your actual data directory ---
     # Replace this with the path to your folder containing '3-6-3', '9-6-3', etc.
-    main_directory = 'data/highdiff'
+    main_directory = 'data/30-visc'
     
 
     # The second argument is the fixed gamma13 value used for the background.
