@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 
-main_directory = 'data/equilibrium'
+main_directory = 'data/equilibrium-long'
 choose_time = "1000"
 
 import argparse
