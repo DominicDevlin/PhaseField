@@ -11,8 +11,8 @@ import os
 # User inputs
 # ------------------------------------------------------------
 # Directory name assumed to encode gamma values like "12-9-12"
-data_directory = Path('data/sig13low/18-9-12/')
-time = 800  # integer time label matching filenames: c1-20.dat, c2-20.dat
+data_directory = Path('data/sig13low/21-9-21')
+time = 1760  # integer time label matching filenames: c1-20.dat, c2-20.dat
 
 
 fig, ax = plt.subplots(figsize=(8, 12))
@@ -51,7 +51,7 @@ def plot_rgb_composite_from_data(ax, x, y, c1, c2):
     grid_c3 = np.nan_to_num(grid_c3)
 
     # Clip values to the valid [0, 1] range for colors and stack them
-    rgb_image = np.clip(np.dstack((grid_c1, grid_c2, grid_c3)), 0, 1)
+    rgb_image = np.clip(np.dstack((grid_c3, grid_c2, grid_c1)), 0, 1)
 
     # --- 5. Plot the RGB image ---
     ax.imshow(rgb_image, origin='lower',
