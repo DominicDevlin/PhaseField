@@ -12,8 +12,8 @@ import sys
 # ---------------------------------------------------------------
 # 1. Animation and Data Configuration
 # ---------------------------------------------------------------
-tensions = '3-9-24'
-data_directory = 'data/sig13low/' + tensions + '/'
+tensions = '12-9-12'
+data_directory = 'data/rect-init/' + tensions + '/'
 time_step_increment = 20
 output_filename = 'movies/' + tensions + '.mp4'
 fps = 6
@@ -65,7 +65,7 @@ def plot_rgb_composite_from_data(ax, x, y, c1, c2):
     grid_c2 = np.nan_to_num(grid_c2)
     grid_c3 = np.nan_to_num(grid_c3)
 
-    rgb_image = np.clip(np.dstack((grid_c1, grid_c2, grid_c3)), 0, 1)
+    rgb_image = np.clip(np.dstack((grid_c3, grid_c2, grid_c1)), 0, 1)
 
     # --- 5. Plot the RGB image ---
     ax.imshow(rgb_image, origin='lower',
