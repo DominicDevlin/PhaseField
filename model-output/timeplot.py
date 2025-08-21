@@ -208,6 +208,8 @@ def main():
             peak_idx = next(i for i, y in enumerate(yvals_sorted) if np.isclose(y, max_y, atol=1e-12))
         except StopIteration:
             peak_idx = len(yvals_sorted) - 1
+        
+        peak_idx = peak_idx + 1
 
         keep_times = times_sorted[:peak_idx + 1]
         yvals_kept = [elongation_map[t] for t in keep_times]
