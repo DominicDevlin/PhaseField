@@ -9,6 +9,7 @@ import matplotlib.patches as mpatches
 Y_MIN_CUTOFF = 1.5
 BIN_WIDTH    = 0.015
 Y_INIT       = 1.7
+main_directory = 'data/rect-init'
 
 # --- (The find_latest_file and process_data_file functions are unchanged) ---
 
@@ -223,5 +224,4 @@ def generate_phase_diagram(root_directory, fixed_gamma13=6, vmax=2.5):
 
 
 if __name__ == '__main__':
-    main_directory = 'data/sig13low'
-    generate_phase_diagram(main_directory, fixed_gamma13=12, vmax=2.2)
+    generate_phase_diagram(main_directory, fixed_gamma13=9, vmax=2.2)
