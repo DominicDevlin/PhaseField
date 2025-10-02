@@ -4,11 +4,11 @@ load "UMFPACK64";
 load "isoline";
 load "Element_P3";
 
-real endsim=1501;
+real endsim=3001;
 /*area constraint relaxation*/
 real endrelaxation=0.2; // area relaxation
 /* How long before differentiation starts. Set to 10 for semicircle and 100 for rectangle */
-real endequilibrate=100; // no differentiation
+real endequilibrate=10; // no differentiation
 bool printScreen=true;
 int screenStep = 5;
 bool doPrint=true;
@@ -23,6 +23,11 @@ if (ARGV.n > 3)
     dirstr =  ARGV[2] + "-" + ARGV[3] + "-" + ARGV[4] + "/";
     printScreen = false;
     doPrint=false;
+    if (ARGV.n > 6)
+    {
+        parstr = "-" + ARGV[2] + "-" + ARGV[6];
+        dirstr =  ARGV[2] + "-" + ARGV[6] + "/";
+    }
 }
 
 verbosity=0;
@@ -135,6 +140,8 @@ real sig12=8;
 real sig13=12;
 real sig23=8;
 real sig123 = 2000;
+real Drate = 0;
+real endDrate = 1;
 
 real eps = 0.02;
 
@@ -144,6 +151,10 @@ if (ARGV.n > 3)
     sig13 = atof(ARGV[3]);
     sig23 = atof(ARGV[4]);
     eps = atof(ARGV[5]);
+    if (ARGV.n > 6)
+    {
+        endDrate = atof(ARGV[6]);
+    }
     
 }
 
@@ -159,8 +170,7 @@ real lmda = 120;
 // real bigdelta = abs(max(k1,k2,k3))*30;
 // cout << "big delta is: " << bigdelta << endl;
 real epseps = 1e-9;
-real Drate = 0;
-real endDrate = 1;
+
 
 
 real c1Area = 0;
@@ -370,6 +380,7 @@ real startcircle = true;
 
 if (startcircle)
 {
+    endequilibrate=10;
     // /* ---------- semicircle sitting on the band for  c2  ---------- */
     real R   = 0.8;                              // RADIUS  of the semicircle
     real x0  = 0;                            // HORIZONTAL CENTRE
@@ -412,6 +423,7 @@ if (startcircle)
 }
 else
 {
+    endequilibrate=100;
     /* ---------- rectangular c2 sitting on top of the c1 band ---------- */
     /* target "volume" (area in 2D) */ 
     real targetVol = 1.1;
