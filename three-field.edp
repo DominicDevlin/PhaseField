@@ -31,9 +31,11 @@ if (ARGV.n > 3)
 }
 
 verbosity=0;
+// 200 for 20 time steps (default value)
 int PrintStep=200;
 
 bool doTimespan=true;
+// 4,000 for 20 time steps (default value)
 int DataOutputStep=100;
 bool printinterface=false;
 bool PrintEnergy=false;
