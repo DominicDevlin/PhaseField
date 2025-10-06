@@ -23,6 +23,7 @@ gamma13 = 0.06
 
 for gamma12 in gamma12_values:
     for gamma23 in gamma23_values:
+        # cant remember what I put this line in for but its not needed.
         if gamma12 >= gamma23 and gamma12 - gamma23 < 0.05:
             sig12 = 3 * gamma12 / eps
             sig13 = 3 * gamma13 / eps

@@ -397,4 +397,4 @@ if __name__ == '__main__':
 
     # The second argument is the fixed gamma13 value used for the background.
     # This should match the value used in your simulations.
-    generate_phase_diagram(main_directory, fixed_gamma13=12, vmax=180)
+    generate_phase_diagram(main_directory, fixed_gamma13=9, vmax=180)

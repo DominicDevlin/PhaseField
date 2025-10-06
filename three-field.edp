@@ -4,11 +4,11 @@ load "UMFPACK64";
 load "isoline";
 load "Element_P3";
 
-real endsim=1501;
+real endsim=3001;
 /*area constraint relaxation*/
 real endrelaxation=0.2; // area relaxation
 /* How long before differentiation starts. Set to 10 for semicircle and 100 for rectangle */
-real endequilibrate=100; // no differentiation
+real endequilibrate=10; // no differentiation
 bool printScreen=true;
 int screenStep = 5;
 bool doPrint=true;
@@ -23,12 +23,19 @@ if (ARGV.n > 3)
     dirstr =  ARGV[2] + "-" + ARGV[3] + "-" + ARGV[4] + "/";
     printScreen = false;
     doPrint=false;
+    if (ARGV.n > 6)
+    {
+        parstr = "-" + ARGV[2] + "-" + ARGV[6];
+        dirstr =  ARGV[2] + "-" + ARGV[6] + "/";
+    }
 }
 
 verbosity=0;
+// 200 for 20 time steps (default value)
 int PrintStep=200;
 
 bool doTimespan=true;
+// 4,000 for 20 time steps (default value)
 int DataOutputStep=100;
 bool printinterface=false;
 bool PrintEnergy=false;
@@ -135,6 +142,8 @@ real sig12=8;
 real sig13=12;
 real sig23=8;
 real sig123 = 2000;
+real Drate = 0;
+real endDrate = 1;
 
 real eps = 0.02;
 
@@ -144,6 +153,10 @@ if (ARGV.n > 3)
     sig13 = atof(ARGV[3]);
     sig23 = atof(ARGV[4]);
     eps = atof(ARGV[5]);
+    if (ARGV.n > 6)
+    {
+        endDrate = atof(ARGV[6]);
+    }
     
 }
 
@@ -159,8 +172,7 @@ real lmda = 120;
 // real bigdelta = abs(max(k1,k2,k3))*30;
 // cout << "big delta is: " << bigdelta << endl;
 real epseps = 1e-9;
-real Drate = 0;
-real endDrate = 1;
+
 
 
 real c1Area = 0;
@@ -364,95 +376,115 @@ real gum = 0.02;
 func initc1 = 0.5* (1.-tanh( (abs((y - bandYC)) - bandH )/ DropTh));    
 // func initc1 = 0.5 * (1.0 - tanh(( max(abs((x - dxc) / Lx), abs((y - 1.5) / Ly)) - 1.0 )/ (DropTh)));
 
-// /* ---------- semicircle sitting on the band for  c2  ---------- */
-// real R   = 0.8;                              // RADIUS  of the semicircle
-// real x0  = 0;                            // HORIZONTAL CENTRE
-// real y0  = bandH + bandYC;// bandYC + bandH/2.;            // VERTICAL CENTRE (touching band)
 
-// /* full (smoothed) circle field */
-// func circ  = sqrt(  (x - x0)^2  +  (y - y0)^2 );
-// func disk = 0.5 * ( 1. - tanh( (circ - R) / (eps) ) );
+// start as circle otherwise start as rectangle flat on surface of c1.
+real startcircle = true;
 
-// /* Heaviside-like mask so we keep only the UPPER half of the circle */
-// func mask = 0.5 * ( 1. + tanh( ( y - (y0) ) / gum ) );
+if (startcircle)
+{
+    endequilibrate=10;
+    // /* ---------- semicircle sitting on the band for  c2  ---------- */
+    real R   = 0.8;                              // RADIUS  of the semicircle
+    real x0  = 0;                            // HORIZONTAL CENTRE
+    real y0  = bandH + bandYC;// bandYC + bandH/2.;            // VERTICAL CENTRE (touching band)
 
-// /* final semicircle initial condition */
-// func initc2 = disk * mask;
+    /* full (smoothed) circle field */
+    func circ  = sqrt(  (x - x0)^2  +  (y - y0)^2 );
+    func disk = 0.5 * ( 1. - tanh( (circ - R) / (eps) ) );
 
-/* ---------- rectangular c2 sitting on top of the c1 band ---------- */
-/* target "volume" (area in 2D) */ 
-real targetVol = 1.1;
-// used 1.1 volume for simulations
-/* choose rectangle width; height is set so area = 1 */
-real rectW = 4.2;              // you can change this
-real rectH = targetVol/rectW;   // ensures rectW*rectH = 1
+    /* Heaviside-like mask so we keep only the UPPER half of the circle */
+    func mask = 0.5 * ( 1. + tanh( ( y - (y0) ) / gum ) );
 
-/* center and placement: bottom edge touches the top of c1 band */
-real x0 = 0;                    // horizontal center (same as before)
-real yb = bandYC + bandH;       // bottom of the rectangle (top of c1 band)
-real yt = yb + rectH;           // top of the rectangle
+    /* final semicircle initial condition */
+    func initc2 = disk * mask;
 
-/* horizontal extents */
-real xl = x0 - 0.5*rectW;
-real xr = x0 + 0.5*rectW;
+    c1 = initc1;
+    c2=initc2;
+    MakeMesh
+    getAdaptMesh
+    c1 = initc1;
+    c2=initc2;
+    MakeMesh
+    getAdaptMesh
+    c1 = initc1;
+    c2=initc2;
+    MakeMesh
+    getAdaptMesh
+    c1 = initc1;
+    c2=initc2;
+    c1old = c1;
+    c2old = c2;
+    GetArea;
+    // set constraints to initial areas
+    A0c1 = c1Area;
+    A0c2 = c2Area;
+    A0c3 = TotalArea - A0c1 - A0c2;
+    cout << c1Area << "\t" << c2Area << "\t" << c3Area << endl;
+    c1 = clip(initc1);
+    c2 = clip(initc2);
+}
+else
+{
+    endequilibrate=100;
+    /* ---------- rectangular c2 sitting on top of the c1 band ---------- */
+    /* target "volume" (area in 2D) */ 
+    real targetVol = 1.1;
+    // used 1.1 volume for simulations
+    /* choose rectangle width; height is set so area = 1 */
+    real rectW = 3;              // FOR SIMULATIONS FROM FLAT INITIAL CONDITION, THIS VALUE SET TO: 3
+    real rectH = targetVol/rectW;   // ensures rectW*rectH = 1
 
-/* smoothing (reuse your 'gum' for both x and y) */
-real sx = gum;
-real sy = gum;
+    /* center and placement: bottom edge touches the top of c1 band */
+    real x0 = 0;                    // horizontal center (same as before)
+    real yb = bandYC + bandH;       // bottom of the rectangle (top of c1 band)
+    real yt = yb + rectH;           // top of the rectangle
+    /* horizontal extents */
+    real xl = x0 - 0.5*rectW;
+    real xr = x0 + 0.5*rectW;
 
-/* masks */
-func xMask = 0.5*(1. + tanh((x-xl)/sx)) - 0.5*(1. + tanh((x-xr)/sx));
-func yMask = 0.5*(1. + tanh((y-yb)/sy)) - 0.5*(1. + tanh((y-yt)/sy));
+    /* smoothing (reuse your 'gum' for both x and y) */
+    real sx = gum;
+    real sy = gum;
 
-/* final rectangular initial condition */
-func initc2 = xMask * yMask;
+    /* masks */
+    func xMask = 0.5*(1. + tanh((x-xl)/sx)) - 0.5*(1. + tanh((x-xr)/sx));
+    func yMask = 0.5*(1. + tanh((y-yb)/sy)) - 0.5*(1. + tanh((y-yt)/sy));
 
+    /* final rectangular initial condition */
+    func initc2 = xMask * yMask;
 
+    c1 = initc1;
+    c2=initc2;
+    MakeMesh
+    getAdaptMesh
+    c1 = initc1;
+    c2=initc2;
+    MakeMesh
+    getAdaptMesh
+    c1 = initc1;
+    c2=initc2;
+    MakeMesh
+    getAdaptMesh
+    c1 = initc1;
+    c2=initc2;
+    c1old = c1;
+    c2old = c2;
+    GetArea;
+    // set constraints to initial areas
+    A0c1 = c1Area;
+    A0c2 = c2Area;
+    A0c3 = TotalArea - A0c1 - A0c2;
+    cout << c1Area << "\t" << c2Area << "\t" << c3Area << endl;
+    c1 = clip(initc1);
+    c2 = clip(initc2);
+}
 
-c1 = initc1;
-c2=initc2;
-MakeMesh
-getAdaptMesh
-
-
-c1 = initc1;
-c2=initc2;
-
-MakeMesh
-getAdaptMesh
-
-
-c1 = initc1;
-c2=initc2;
-
-MakeMesh
-getAdaptMesh
-
-c1 = initc1;
-c2=initc2;
-c1old = c1;
-c2old = c2;
-
-GetArea;
-
-// set constraints to initial areas
-A0c1 = c1Area;
-A0c2 = c2Area;
-A0c3 = TotalArea - A0c1 - A0c2;
-
-cout << c1Area << "\t" << c2Area << "\t" << c3Area << endl;
-
-c1 = clip(initc1);
-c2 = clip(initc2);
 
 Vhfield sum12 = c1 + c2;
 Vhfield factor  = 1.0 / max(1.0 , sum12);   // “./” is component-wise division
 c1 = c1 * factor;   // rescale only where necessary
 c2 = c2 * factor;
 
-
-// c1 = c1-c2;
-// c1 = (c1>0)*c1;
 
 int nAdapt=0;
 real curt=0.0;
