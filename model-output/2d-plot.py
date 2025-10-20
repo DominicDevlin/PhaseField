@@ -12,15 +12,9 @@ from matplotlib.cm import get_cmap
 # ---------------------------------------------------------------
 
 # number = '30-3-30'
-<<<<<<< HEAD
-number = 'data/diff-phase/24-1'
-prepend = '' + number + '/'
-time = '600'
-=======
 number = 'data/diff-phase/18-2'
 prepend = '' + number + '/'
 time = '1600'
->>>>>>> 6f9f7f5b2a2dd99b563d75202bd905ad76c9bfe2
 
 
 df = pd.read_csv(prepend + 'c1' + '-' + time + '.dat', header=None, names=['x', 'y', 'conc'], delimiter='\t')
