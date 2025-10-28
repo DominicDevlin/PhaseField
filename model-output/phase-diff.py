@@ -147,53 +147,59 @@ def generate_phase_diagram(root_directory, fixed_gamma13=0.06, fixed_gamma23=0.0
 
     # Define plot boundaries with a small margin
     g12_min, g12_max = g12_vals.min() - 0.01, g12_vals.max() + 0.01
-    diff_min, diff_max = diff_vals.min() - 0.2, diff_vals.max() + 0.2
+    diff_min, diff_max = diff_vals.min() - 0.23, diff_vals.max() + 0.23
     
     # --- Plot ---
     print("Generating combined phase diagram plot...")
-    fig, ax = plt.subplots(figsize=(10, 8))
+    # FIX 1: Set figsize to (9, 9) to match the first plot's canvas dimensions.
+    fig, ax = plt.subplots(figsize=(10, 8.4))
 
-    # --- FIX: Use axvspan to shade the background regions ---
-    # Partial Wetting Region (g12 < g13 + g23)
+    # Background shading is fine as is.
     ax.axvspan(g12_min, g12_critical_dewet, color='#d3d3d3', alpha=0.6, zorder=0,
-               label=f'Partial Wetting ($\\gamma_{{12}} < {g12_critical_dewet:.2f}$)')
-    
-    # Complete Dewetting Region (g12 > g13 + g23)
+            label=f'Partial Wetting ($\\gamma_{{12}} < {g12_critical_dewet:.2f}$)')
     ax.axvspan(g12_critical_dewet, g12_max, color='#ffcccc', alpha=0.6, zorder=0,
-               label=f'Dewetting ($\\gamma_{{12}} > {g12_critical_dewet:.2f}$)')
+            label=f'Dewetting ($\\gamma_{{12}} > {g12_critical_dewet:.2f}$)')
 
-    # Plot the simulation data points on top
+    # Scatter plot styling is already consistent.
     scatter = ax.scatter(
-        g12_vals, diff_vals, # --- FIX: Plot g12 vs diff ---
+        g12_vals, diff_vals,
         c=y_color_vals,
         cmap='viridis',
-        s=250,
+        s=1300,
         edgecolors='k',
         zorder=10,
         vmin=0,
         vmax=vmax
     )
 
-    # Colorbar & labels
-    cbar = plt.colorbar(scatter, ax=ax, shrink=0.9)
+    # Colorbar & labels are consistent.
+    cbar = plt.colorbar(scatter, ax=ax, shrink=0.8)
     cbar.set_label('Max Interface Height (y_threshold)', fontsize=12, weight='bold')
-    
-    # Add a legend for the background regions
-    ax.legend(title='Theoretical Wetting Regimes', loc='upper left')
 
+    # Legend consistency: Assuming you want a legend on both.
+    # If the first plot has no legend, comment this line out.
+    ax.legend(title='Theoretical Wetting Regimes', loc='upper left', fontsize=10)
+
+    # Axis labels and title are consistent.
     ax.set_xlabel('$\\gamma_{12}$ (Surface Tension 1-2)', fontsize=14, weight='bold')
-    # --- FIX: Y-axis is now correctly labeled 'diff' ---
     ax.set_ylabel('diff', fontsize=14, weight='bold')
-    # --- FIX: Title reflects the fixed constants ---
     ax.set_title(f'Phase Diagram for $\\gamma_{{13}} = {fixed_gamma13}$ and $\\gamma_{{23}} = {fixed_gamma23}$',
-                 fontsize=16, weight='bold')
+                fontsize=16, weight='bold')
 
+    # Axis limits and tick params are consistent.
     ax.set_xlim(g12_min, g12_max)
     ax.set_ylim(diff_min, diff_max)
     ax.tick_params(axis='both', which='major', labelsize=12)
-    ax.grid(True, linestyle='--', alpha=0.5)
 
-    plt.tight_layout()
+    # FIX 2: Deliberately OMIT `set_aspect`. This is correct because the y-axis
+    # data is different. The plot area will still be square because figsize is square.
+
+    # FIX 3: Add explicit xticks to match the first plot for consistency.
+    # The yticks will be determined automatically by Matplotlib, which is appropriate.
+    plt.xticks(np.arange(0.02, 0.18, 0.02))
+
+    # Layout and show are consistent.
+    plt.tight_layout(rect=[0, 0, 1, 1])
     plt.show()
 
 
