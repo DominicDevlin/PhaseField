@@ -64,7 +64,7 @@ def compute_y_threshold(filepath, y_min_cutoff=1.5, bin_width=0.02, y_init=1.7):
 def main():
     # Base directory and pattern of subfolders (same style as your old script)
     base_path = "data/sig13low/"
-    pattern = "*-9-12"
+    pattern = "15-9-*"
     subdir_pattern = os.path.join(base_path, pattern)
     subdirectories = glob.glob(subdir_pattern)
 
@@ -74,7 +74,7 @@ def main():
         subdir_label = os.path.basename(subdir)
         parts = subdir_label.split("-")
         try:
-            sigma_input = float(parts[0])
+            sigma_input = float(parts[2])
         except ValueError:
             continue
         legend_lbl = sigma_input * 2.0 / 3.0

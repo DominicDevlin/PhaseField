@@ -13,7 +13,7 @@ import sys
 # 1. Animation and Data Configuration
 # ---------------------------------------------------------------
 tensions = '12-9-12'
-data_directory = 'data/rect-init/' + tensions + '/'
+data_directory = 'data/sig13low/' + tensions + '/'
 time_step_increment = 20
 output_filename = 'movies/' + tensions + '.mp4'
 fps = 6

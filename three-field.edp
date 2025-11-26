@@ -38,7 +38,7 @@ bool doTimespan=true;
 // 4,000 for 20 time steps (default value)
 int DataOutputStep=100;
 bool printinterface=false;
-bool PrintEnergy=false;
+bool PrintEnergy=true;
 string folder1 = "images/" + dirstr + "composite/";
 string folder2 = "images/" + dirstr + "c1/";
 string folder3 = "images/" + dirstr + "c2/";
