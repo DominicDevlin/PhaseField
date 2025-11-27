@@ -7,17 +7,17 @@ import matplotlib.pyplot as plt
 # =========================
 # Config (Central Control)
 # =========================
-BASE_PHASE_DIR = "data/diff-phase"   # where subfolders like "x-b-c" live
+BASE_PHASE_DIR = "data/diff-phase"   # where subfolders like "3-0.5" live
 BASE_MASS_DIR  = "data/diff-phase/mass"
 
 # ---------------------------------------------------------
-# SELECTOR SETTINGS
-# Set the specific number for fixed parameters.
-# Set "*" for the parameter you want to vary (the loop variable).
+# SELECTOR SETTINGS (Modified for 2 Variables)
+# Format: VAR1-VAR2 (e.g., 3-0.5)
+# Set the specific number/string for fixed parameters.
+# Set "*" for the parameter you want to vary.
 # ---------------------------------------------------------
-SELECT_X = "13"    # Fixed X
-SELECT_B = "9"     # Fixed B
-SELECT_C = "*"     # "*" = This is the variable (c)
+SELECT_VAR1 = "15"     # Fixed First Variable (e.g., "3")
+SELECT_VAR2 = "*"     # Variable Second Variable (e.g., "0.5", "1", "1.5")
 
 # Phase processing parameters
 Y_MIN_CUTOFF = 1.5
@@ -34,7 +34,7 @@ YLABEL_PHASE = "y_threshold (phase-style)"
 YLABEL_MASS  = "c2 mass"
 
 # =========================
-# Helpers (phase)
+# Helpers (phase) - Unchanged
 # =========================
 def iter_time_files_c1(directory):
     """ Yield (time:int, path:str) for files named 'c1-<time>.dat'. """
@@ -69,7 +69,7 @@ def compute_y_threshold(filepath, y_min_cutoff=1.5, bin_width=0.02, y_init=1.7):
         return np.nan
 
 # =========================
-# Helpers (mass)
+# Helpers (mass) - Unchanged
 # =========================
 def load_mass_file(path):
     data = np.loadtxt(path, usecols=(0, 2))  
@@ -100,8 +100,8 @@ def main():
     default_colors = plt.rcParams.get('axes.prop_cycle', None)
     color_list = default_colors.by_key()['color'] if default_colors else ["blue", "orange", "green", "red"]
 
-    # 1) Search for directories matching the pattern
-    glob_pattern = f"{SELECT_X}-{SELECT_B}-{SELECT_C}"
+    # 1) Search for directories matching the 2-variable pattern
+    glob_pattern = f"{SELECT_VAR1}-{SELECT_VAR2}"
     subdir_glob = os.path.join(BASE_PHASE_DIR, glob_pattern)
     subdirs = [d for d in glob.glob(subdir_glob) if os.path.isdir(d)]
 
@@ -109,43 +109,41 @@ def main():
     
     # 2) Parse found directories
     for sd in subdirs:
-        label = os.path.basename(sd)  # e.g., "13-9-12"
+        label = os.path.basename(sd)  # e.g., "3-0.5"
         parts = label.split("-")
-        if len(parts) != 3: continue
         
-        x_str, b_str, c_str = parts
+        # CHANGED: Check for exactly 2 parts
+        if len(parts) != 2: continue
+        
+        v1_str, v2_str = parts
 
-        # Verify strict matching (in case glob is too loose on some OS)
-        if SELECT_X != "*" and x_str != SELECT_X: continue
-        if SELECT_B != "*" and b_str != SELECT_B: continue
-        if SELECT_C != "*" and c_str != SELECT_C: continue
+        # Verify strict matching
+        if SELECT_VAR1 != "*" and v1_str != SELECT_VAR1: continue
+        if SELECT_VAR2 != "*" and v2_str != SELECT_VAR2: continue
 
         # Determine Legend Label and Sort Key dynamically
         try:
-            x_val, b_val, c_val = float(x_str), float(b_str), float(c_str)
+            v1_val = float(v1_str)
+            v2_val = float(v2_str)
         except ValueError: continue
 
-        # Logic: If varying X, use the sigma formula. If varying B or C, use raw number.
-        if SELECT_X == "*":
-            sort_val = x_val
-            legend_lbl = f"{x_val * 2.0 / 3.0:.2f}" 
-            var_name = "sigma (x*2/3)"
-        elif SELECT_C == "*":
-            sort_val = c_val
-            legend_lbl = f"{int(c_val)}" # Assuming C is usually integer
-            var_name = "c"
-        elif SELECT_B == "*":
-            sort_val = b_val
-            legend_lbl = f"{int(b_val)}"
-            var_name = "b"
+        # Logic: Determine which variable is changing to set legend labels
+        if SELECT_VAR1 == "*":
+            sort_val = v1_val
+            legend_lbl = f"{v1_val:g}" 
+            var_name = "Var 1"
+        elif SELECT_VAR2 == "*":
+            sort_val = v2_val
+            legend_lbl = f"{v2_val:g}"
+            var_name = "Var 2"
         else:
-            # Fallback if nothing is "*", should typically not happen given logic
+            # Fallback if specific file selected
             sort_val = 0
-            legend_lbl = "single"
-            var_name = "run"
+            legend_lbl = f"{v1_str}-{v2_str}"
+            var_name = "Run"
 
         entries.append({
-            "x": x_str, "b": b_str, "c": c_str, 
+            "v1": v1_str, "v2": v2_str, 
             "subdir": sd, 
             "legend_lbl": legend_lbl,
             "sort_val": sort_val
@@ -155,11 +153,11 @@ def main():
     entries.sort(key=lambda e: e["sort_val"])
 
     if not entries:
-        print(f"No matching phase subdirectories found for pattern: {glob_pattern}")
+        print(f"No matching subdirectories found for pattern: {glob_pattern}")
         return
 
     # Dictionary to share peak time between Phase and Mass plots
-    # Key = tuple(x, b, c) to be absolutely unique
+    # Key = tuple(v1, v2)
     stop_time_map = {} 
 
     # ==========================
@@ -186,17 +184,15 @@ def main():
         # Find peak
         max_y = np.max(yvals)
         try:
-            # find first index where y is close to max
             peak_idx = next(i for i, y in enumerate(yvals) if np.isclose(y, max_y, atol=1e-12))
         except StopIteration:
             peak_idx = len(yvals) - 1
         
-        peak_idx += 1 # Include the peak point
-        
+        peak_idx += 1 
         t_peak = times[min(peak_idx, len(times)-1)]
         
-        # Store for mass plot
-        stop_time_map[(e['x'], e['b'], e['c'])] = t_peak
+        # Store for mass plot using unique key
+        stop_time_map[(e['v1'], e['v2'])] = t_peak
 
         plt.plot(times[:peak_idx+1], yvals[:peak_idx+1], 
                  marker=markers[idx % len(markers)], linestyle='-', color=color, 
@@ -208,7 +204,8 @@ def main():
     plt.legend(title=var_name)
     plt.grid(False)
     plt.tight_layout()
-    plt.xlim(left=0)
+    #plt.xlim(left=0,right=3100)
+    plt.xscale("log")
     plt.ylim(bottom=0)
     plt.show()
 
@@ -222,15 +219,16 @@ def main():
         color = color_list[idx % len(color_list)]
         
         # Unique key to retrieve stop time
-        key = (e['x'], e['b'], e['c'])
+        key = (e['v1'], e['v2'])
         t_peak = stop_time_map.get(key)
         
-        # Dynamic filename construction based on this specific entry
-        mass_filename = f"mass-{e['x']}-{e['b']}-{e['c']}.txt"
+        # CHANGED: Dynamic filename construction for 2 variables
+        # Assuming format: mass-VAR1-VAR2.txt
+        mass_filename = f"mass-{e['v1']}-{e['v2']}.txt"
         mass_path = os.path.join(BASE_MASS_DIR, mass_filename)
 
         if t_peak is None:
-            continue # Skipped in phase plot (no data)
+            continue 
         
         if not os.path.isfile(mass_path):
             print(f"Missing mass file: {mass_path}")
@@ -257,7 +255,8 @@ def main():
     plt.legend(title=var_name)
     plt.grid(False)
     plt.tight_layout()
-    plt.xlim(left=0)
+    # plt.xlim(left=0)
+    plt.xscale("log")
     plt.ylim(0, 1.02)
     plt.show()
 
