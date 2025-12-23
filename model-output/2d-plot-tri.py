@@ -5,31 +5,40 @@ import matplotlib.pyplot as plt
 from matplotlib.tri import Triangulation, LinearTriInterpolator
 from matplotlib.collections import PolyCollection
 from pathlib import Path
+from matplotlib.colors import to_rgb
 import os  
 
 # ------------------------------------------------------------
 # User inputs
 # ------------------------------------------------------------
 # Directory name assumed to encode gamma values like "12-9-12"
-data_directory = Path('data/diff-phase/12-4')
-time = 360  # integer time label matching filenames: c1-20.dat, c2-20.dat
+data_directory = Path('data/extras-large/model-output/24-9-24')
+time = 1820  # integer time label matching filenames: c1-20.dat, c2-20.dat
 
 
 fig, ax = plt.subplots(figsize=(8, 12))
 def plot_rgb_composite_from_data(ax, x, y, c1, c2):
     """
     Interpolates scattered phase-field data (c1, c2) onto a regular grid
-    and plots it as an RGB image on the given axes.
-    R = c1, G = c2, B = c3 (where c3 = 1 - c1 - c2)
+    and plots it using a color-blind friendly Okabe-Ito palette.
+    
+    Mapping:
+    c1 -> Orange (Replacing Red)
+    c2 -> Bluish Green (Replacing Green)
+    c3 -> Sky Blue (Replacing Blue)
     """
+    # --- 0. Define the Okabe-Ito Colors (Normalized RGB) ---
+    # Convert Hex to RGB tuples (e.g., (0.9, 0.6, 0.0))
+    color_c1 = np.array(to_rgb('#56B4E9')) # Sky Blue
+    color_c2 = np.array(to_rgb('#009E73')) # Bluish Green
+    color_c3 = np.array(to_rgb('#E69F00')) # Orange
+
     # --- 1. Calculate c3 using the conservation constraint ---
     c3 = 1.0 - c1 - c2
 
     # --- 2. Define a regular grid for the output image ---
-    # These limits should match the final plot's ax.set_xlim/ylim
     x_min, x_max = -2, 2
     y_min, y_max = 0, 6
-    # Define image resolution. Higher numbers = better quality, slower processing.
     grid_x = np.linspace(x_min, x_max, 400)
     grid_y = np.linspace(y_min, y_max, 600)
     gx, gy = np.meshgrid(grid_x, grid_y)
@@ -44,14 +53,24 @@ def plot_rgb_composite_from_data(ax, x, y, c1, c2):
     grid_c2 = interp_c2(gx, gy)
     grid_c3 = interp_c3(gx, gy)
 
-    # --- 4. Stack the grids into an RGB image ---
-    # Handle NaNs outside the data's convex hull by making them black
+    # Handle NaNs (outside convex hull) by setting them to 0
     grid_c1 = np.nan_to_num(grid_c1)
     grid_c2 = np.nan_to_num(grid_c2)
     grid_c3 = np.nan_to_num(grid_c3)
 
-    # Clip values to the valid [0, 1] range for colors and stack them
-    rgb_image = np.clip(np.dstack((grid_c3, grid_c2, grid_c1)), 0, 1)
+    # --- 4. Blend the Colors ---
+    # To mix custom colors, we take the weighted sum of the RGB vectors.
+    # Pixel = (c1 * Orange_RGB) + (c2 * BG_RGB) + (c3 * SB_RGB)
+    
+    # Expand dimensions for broadcasting: (Height, Width, 1) * (3,)
+    rgb_image = (
+        grid_c1[..., None] * color_c1 + 
+        grid_c2[..., None] * color_c2 + 
+        grid_c3[..., None] * color_c3
+    )
+
+    # Clip values to ensure valid [0, 1] range (handles minor floating point errors)
+    rgb_image = np.clip(rgb_image, 0, 1)
 
     # --- 5. Plot the RGB image ---
     ax.imshow(rgb_image, origin='lower',
