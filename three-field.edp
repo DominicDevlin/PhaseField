@@ -431,7 +431,7 @@ else
     real targetVol = 1.1;
     // used 1.1 volume for simulations
     /* choose rectangle width; height is set so area = 1 */
-    real rectW = 3;              // FOR SIMULATIONS FROM FLAT INITIAL CONDITION, THIS VALUE SET TO: 3
+    real rectW = 4;              // FOR SIMULATIONS FROM FLAT INITIAL CONDITION, THIS VALUE SET TO: 3
     real rectH = targetVol/rectW;   // ensures rectW*rectH = 1
 
     /* center and placement: bottom edge touches the top of c1 band */
