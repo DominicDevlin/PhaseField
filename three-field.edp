@@ -147,6 +147,12 @@ real endDrate = 1;
 
 real eps = 0.02;
 
+// viscosties    
+real eta=1;
+real eta2=eta;
+real etasolid = 100;
+
+
 if (ARGV.n > 3)
 {
     sig12 = atof(ARGV[2]);
@@ -157,7 +163,8 @@ if (ARGV.n > 3)
     {
         endDrate = atof(ARGV[6]);
     }
-    
+    if (ARGV.n > 7)
+        etasolid = atof(ARGV[7]);    
 }
 
 real epssq = eps^2;
@@ -165,9 +172,6 @@ cout << "epssq: " << epssq << "  sig12: " << sig12 << "  sig13: " << sig13 << " 
 real k1 = sig12 + sig13 - sig23;
 real k2 = sig12 + sig23 - sig13;
 real k3 = sig13 + sig23 - sig12;
-real eta=1;
-real eta2=eta;
-real etasolid = 100;
 real lmda = 120;
 // real bigdelta = abs(max(k1,k2,k3))*30;
 // cout << "big delta is: " << bigdelta << endl;
