@@ -4,7 +4,7 @@ load "UMFPACK64";
 load "isoline";
 load "Element_P3";
 
-real endsim=3001;
+real endsim=1201;
 /*area constraint relaxation*/
 real endrelaxation=0.2; // area relaxation
 /* How long before differentiation starts. Set to 10 for semicircle and 100 for rectangle */
@@ -28,6 +28,11 @@ if (ARGV.n > 3)
         parstr = "-" + ARGV[2] + "-" + ARGV[6];
         dirstr =  ARGV[2] + "-" + ARGV[6] + "/";
     }
+    if (ARGV.n > 7)
+    {
+        parstr = "-" + ARGV[2] + "-" + ARGV[7];
+        dirstr =  ARGV[2] + "-" + ARGV[7] + "/";
+    }
 }
 
 verbosity=0;
@@ -36,9 +41,9 @@ int PrintStep=200;
 
 bool doTimespan=true;
 // 4,000 for 20 time steps (default value)
-int DataOutputStep=100;
+int DataOutputStep=4000;
 bool printinterface=false;
-bool PrintEnergy=true;
+bool PrintEnergy=false;
 string folder1 = "images/" + dirstr + "composite/";
 string folder2 = "images/" + dirstr + "c1/";
 string folder3 = "images/" + dirstr + "c2/";

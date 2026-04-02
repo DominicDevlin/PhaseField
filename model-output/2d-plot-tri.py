@@ -12,8 +12,8 @@ import os
 # User inputs
 # ------------------------------------------------------------
 # Directory name assumed to encode gamma values like "12-9-12"
-data_directory = Path('data/sig13high/24-18-18')
-time = 1080  # integer time label matching filenames: c1-20.dat, c2-20.dat
+data_directory = Path('data/visc-phase/12-562')
+time = 640  # integer time label matching filenames: c1-20.dat, c2-20.dat
 
 
 fig, ax = plt.subplots(figsize=(8, 12))
