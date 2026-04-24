@@ -4,7 +4,7 @@ import re
 from scipy.spatial import Delaunay
 
 # =================CONFIGURATION=================
-ROOT_DIR = 'data/diff-phase'
+ROOT_DIR = 'data/visc-phase-diff2'
 OUTPUT_SUBDIR = 'mass'
 # ===============================================
 

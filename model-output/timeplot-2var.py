@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 # =========================
 # Config (Central Control)
 # =========================
-BASE_PHASE_DIR = "data/diff-phase"   # where subfolders like "3-0.5" live
-BASE_MASS_DIR  = "data/diff-phase/mass"
+BASE_PHASE_DIR = "data/visc-phase-diff2"   # where subfolders like "3-0.5" live
+BASE_MASS_DIR  = "data/visc-phase-diff2/mass"
 
 # ---------------------------------------------------------
 # SELECTOR SETTINGS (Modified for 2 Variables)
@@ -117,6 +117,7 @@ def main():
         
         v1_str, v2_str = parts
 
+
         # Verify strict matching
         if SELECT_VAR1 != "*" and v1_str != SELECT_VAR1: continue
         if SELECT_VAR2 != "*" and v2_str != SELECT_VAR2: continue
@@ -126,6 +127,9 @@ def main():
             v1_val = float(v1_str)
             v2_val = float(v2_str)
         except ValueError: continue
+
+        if (v2_val < 3.5 or v2_val > 400):
+            continue        
 
         # Logic: Determine which variable is changing to set legend labels
         if SELECT_VAR1 == "*":
@@ -205,7 +209,7 @@ def main():
     plt.grid(False)
     plt.tight_layout()
     #plt.xlim(left=0,right=3100)
-    plt.xscale("log")
+    # plt.xscale("log")
     plt.ylim(bottom=0)
     plt.show()
 
@@ -256,7 +260,7 @@ def main():
     plt.grid(False)
     plt.tight_layout()
     # plt.xlim(left=0)
-    plt.xscale("log")
+    # plt.xscale("log")
     plt.ylim(0, 1.02)
     plt.show()
 
